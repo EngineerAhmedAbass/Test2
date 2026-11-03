@@ -2,80 +2,163 @@
 <html lang="ar" dir="rtl">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>مشغل IPTV</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#07070c" />
+  <title>Stream — مشغل IPTV</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-  <!-- شاشة الدخول -->
+  <div class="bg-glow" aria-hidden="true"><span></span><span></span><span></span></div>
+
+  <!-- ============ شاشة الدخول ============ -->
   <section id="login" class="login">
-    <div class="card">
-      <h1>🎬 مشغل IPTV</h1>
-      <div class="tabs">
-        <button class="tab active" data-tab="xtream">Xtream Codes</button>
-        <button class="tab" data-tab="m3u">رابط M3U</button>
+    <div class="login-card glass">
+      <div class="brand big">
+        <div class="brand-mark"><svg viewBox="0 0 24 24"><path d="M8 5.5v13l10.5-6.5z"/></svg></div>
+        <span>Stream</span>
+      </div>
+      <p class="login-sub">شغّل اشتراك الـ IPTV بتاعك بشكل أشيك</p>
+
+      <div class="seg" role="tablist">
+        <button class="seg-btn active" data-tab="xtream">Xtream Codes</button>
+        <button class="seg-btn" data-tab="m3u">رابط M3U</button>
+        <span class="seg-ind"></span>
       </div>
 
       <form id="form-xtream" class="form">
-        <label>عنوان السيرفر
-          <input name="server" placeholder="http://example.com:8080" required dir="ltr" />
-        </label>
-        <label>اسم المستخدم
-          <input name="username" required dir="ltr" autocomplete="username" />
-        </label>
-        <label>كلمة السر
-          <input name="password" type="password" required dir="ltr" autocomplete="current-password" />
-        </label>
-        <button type="submit" class="primary">دخول</button>
+        <div class="field">
+          <input name="server" placeholder=" " required dir="ltr" autocomplete="url" />
+          <label>عنوان السيرفر</label>
+          <small>http://example.com:8080</small>
+        </div>
+        <div class="field">
+          <input name="username" placeholder=" " required dir="ltr" autocomplete="username" />
+          <label>اسم المستخدم</label>
+        </div>
+        <div class="field">
+          <input name="password" type="password" placeholder=" " required dir="ltr" autocomplete="current-password" />
+          <label>كلمة السر</label>
+        </div>
+        <button type="submit" class="btn primary block"><span>دخول</span></button>
       </form>
 
       <form id="form-m3u" class="form hidden">
-        <label>رابط قائمة M3U
-          <input name="url" placeholder="http://example.com/get.php?username=...&password=...&type=m3u_plus" required dir="ltr" />
-        </label>
-        <button type="submit" class="primary">تحميل القائمة</button>
+        <div class="field">
+          <input name="url" placeholder=" " required dir="ltr" />
+          <label>رابط قائمة M3U</label>
+          <small>http://example.com/get.php?username=...&password=...&type=m3u_plus</small>
+        </div>
+        <button type="submit" class="btn primary block"><span>تحميل القائمة</span></button>
       </form>
 
-      <label class="remember"><input type="checkbox" id="remember" checked /> احفظ بياناتي على الجهاز ده</label>
-      <p id="login-error" class="error"></p>
+      <label class="check"><input type="checkbox" id="remember" checked /><span class="box"></span> احفظ بياناتي على الجهاز ده</label>
+      <p id="login-error" class="login-error"></p>
     </div>
   </section>
 
-  <!-- الشاشة الرئيسية -->
+  <!-- ============ التطبيق ============ -->
   <section id="app" class="app hidden">
-    <header class="topbar">
-      <nav id="sections" class="sections"></nav>
-      <div id="account" class="account"></div>
-      <button id="logout" class="ghost">خروج</button>
-    </header>
+    <aside class="rail glass">
+      <div class="brand">
+        <div class="brand-mark"><svg viewBox="0 0 24 24"><path d="M8 5.5v13l10.5-6.5z"/></svg></div>
+        <span>Stream</span>
+      </div>
+      <nav id="sections" class="nav"></nav>
+      <div class="rail-foot">
+        <div id="account" class="account"></div>
+        <button id="logout" class="nav-btn" title="خروج">
+          <svg viewBox="0 0 24 24"><path d="M15 4h3a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-3M10 17l-5-5 5-5M5 12h11"/></svg>
+          <span>خروج</span>
+        </button>
+      </div>
+    </aside>
 
-    <div class="main">
-      <aside class="categories">
-        <input id="cat-search" placeholder="ابحث في الأقسام..." />
-        <ul id="cat-list"></ul>
-      </aside>
+    <main class="content" id="content">
+      <header class="topbar">
+        <div class="title-wrap">
+          <h1 id="section-title"></h1>
+          <span id="count" class="count-pill"></span>
+        </div>
+        <div class="search glass">
+          <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+          <input id="item-search" placeholder="ابحث عن قناة، فيلم، مسلسل..." />
+          <kbd>/</kbd>
+        </div>
+      </header>
 
-      <div class="items">
-        <input id="item-search" placeholder="ابحث..." />
-        <ul id="item-list"></ul>
+      <div class="chips-row">
+        <button id="all-cats" class="chip strong" title="كل الأقسام">
+          <svg viewBox="0 0 24 24"><rect x="4" y="4" width="6" height="6" rx="1.5"/><rect x="14" y="4" width="6" height="6" rx="1.5"/><rect x="4" y="14" width="6" height="6" rx="1.5"/><rect x="14" y="14" width="6" height="6" rx="1.5"/></svg>
+          الأقسام
+        </button>
+        <div id="chips" class="chips"></div>
       </div>
 
-      <div class="player">
+      <div id="grid" class="grid"></div>
+      <div id="sentinel" class="sentinel"></div>
+    </main>
+  </section>
+
+  <!-- ============ نافذة الأقسام ============ -->
+  <div id="cats-modal" class="modal hidden">
+    <div class="sheet glass cats-sheet">
+      <div class="sheet-head">
+        <h3>كل الأقسام</h3>
+        <button class="icon-btn" data-close><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
+      </div>
+      <div class="search glass"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><input id="cat-search" placeholder="ابحث في الأقسام..." /></div>
+      <div id="cat-grid" class="cat-grid"></div>
+    </div>
+  </div>
+
+  <!-- ============ التفاصيل (فيلم / مسلسل) ============ -->
+  <div id="details" class="modal hidden">
+    <div class="sheet details-sheet">
+      <button class="icon-btn floating" data-close><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
+      <div id="details-body"></div>
+    </div>
+  </div>
+
+  <!-- ============ المشغل ============ -->
+  <div id="player" class="modal player-modal hidden">
+    <div class="player-shell">
+      <div class="player-main">
         <div class="video-wrap">
           <video id="video" controls autoplay playsinline></video>
-          <div id="player-msg" class="player-msg">اختار قناة أو فيلم عشان يشتغل</div>
+          <div id="player-msg" class="player-msg"><div class="spinner"></div><span></span></div>
         </div>
-        <div class="now">
-          <h2 id="now-title"></h2>
-          <div class="now-actions">
-            <button id="fav-btn" class="ghost hidden">☆ مفضلة</button>
-            <button id="copy-btn" class="ghost hidden">نسخ الرابط (لـ VLC)</button>
+        <div class="player-bar">
+          <div class="np">
+            <div id="np-logo" class="np-logo"></div>
+            <div>
+              <div id="np-title" class="np-title"></div>
+              <div id="np-sub" class="np-sub"></div>
+            </div>
+          </div>
+          <div class="player-actions">
+            <button id="prev-btn" class="icon-btn" title="القناة اللي فاتت (↑)"><svg viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"/></svg></button>
+            <button id="next-btn" class="icon-btn" title="القناة الجاية (↓)"><svg viewBox="0 0 24 24"><path d="m15 6-6 6 6 6"/></svg></button>
+            <button id="fav-btn" class="icon-btn" title="مفضلة"><svg viewBox="0 0 24 24"><path d="M12 3.5l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.9l-5.2 2.7 1-5.8-4.3-4.1 5.9-.9z"/></svg></button>
+            <button id="copy-btn" class="icon-btn" title="نسخ الرابط لـ VLC"><svg viewBox="0 0 24 24"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/></svg></button>
+            <button id="fs-btn" class="icon-btn" title="ملء الشاشة (F)"><svg viewBox="0 0 24 24"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg></button>
+            <button class="icon-btn" data-close title="قفل (Esc)"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
           </div>
         </div>
-        <div id="episodes" class="episodes"></div>
       </div>
+      <aside id="zap" class="zap glass">
+        <div class="zap-head">
+          <span id="zap-title">القنوات</span>
+        </div>
+        <div class="search glass small"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><input id="zap-search" placeholder="ابحث..." /></div>
+        <ul id="zap-list"></ul>
+      </aside>
     </div>
-  </section>
+  </div>
+
+  <div id="toasts" class="toasts"></div>
 
   <script src="vendor/hls.min.js"></script>
   <script src="vendor/mpegts.js"></script>
