@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>مشغل IPTV</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <!-- شاشة الدخول -->
+  <section id="login" class="login">
+    <div class="card">
+      <h1>🎬 مشغل IPTV</h1>
+      <div class="tabs">
+        <button class="tab active" data-tab="xtream">Xtream Codes</button>
+        <button class="tab" data-tab="m3u">رابط M3U</button>
+      </div>
+
+      <form id="form-xtream" class="form">
+        <label>عنوان السيرفر
+          <input name="server" placeholder="http://example.com:8080" required dir="ltr" />
+        </label>
+        <label>اسم المستخدم
+          <input name="username" required dir="ltr" autocomplete="username" />
+        </label>
+        <label>كلمة السر
+          <input name="password" type="password" required dir="ltr" autocomplete="current-password" />
+        </label>
+        <button type="submit" class="primary">دخول</button>
+      </form>
+
+      <form id="form-m3u" class="form hidden">
+        <label>رابط قائمة M3U
+          <input name="url" placeholder="http://example.com/get.php?username=...&password=...&type=m3u_plus" required dir="ltr" />
+        </label>
+        <button type="submit" class="primary">تحميل القائمة</button>
+      </form>
+
+      <label class="remember"><input type="checkbox" id="remember" checked /> احفظ بياناتي على الجهاز ده</label>
+      <p id="login-error" class="error"></p>
+    </div>
+  </section>
+
+  <!-- الشاشة الرئيسية -->
+  <section id="app" class="app hidden">
+    <header class="topbar">
+      <nav id="sections" class="sections"></nav>
+      <div id="account" class="account"></div>
+      <button id="logout" class="ghost">خروج</button>
+    </header>
+
+    <div class="main">
+      <aside class="categories">
+        <input id="cat-search" placeholder="ابحث في الأقسام..." />
+        <ul id="cat-list"></ul>
+      </aside>
+
+      <div class="items">
+        <input id="item-search" placeholder="ابحث..." />
+        <ul id="item-list"></ul>
+      </div>
+
+      <div class="player">
+        <div class="video-wrap">
+          <video id="video" controls autoplay playsinline></video>
+          <div id="player-msg" class="player-msg">اختار قناة أو فيلم عشان يشتغل</div>
+        </div>
+        <div class="now">
+          <h2 id="now-title"></h2>
+          <div class="now-actions">
+            <button id="fav-btn" class="ghost hidden">☆ مفضلة</button>
+            <button id="copy-btn" class="ghost hidden">نسخ الرابط (لـ VLC)</button>
+          </div>
+        </div>
+        <div id="episodes" class="episodes"></div>
+      </div>
+    </div>
+  </section>
+
+  <script src="vendor/hls.min.js"></script>
+  <script src="vendor/mpegts.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
