@@ -1,0 +1,48 @@
+plugins {
+    id 'com.android.application'
+}
+
+android {
+    namespace 'com.stream.iptv'
+    compileSdk 34
+
+    defaultConfig {
+        applicationId 'com.stream.iptv'
+        minSdk 21
+        targetSdk 34
+        versionCode((System.getenv('GITHUB_RUN_NUMBER') ?: '1').toInteger())
+        versionName "1.0.${System.getenv('GITHUB_RUN_NUMBER') ?: '0'}"
+    }
+
+    signingConfigs {
+        // مفتاح ثابت عشان كل نسخة جديدة تتسطب فوق القديمة من غير ما تمسحها
+        shared {
+            storeFile file('stream.keystore')
+            storePassword 'streamiptv'
+            keyAlias 'stream'
+            keyPassword 'streamiptv'
+        }
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            signingConfig signingConfigs.shared
+        }
+        debug {
+            signingConfig signingConfigs.shared
+        }
+    }
+
+    sourceSets {
+        main {
+            // نفس ملفات الواجهة اللي في public/ بتتحط جوه الـ APK
+            assets.srcDirs = ['../../public']
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
+    }
+}
