@@ -92,9 +92,36 @@
     if (k === 'token' || /application key|api key|not subscribed|account/i.test(raw)) return new ApiErr('المفتاح غلط أو الحساب مش متفعّل — راجع المفتاح في الإعدادات.\n(' + raw + ')', 'key');
     if (k === 'requests' || /request limit|limit for the day/i.test(raw)) { setQuota(0); return new ApiErr('خلصت طلبات النهارده (حد الخطة المجانية). هتتجدد بكرة.', 'quota'); }
     if (k === 'rateLimit' || /too many requests/i.test(raw)) return new ApiErr('طلبات كتير ورا بعض — استنى دقيقة وجرّب تاني.', 'rate');
-    if (k === 'plan' || /free plan|plan/i.test(raw)) return new ApiErr('الخطة المجانية مش بتغطي الطلب ده:\n' + raw, 'plan');
+    if (k === 'plan' || /free plan|plan/i.test(raw)) {
+      const days = raw.match(/from (\d{4}-\d{2}-\d{2}) to (\d{4}-\d{2}-\d{2})/);
+      if (days) {
+        setRange(days[1], days[2]);
+        const err = new ApiErr(`الخطة المجانية بتعرض ماتشات ${fmtDay(days[1])} لحد ${fmtDay(days[2])} بس.`, 'range');
+        err.range = [days[1], days[2]];
+        return err;
+      }
+      const seasons = raw.match(/from (\d{4}) to (\d{4})/);
+      const err = new ApiErr('الخطة المجانية مش بتغطي الطلب ده:\n' + raw, 'plan');
+      if (seasons) err.seasons = [Number(seasons[1]), Number(seasons[2])];
+      return err;
+    }
     return new ApiErr(raw, 'api');
   }
+
+  // الخطة المجانية بتسمح بكام يوم حوالين النهارده بس — بنعرف المدى من رسالة السيرفر
+  function setRange(from, to) { ls.set('goal.range', { from, to, t: Date.now() }); }
+  function isLocked(date) {
+    const r = ls.get('goal.range', null);
+    if (!r || Date.now() - r.t > 8 * 3600000) return false; // المدى بيتحرك كل يوم، فبنصدّقه كام ساعة بس
+    return date < r.from || date > r.to;
+  }
+  function nearestAllowed(date) {
+    const r = ls.get('goal.range', null);
+    if (!r || !isLocked(date)) return date;
+    if (today() >= r.from && today() <= r.to) return today();
+    return date < r.from ? r.from : r.to;
+  }
+  const fmtDay = (k) => { const [y, m, d] = k.split('-').map(Number); return new Date(y, m - 1, d).toLocaleDateString('ar-EG', { weekday: 'long', day: 'numeric', month: 'numeric' }); };
 
   function setQuota(rem, lim) {
     state.quota = { rem: Number(rem), lim: Number(lim || state.quota?.lim || 100), day: today() };
@@ -198,9 +225,13 @@
   }
 
   function showError(box, e) {
-    box.innerHTML = `<div class="empty"><h4>${e.kind === 'nokey' ? 'محتاج مفتاح' : 'حصلت مشكلة'}</h4><div style="white-space:pre-line">${esc(e.message)}</div>
-      ${e.kind === 'nokey' || e.kind === 'key' ? '<button class="btn primary" data-go="settings" type="button">روح للإعدادات</button>' : '<button class="btn" data-retry type="button">جرّب تاني</button>'}</div>`;
+    box.innerHTML = `<div class="empty"><h4>${e.kind === 'nokey' ? 'محتاج مفتاح' : e.kind === 'range' ? 'اليوم ده مش متاح' : 'حصلت مشكلة'}</h4><div style="white-space:pre-line">${esc(e.message)}</div>
+      ${e.kind === 'nokey' || e.kind === 'key' ? '<button class="btn primary" data-go="settings" type="button">روح للإعدادات</button>'
+        : e.kind === 'range' ? '<button class="btn primary" data-today type="button">اعرض ماتشات النهارده</button>'
+        : '<button class="btn" data-retry type="button">جرّب تاني</button>'}</div>`;
     $('[data-go]', box)?.addEventListener('click', () => go('settings'));
+    $('[data-today]', box)?.addEventListener('click', () => { state.date = nearestAllowed(today()); renderDates(); loadDay(state.date); });
+    if (e.kind === 'range') renderDates();
     $('[data-retry]', box)?.addEventListener('click', () => loadDay(state.date, true));
   }
 
@@ -213,11 +244,16 @@
       const k = dayKey(d);
       const b = document.createElement('button');
       b.type = 'button';
-      b.className = 'date' + (k === state.date ? ' active' : '');
+      const locked = isLocked(k);
+      b.className = 'date' + (k === state.date ? ' active' : '') + (locked ? ' locked' : '');
+      if (locked) b.title = 'مش متاح في الخطة المجانية';
       b.setAttribute('role', 'tab');
       const label = i === 0 ? 'النهارده' : i === -1 ? 'امبارح' : i === 1 ? 'بكرة' : d.toLocaleDateString('ar-EG', { weekday: 'short' });
       b.innerHTML = `<b>${label}</b><small>${d.getDate()}/${d.getMonth() + 1}</small>`;
-      b.onclick = () => { state.date = k; renderDates(); loadDay(k); };
+      b.onclick = () => {
+        if (locked) { toast('اليوم ده مش متاح في الخطة المجانية — بتعرض بس امبارح والنهارده وبكرة تقريبًا.'); return; }
+        state.date = k; renderDates(); loadDay(k);
+      };
       box.appendChild(b);
     }
     $('#dates .date.active')?.scrollIntoView({ inline: 'center', block: 'nearest' });
@@ -570,14 +606,14 @@
     $('#table-leagues .chip.active')?.scrollIntoView({ inline: 'center', block: 'nearest' });
   }
 
-  async function loadTable(force = false) {
+  async function loadTable(force = false, seasonOverride = null) {
     const id = cfg.tableLeague;
     const box = $('#table');
     if (!id) { box.innerHTML = '<div class="empty"><h4>مفيش دوريات</h4><div>ضيف دوري من الإعدادات.</div></div>'; return; }
     box.innerHTML = '<div class="skeleton" style="margin:12px"></div>'.repeat(5);
     $('#refresh').classList.add('spin');
     try {
-      const season = await cached('season.' + id, 7 * 86400000, async () => {
+      const season = seasonOverride || await cached('season.' + id, 7 * 86400000, async () => {
         const r = await api('leagues', { id, current: 'true' });
         const s = r[0]?.seasons?.find((x) => x.current) || r[0]?.seasons?.slice(-1)[0];
         return s ? s.year : null;
@@ -589,7 +625,12 @@
     } catch (e) {
       if (cfg.tableLeague !== id) return;
       if (e.stale) { renderTable(e.stale); toast(e.message); }
-      else box.innerHTML = `<div class="empty"><h4>حصلت مشكلة</h4><div style="white-space:pre-line">${esc(e.message)}</div></div>`;
+      else if (e.seasons) {
+        const last = e.seasons[1];
+        box.innerHTML = `<div class="empty"><h4>الموسم الحالي مش متاح في الخطة المجانية</h4><div>الخطة المجانية بتعرض مواسم ${e.seasons[0]} لحد ${last} بس.</div>
+          <button class="btn" data-season type="button">اعرض ترتيب موسم ${last}/${last + 1}</button></div>`;
+        $('[data-season]', box).onclick = () => loadTable(false, last);
+      } else box.innerHTML = `<div class="empty"><h4>حصلت مشكلة</h4><div style="white-space:pre-line">${esc(e.message)}</div></div>`;
     } finally {
       $('#refresh').classList.remove('spin');
     }
@@ -735,7 +776,7 @@
     $('#refresh').classList.toggle('hidden', view === 'settings');
     window.scrollTo(0, 0);
     clearTimeout(state.liveTimer);
-    if (view === 'matches') { renderDates(); loadDay(state.date); }
+    if (view === 'matches') { state.date = nearestAllowed(state.date); renderDates(); loadDay(state.date); }
     if (view === 'table') { renderTableChips(); loadTable(); }
     if (view === 'settings') renderSettings();
   }
