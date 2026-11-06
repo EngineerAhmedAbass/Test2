@@ -1,0 +1,53 @@
+name: GOAL APK
+
+on:
+  push:
+    branches: ['claude/iptv-account-program-7mgjz1', 'main']
+    paths: ['scores/**', '.github/workflows/goal-android.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: goal-apk
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.9'
+
+      - name: Build APK
+        run: gradle -p scores/android assembleRelease --no-daemon --stacktrace
+
+      - name: Rename APK
+        run: cp scores/android/app/build/outputs/apk/release/app-release.apk GOAL-Scores.apk
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: GOAL-Scores-apk
+          path: GOAL-Scores.apk
+
+      # رابط ثابت لآخر نسخة: releases/download/goal-latest/GOAL-Scores.apk
+      # (ومش بنعلّمها "Latest" عشان رابط تطبيق STREAM يفضل شغال)
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release delete goal-latest --yes --cleanup-tag || true
+          gh release create goal-latest GOAL-Scores.apk \
+            --target "${{ github.sha }}" \
+            --latest=false \
+            --title "GOAL — نتايج الماتشات (نسخة ${{ github.run_number }})" \
+            --notes "نزّل GOAL-Scores.apk وسطّبه على الموبايل. أول مرة هيطلب منك مفتاح API-Football المجاني."

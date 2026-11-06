@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#0a0e13" />
+  <title>GOAL — نتايج الماتشات</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="app">
+    <header class="top">
+      <div class="logo"><span class="ball"></span>GOAL</div>
+      <button id="quota" class="quota hidden" type="button" title="الطلبات الباقية النهارده"></button>
+      <button id="refresh" class="icon-btn" type="button" aria-label="تحديث">
+        <svg viewBox="0 0 24 24"><path d="M20 11a8 8 0 1 0-2.3 5.7M20 4v7h-7"/></svg>
+      </button>
+    </header>
+
+    <!-- ===== المباريات ===== -->
+    <main id="view-matches" class="view">
+      <div id="dates" class="dates" role="tablist" aria-label="الأيام"></div>
+      <div class="filters">
+        <button class="chip active" data-filter="mine" type="button">بتاعتي</button>
+        <button class="chip" data-filter="live" type="button"><span class="dot"></span>مباشر</button>
+        <button class="chip" data-filter="all" type="button">كل الماتشات</button>
+        <span id="updated" class="updated"></span>
+      </div>
+      <div id="matches" class="matches"></div>
+    </main>
+
+    <!-- ===== الترتيب ===== -->
+    <main id="view-table" class="view hidden">
+      <div id="table-leagues" class="chips-row"></div>
+      <div id="table" class="table-box"></div>
+    </main>
+
+    <!-- ===== الإعدادات ===== -->
+    <main id="view-settings" class="view hidden">
+      <section id="welcome" class="card welcome hidden">
+        <h2>أهلًا بيك في GOAL</h2>
+        <p>عشان تشوف النتايج محتاج مفتاح مجاني من <b>API-Football</b> — مرة واحدة بس:</p>
+        <ol>
+          <li>اعمل حساب مجاني على <a href="https://dashboard.api-football.com/register" target="_blank" rel="noopener">dashboard.api-football.com</a></li>
+          <li>من الصفحة الرئيسية للحساب انسخ الـ <b>API Key</b></li>
+          <li>الصقه تحت ودوس "حفظ واختبار"</li>
+        </ol>
+      </section>
+
+      <section class="card">
+        <h3>مفتاح API-Football</h3>
+        <div class="key-row">
+          <input id="key" type="password" dir="ltr" autocomplete="off" spellcheck="false" placeholder="الصق المفتاح هنا" aria-label="مفتاح API-Football" />
+          <button id="key-show" class="icon-btn" type="button" aria-label="إظهار المفتاح"><svg viewBox="0 0 24 24"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg></button>
+        </div>
+        <button id="key-save" class="btn primary block" type="button">حفظ واختبار</button>
+        <div id="key-status" class="status-box hidden"></div>
+      </section>
+
+      <section class="card">
+        <h3>الدوريات اللي بتابعها</h3>
+        <div id="my-leagues" class="list"></div>
+        <div class="search">
+          <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+          <input id="league-search" placeholder="ضيف دوري… اكتب اسمه بالإنجليزي (مثلاً Egypt)" aria-label="بحث عن دوري" />
+        </div>
+        <div id="league-results" class="list"></div>
+      </section>
+
+      <section class="card">
+        <h3>فرقك المفضلة</h3>
+        <div id="my-teams" class="list"></div>
+        <p class="hint">دوس على النجمة جنب أي فريق في صفحة الماتش عشان تضيفه. ماتشات فرقك بتظهر دايمًا في "بتاعتي".</p>
+      </section>
+
+      <section class="card">
+        <h3>التحديث التلقائي للماتشات المباشرة</h3>
+        <div class="seg" id="interval">
+          <button type="button" data-v="60">كل دقيقة</button>
+          <button type="button" data-v="120">كل دقيقتين</button>
+          <button type="button" data-v="300">كل 5 دقايق</button>
+          <button type="button" data-v="0">يدوي</button>
+        </div>
+        <p class="hint">الخطة المجانية فيها 100 طلب في اليوم. التحديث بيشتغل بس والتطبيق مفتوح وفيه ماتش شغال، وبيبطّأ لوحده لما الطلبات تقرب تخلص.</p>
+      </section>
+    </main>
+
+    <nav class="nav" id="nav">
+      <button class="nav-btn active" data-view="matches" type="button">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="m12 7 4 3-1.5 5h-5L8 10z"/></svg><span>الماتشات</span>
+      </button>
+      <button class="nav-btn" data-view="table" type="button">
+        <svg viewBox="0 0 24 24"><path d="M4 5h16M4 10h16M4 15h16M4 20h10"/></svg><span>الترتيب</span>
+      </button>
+      <button class="nav-btn" data-view="settings" type="button">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1 7 17M17 7l2.1-2.1"/></svg><span>الإعدادات</span>
+      </button>
+    </nav>
+  </div>
+
+  <!-- ===== تفاصيل الماتش ===== -->
+  <div id="match" class="modal hidden">
+    <div class="sheet">
+      <button class="icon-btn close" data-close type="button" aria-label="قفل"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
+      <div id="match-body"></div>
+    </div>
+  </div>
+
+  <div id="toasts" class="toasts" aria-live="polite"></div>
+  <script src="app.js"></script>
+</body>
+</html>
