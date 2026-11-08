@@ -387,13 +387,16 @@
     for (const g of sorted) {
       g.items.sort((a, b) => a.ts - b.ts || String(a.id).localeCompare(String(b.id)));
       const rounds = [...new Set(g.items.map((f) => f.lg.round))];
-      html += `<section class="league"><div class="league-head">${imgTag(g.lg.logo)}<div><div class="nm">${esc(leagueName(g.lg))}</div>${g.lg.country ? `<div class="ct">${esc(g.lg.country)}</div>` : ''}</div>
-        <span class="round">${rounds.length === 1 ? esc(roundName(rounds[0])) : ''}</span></div>`;
+      html += `<section class="league"><button type="button" class="league-head" data-lg="${esc(g.lg.key)}" aria-label="ترتيب ${esc(leagueName(g.lg))}">${imgTag(g.lg.logo)}<div><div class="nm">${esc(leagueName(g.lg))}</div>${g.lg.country ? `<div class="ct">${esc(g.lg.country)}</div>` : ''}</div>
+        <span class="round">${rounds.length === 1 ? esc(roundName(rounds[0])) : ''}</span>
+        <span class="to-table"><svg viewBox="0 0 24 24"><path d="M8 4h8v5a4 4 0 0 1-8 0z"/><path d="M12 13v4M9 20h6"/></svg>الترتيب</span></button>`;
       for (const f of g.items) html += matchRow(f, T.has(f.h.key) || T.has(f.a.key));
       html += '</section>';
     }
     box.innerHTML = html;
     $$('.match', box).forEach((b) => (b.onclick = () => openMatch(b.dataset.id)));
+    const lgs = new Map(sorted.map((g) => [g.lg.key, g.lg]));
+    $$('.league-head[data-lg]', box).forEach((b) => (b.onclick = () => openLeagueTable(lgs.get(b.dataset.lg))));
   }
 
   function roundName(r) {
@@ -839,13 +842,19 @@
     $('#table-leagues .chip.active')?.scrollIntoView({ inline: 'center', block: 'nearest' });
   }
 
-  async function loadTable(force = false, seasonOverride = null) {
+  async function loadTable(force = false) {
     const key = cfg.tableLeague;
     const box = $('#table');
     if (!key) { box.innerHTML = '<div class="empty"><h4>مفيش دوريات</h4><div>ضيف دوري من الإعدادات.</div></div>'; return; }
     const l = cfg.leagues.find((x) => lkey(x) === key);
-    box.innerHTML = '<div class="skeleton" style="margin:12px"></div>'.repeat(5);
     $('#refresh').classList.add('spin');
+    await fillTable(l, box, { force, alive: () => cfg.tableLeague === key && state.view === 'table' });
+    $('#refresh').classList.remove('spin');
+  }
+
+  // بيرسم ترتيب الدوري l جوه box. alive() بترجّع false لو المستخدم راح لحاجة تانية
+  async function fillTable(l, box, { force = false, season: seasonOverride = null, alive = () => true } = {}) {
+    box.innerHTML = '<div class="skeleton" style="margin:12px"></div>'.repeat(5);
     try {
       let table;
       if (l.src === 'es') {
@@ -862,19 +871,32 @@
         const data = await cached(`af.table.${l.id}.${season}`, 3 * 3600000, () => af('standings', { league: l.id, season }), { force });
         table = afTable(data, season);
       }
-      if (cfg.tableLeague === key) renderTable(table);
+      if (alive()) renderTable(table, box);
     } catch (e) {
-      if (cfg.tableLeague !== key) return;
+      if (!alive()) return;
       if (e.seasons) {
         const last = e.seasons[1];
         box.innerHTML = `<div class="empty"><h4>الموسم الحالي مش متاح في الخطة المجانية</h4><div>API-Football المجاني بيعرض مواسم ${e.seasons[0]} لحد ${last} بس.</div>
           <button class="btn" data-season type="button">اعرض ترتيب موسم ${last}/${last + 1}</button></div>`;
-        $('[data-season]', box).onclick = () => loadTable(false, last);
+        $('[data-season]', box).onclick = () => fillTable(l, box, { season: last, alive });
       } else box.innerHTML = `<div class="empty"><h4>حصلت مشكلة</h4><div style="white-space:pre-line">${esc(e.message)}</div></div>`;
-    } finally {
-      $('#refresh').classList.remove('spin');
     }
   }
+
+  // الضغط على شكل الدوري في صفحة الماتشات
+  let openLeague = null;
+  function openLeagueTable(lg) {
+    if (!lg) return;
+    const l = lg.slug ? { src: 'es', slug: lg.slug, logo: lg.logo, name: lg.name } : { src: 'af', id: lg.id, logo: lg.logo, name: lg.name };
+    openLeague = lkey(l);
+    $('#lt-title').innerHTML = `${imgTag(lg.logo)}<span>${esc(leagueName(lg))}</span>`;
+    $('#league-modal').classList.remove('hidden');
+    $('#league-modal .sheet').scrollTop = 0;
+    const key = openLeague;
+    fillTable(l, $('#lt-table'), { alive: () => openLeague === key });
+  }
+  function closeLeagueTable() { $('#league-modal').classList.add('hidden'); openLeague = null; }
+  $('#league-modal').addEventListener('click', (e) => { if (e.target.id === 'league-modal' || e.target.closest('[data-close]')) closeLeagueTable(); });
 
   function espnTable(j) {
     const kids = j.children?.length ? j.children : j.standings ? [j] : [];
@@ -912,8 +934,7 @@
     if (groups.length === 1) groups[0].title = '';
     return { groups, season: `موسم ${season}/${season + 1}` };
   }
-  function renderTable(t) {
-    const box = $('#table');
+  function renderTable(t, box = $('#table')) {
     if (!t.groups.length) { box.innerHTML = '<div class="empty"><h4>مفيش جدول ترتيب</h4><div>البطولة دي ممكن تكون بنظام خروج المغلوب، أو الموسم لسه مابدأش.</div></div>'; return; }
     const T = teamKeys();
     const legend = new Map();
@@ -1080,6 +1101,7 @@
 
   window.__back = () => { // زرار الرجوع في الأندرويد
     if (!$('#match').classList.contains('hidden')) { closeMatch(); return true; }
+    if (!$('#league-modal').classList.contains('hidden')) { closeLeagueTable(); return true; }
     if (state.view !== 'matches') { go('matches'); return true; }
     return false;
   };
