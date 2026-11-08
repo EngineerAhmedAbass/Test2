@@ -177,10 +177,11 @@
       ven: venue.fullName || '', city: venue.address?.city || '',
       lg: { key: 'es:' + slug, slug, name: leagueInfo?.name || slug, logo: leagueInfo?.logos?.[0]?.href || '', country: '', round: c.notes?.[0]?.headline || '' },
       h: team(h), a: team(a),
-      g: started ? [Number(h.score ?? 0), Number(a.score ?? 0)] : [null, null],
+      g: started ? [scoreNum(h.score), scoreNum(a.score)] : [null, null],
       pen: h.shootoutScore != null ? [Number(h.shootoutScore), Number(a.shootoutScore)] : [null, null],
     };
   }
+  function scoreNum(x) { const v = x && typeof x === 'object' ? x.value ?? x.displayValue : x; return Number(v ?? 0) || 0; }
   async function espnDay(slug, date, force) {
     const lists = await Promise.all(espnDatesFor(date).map((d) =>
       cached(`es.${slug}.${d}`, ttlFor(date), async () => {
@@ -537,11 +538,12 @@
   // =====================================================================
   //                 تفاصيل الماتش (شكل موحّد للمصدرين)
   // =====================================================================
-  const findFixture = (id) => { for (const d of state.days.values()) { const f = d.list.find((x) => x.id === id); if (f) return f; } return null; };
+  const extraFx = new Map(); // ماتشات اتعرضت في صفحات الفرق
+  const findFixture = (id) => { for (const d of state.days.values()) { const f = d.list.find((x) => x.id === id); if (f) return f; } return extraFx.get(id) || null; };
 
   async function openMatch(id, silent) {
     state.openId = id;
-    $('#match').classList.remove('hidden');
+    showModal($('#match'));
     const body = $('#match-body');
     let base = findFixture(id);
     if (!silent) {
@@ -624,9 +626,10 @@
       color: r.uniform?.color || r.team?.color || '', alt: r.uniform?.alternateColor || r.team?.alternateColor || '',
       club: r.team?.color || '', clubAlt: r.team?.alternateColor || '',
       xi: (r.roster || []).filter((p) => p.starter).map((p) => ({
-        no: p.jersey, name: p.athlete?.displayName, short: p.athlete?.lastName || p.athlete?.shortName, pos: p.position?.abbreviation || '', out: !!p.subbedOut,
+        no: p.jersey, name: p.athlete?.displayName, short: p.athlete?.lastName || p.athlete?.shortName, pos: p.position?.abbreviation || '', out: !!p.subbedOut, id: p.athlete?.id,
       })),
-      subs: (r.roster || []).filter((p) => !p.starter).map((p) => ({ no: p.jersey, name: p.athlete?.displayName, in: !!p.subbedIn })),
+      subs: (r.roster || []).filter((p) => !p.starter).map((p) => ({ no: p.jersey, name: p.athlete?.displayName, in: !!p.subbedIn, id: p.athlete?.id })),
+      tid: r.team?.id, slug,
     })).filter((r) => r.xi.length);
     return { fx, events, stats, lineups, notStarted: fx?.st === 'NS' };
   }
@@ -685,11 +688,11 @@
     return `<div class="mh">
       <div class="lg">${imgTag(c.lg.logo)}<span>${esc(leagueName(c.lg))}${c.lg.round ? ' • ' + esc(roundName(c.lg.round)) : ''}</span></div>
       <div class="mh-row">
-        <div class="mh-team">${imgTag(c.h.logo)}<span>${esc(c.h.name)}</span>${star(c.h)}</div>
+        <div class="mh-team">${teamLink(c.h, c.slug, `${imgTag(c.h.logo)}<span>${esc(c.h.name)}</span>`)}${star(c.h)}</div>
         <div>${hasScore(c) ? `<div class="mh-score">${scoreTxt(c.g)}</div>` : `<div class="mh-time">${hhmm(c.ts)}</div>`}
           ${c.pen[0] != null ? `<div class="pen">ترجيح (${scoreTxt(c.pen)})</div>` : ''}
           <div class="mh-st${live ? ' live' : ''}">${statusText(c) || new Date(c.ts).toLocaleDateString('ar-EG', { weekday: 'long', day: 'numeric', month: 'long' })}</div></div>
-        <div class="mh-team">${imgTag(c.a.logo)}<span>${esc(c.a.name)}</span>${star(c.a)}</div>
+        <div class="mh-team">${teamLink(c.a, c.slug, `${imgTag(c.a.logo)}<span>${esc(c.a.name)}</span>`)}${star(c.a)}</div>
       </div>
       <div class="mh-meta">${[c.ven, c.city].filter(Boolean).map(esc).join('، ')}${c.ref ? ' • الحكم: ' + esc(c.ref) : ''}</div>
     </div>`;
@@ -837,7 +840,7 @@
         let x = ((j + 1) / (line.length + 1)) * 100;
         if (!isHome) x = 100 - x; // الفريق اللي فوق بيبص للناحية التانية
         const gk = i === 0;
-        return `<div class="pp" style="left:${x.toFixed(1)}%;top:${y.toFixed(1)}%">
+        return `<div class="pp${p.id ? ' tap' : ''}"${p.id ? ` data-pid="${esc(p.id)}" data-tid="${esc(t.tid || '')}" data-slug="${esc(t.slug || '')}" role="button" tabindex="0"` : ''} style="left:${x.toFixed(1)}%;top:${y.toFixed(1)}%">
           <span class="shirt">${jersey(gk ? k.gk : k.body, gk ? k.gkTrim : k.trim, gk ? k.gkNum : k.num, p.no)}${p.out ? '<i class="out" title="خرج"></i>' : ''}</span>
           <span class="pn">${esc(shortName(p))}</span></div>`;
       }).join('')).join('');
@@ -854,7 +857,7 @@
 
   function lineupsHtml(d) {
     if (!d.lineups.length) return '<div class="note">التشكيل بيتعلن عادةً قبل الماتش بساعة تقريبًا.</div>';
-    const pl = (p) => `<div class="pl"><span class="no">${esc(p.no ?? '')}</span><span>${esc(p.name)}</span>${p.in ? '<em class="in">دخل</em>' : ''}</div>`;
+    const pl = (p) => `<div class="pl${p.id ? ' tap' : ''}"${p.id ? ` data-pid="${esc(p.id)}" role="button" tabindex="0"` : ''}><span class="no">${esc(p.no ?? '')}</span><span>${esc(p.name)}</span>${p.in ? '<em class="in">دخل</em>' : ''}</div>`;
     const benches = `<div class="lineups">${d.lineups.map((t) => `<div class="lu"><h4>${esc(t.name)}</h4>
       ${t.coach ? `<div class="meta">المدرب: ${esc(t.coach)}</div>` : ''}
       ${t.subs.length ? '<div class="sub-title">الاحتياطي</div>' + t.subs.map(pl).join('') : ''}</div>`).join('')}</div>`;
@@ -901,7 +904,7 @@
       if (l.src === 'af' && AF_TO_ESPN[l.id]) l = { src: 'es', slug: AF_TO_ESPN[l.id] };
       if (l.src === 'es') {
         const j = await cached(`es.table.${l.slug}`, 3600000, () => espn(`v2/sports/soccer/${l.slug}/standings`), { force });
-        table = espnTable(j);
+        table = espnTable({ ...j, __slug: l.slug });
       } else {
         if (!cfg.key) throw new ApiErr('ترتيب الدوري ده محتاج مفتاح API-Football من الإعدادات.', 'nokey');
         const season = seasonOverride || await cached('af.season.' + l.id, 7 * 86400000, async () => {
@@ -933,7 +936,7 @@
     const l = esSlug ? { src: 'es', slug: esSlug, logo: lg.logo, name: lg.name } : { src: 'af', id: lg.id, logo: lg.logo, name: lg.name };
     openLeague = lkey(l);
     $('#lt-title').innerHTML = `${imgTag(lg.logo)}<span>${esc(leagueName(lg))}</span>`;
-    $('#league-modal').classList.remove('hidden');
+    showModal($('#league-modal'));
     $('#league-modal .sheet').scrollTop = 0;
     const key = openLeague;
     fillTable(l, $('#lt-table'), { alive: () => openLeague === key });
@@ -954,7 +957,7 @@
         };
       }).sort((a, b) => a.rank - b.rank),
     })).filter((g) => g.rows.length);
-    return { groups, season: j.children?.[0]?.standings?.seasonDisplayName || j.season?.displayName || '' };
+    return { groups, season: j.children?.[0]?.standings?.seasonDisplayName || j.season?.displayName || '', slug: j.__slug };
   }
   const ZONE_AR = [[/champions league qualif/i, 'تصفيات دوري الأبطال'], [/champions league/i, 'دوري الأبطال'], [/europa league qualif/i, 'تصفيات الدوري الأوروبي'], [/europa league/i, 'الدوري الأوروبي'],
     [/conference league qualif/i, 'تصفيات دوري المؤتمر'], [/conference league/i, 'دوري المؤتمر'], [/relegation play/i, 'ملحق الهبوط'], [/relegation/i, 'هبوط'],
@@ -989,8 +992,8 @@
       for (const r of g.rows) {
         if (r.zone?.desc) legend.set(r.zone.desc, r.zone.color);
         const form = String(r.form).slice(-5).split('').filter(Boolean).map((x) => `<i class="${x}">${x === 'W' ? 'ف' : x === 'D' ? 'ت' : 'خ'}</i>`).join('');
-        html += `<tr class="${T.has(r.team.key) ? 'fav' : ''}"><td class="rk" style="--q:${esc(r.zone?.color || 'transparent')}">${esc(r.rank)}</td>
-          <td class="tm"><div>${imgTag(r.team.logo)}<span>${esc(r.team.name)}</span></div></td>
+        html += `<tr data-row="${esc(r.team.key)}" class="${T.has(r.team.key) ? 'fav' : ''}"><td class="rk" style="--q:${esc(r.zone?.color || 'transparent')}">${esc(r.rank)}</td>
+          <td class="tm">${teamLink(r.team, t.slug, `<div>${imgTag(r.team.logo)}<span>${esc(r.team.name)}</span></div>`)}</td>
           <td>${esc(r.p)}</td><td>${esc(r.w)}</td><td>${esc(r.d)}</td><td>${esc(r.l)}</td>
           <td dir="ltr">${r.gd > 0 ? '+' : ''}${esc(r.gd)}</td><td class="pts">${esc(r.pts)}</td>${hasForm ? `<td class="f"><span class="form" dir="ltr">${form}</span></td>` : ''}</tr>`;
       }
@@ -1123,6 +1126,315 @@
   }
   $$('#interval button').forEach((b) => { b.onclick = () => { cfg.interval = Number(b.dataset.v); saveCfg(); $$('#interval button').forEach((x) => x.classList.toggle('active', x === b)); }; });
 
+
+  // =====================================================================
+  //                       صفحة الفريق وصفحة اللاعب
+  // =====================================================================
+  let zTop = 50;
+  function showModal(el) { el.style.zIndex = String(++zTop); el.classList.remove('hidden'); }
+  function teamLink(t, slug, inner) {
+    if (!t || !t.key) return inner;
+    return `<button type="button" class="team-link" data-team-key="${esc(t.key)}" data-slug="${esc(slug || '')}" data-name="${esc(t.name || '')}" data-logo="${esc(t.logo || '')}">${inner}</button>`;
+  }
+  document.addEventListener('click', (e) => {
+    const tl = e.target.closest('[data-team-key]');
+    if (tl) { e.preventDefault(); e.stopPropagation(); openTeam({ key: tl.dataset.teamKey, slug: tl.dataset.slug, name: tl.dataset.name, logo: tl.dataset.logo }); return; }
+    const pp = e.target.closest('[data-pid]');
+    if (pp) { e.preventDefault(); openPlayer(pp.dataset.pid, { tid: pp.dataset.tid, slug: pp.dataset.slug }); }
+  }, true);
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && e.target.matches?.('[data-pid]')) openPlayer(e.target.dataset.pid, { tid: e.target.dataset.tid, slug: e.target.dataset.slug });
+  });
+
+  const POS_AR = { G: 'حراس المرمى', D: 'الدفاع', M: 'الوسط', F: 'الهجوم' };
+  const POS1_AR = { G: 'حارس مرمى', D: 'مدافع', M: 'لاعب وسط', F: 'مهاجم' };
+  const PSTAT_AR = {
+    'starts-subIns': 'أساسي (بديل)', appearances: 'ماتشات', totalGoals: 'أهداف', goalAssists: 'صناعة', totalShots: 'تسديدات', shotsOnTarget: 'على المرمى',
+    foulsCommitted: 'أخطاء ارتكبها', foulsSuffered: 'أخطاء عليه', yellowCards: 'إنذارات', redCards: 'طرد', offsides: 'تسلل', ownGoals: 'في مرماه',
+    subIns: 'نزل بديل', saves: 'تصديات', shotsFaced: 'تسديدات عليه', goalsConceded: 'أهداف دخلت فيه', cleanSheet: 'شباك نظيفة',
+  };
+  const fmtDate = (ms) => new Date(ms).toLocaleDateString('ar-EG', { weekday: 'long', day: 'numeric', month: 'long' });
+  const dobAr = (d) => { const m = String(d).match(/^(\d+)\/(\d+)\/(\d{4})$/); return m ? new Date(+m[3], +m[2] - 1, +m[1]).toLocaleDateString('ar-EG', { day: 'numeric', month: 'long', year: 'numeric' }) : d; };
+  const cm = (h) => { const m = String(h || '').match(/(\d+)'\s*(\d+)?/); return m ? Math.round((Number(m[1]) * 12 + Number(m[2] || 0)) * 2.54) + ' سم' : h || ''; };
+
+  const team = { key: null, slug: null, dl: null, tab: 'matches', sub: 'next', info: null };
+
+  async function openTeam({ key, slug, name, logo }) {
+    if (!key) return;
+    Object.assign(team, { key, slug, dl: slug, tab: 'matches', sub: 'next', info: null, name, logo });
+    showModal($('#team'));
+    $('#team .sheet').scrollTop = 0;
+    renderTeamShell();
+    if (key.startsWith('es:')) {
+      try {
+        const id = key.slice(3);
+        const j = await cached(`es.team.${id}.${slug}`, 3600000, () => espn(`site/v2/sports/soccer/${slug}/teams/${id}`));
+        if (team.key !== key) return;
+        team.info = j.team || null;
+        const dl = team.info?.defaultLeague?.slug;
+        if (dl) team.dl = dl;
+        renderTeamShell();
+      } catch { /* الصفحة بتشتغل من غير المعلومات الإضافية */ }
+    }
+  }
+  function closeTeam() { $('#team').classList.add('hidden'); team.key = null; }
+  $('#team').addEventListener('click', (e) => { if (e.target.id === 'team' || e.target.closest('[data-close]')) closeTeam(); });
+
+  function standingAr(s) {
+    const m = String(s || '').match(/^(\d+)\w*\s+in\s+(.+)$/i);
+    if (!m) return s || '';
+    return `المركز ${m[1]} في ${ESPN_AR[team.dl] || m[2]}`;
+  }
+
+  function renderTeamShell() {
+    const t = team.info;
+    const name = t?.displayName || team.name || '';
+    const logo = t?.logos?.[0]?.href || team.logo || '';
+    const isEs = team.key.startsWith('es:');
+    const fav = cfg.teams.some((x) => x.key === team.key);
+    const tabs = isEs
+      ? [['matches', 'المباريات'], ['table', 'الترتيب'], ['players', 'اللاعبين'], ['stats', 'الإحصائيات'], ['news', 'الأخبار']]
+      : [['matches', 'المباريات'], ['table', 'الترتيب']];
+    $('#team-body').innerHTML = `
+      <div class="tm-hero">
+        <div class="tm-bar">
+          <button class="icon-btn" data-close type="button" aria-label="رجوع"><svg viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"/></svg></button>
+          <button class="icon-btn tm-fav${fav ? ' on' : ''}" type="button" aria-label="فريق مفضل"><svg viewBox="0 0 24 24"><path d="M12 3.5l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.9l-5.2 2.7 1-5.8-4.3-4.1 5.9-.9z"/></svg></button>
+        </div>
+        <div class="tm-logo">${imgTag(logo)}</div>
+        <h2>${esc(name)}</h2>
+        <div class="tm-sum">${esc(standingAr(t?.standingSummary))}</div>
+      </div>
+      <div class="tm-tabs" role="tablist">${tabs.map(([k, l]) => `<button type="button" role="tab" class="tm-tab${team.tab === k ? ' active' : ''}" data-tab="${k}">${l}</button>`).join('')}</div>
+      <div id="tm-pane" class="tm-pane"></div>`;
+    $('.tm-fav', $('#team-body')).onclick = (e) => {
+      const b = e.currentTarget;
+      const has = cfg.teams.some((x) => x.key === team.key);
+      cfg.teams = has ? cfg.teams.filter((x) => x.key !== team.key) : [...cfg.teams, { key: team.key, name, logo }];
+      saveCfg();
+      b.classList.toggle('on', !has);
+      toast(has ? `${name} اتشال من فرقك` : `${name} اتضاف لفرقك`);
+      renderMatches(); renderTeams();
+    };
+    $$('.tm-tab', $('#team-body')).forEach((b) => (b.onclick = () => { team.tab = b.dataset.tab; $$('.tm-tab').forEach((x) => x.classList.toggle('active', x === b)); drawTeamTab(); }));
+    drawTeamTab();
+  }
+
+  function drawTeamTab() {
+    const pane = $('#tm-pane');
+    const key = team.key;
+    const alive = () => team.key === key && $('#tm-pane') === pane;
+    pane.innerHTML = '<div class="skeleton" style="margin:14px"></div>'.repeat(4);
+    ({ matches: teamMatches, table: teamTable, players: teamPlayers, stats: teamStats, news: teamNews })[team.tab](pane, alive);
+  }
+
+  // ---- المباريات (القادمة / انتهت) ----
+  async function teamMatches(pane, alive) {
+    try {
+      let next = [];
+      let last = [];
+      if (team.key.startsWith('es:')) {
+        const id = team.key.slice(3);
+        const conv = (j) => (j.events || []).map((e) => { const sl = e.league?.slug || team.slug; const f = esCompact(e, sl, e.league); f.lg.name = e.league?.name || f.lg.name; return f; });
+        const [a, b] = await Promise.all([
+          cached(`es.tfx.${id}`, 30 * 60000, async () => conv(await espn(`site/v2/sports/soccer/all/teams/${id}/schedule?fixture=true`))),
+          cached(`es.tres.${id}`, 30 * 60000, async () => conv(await espn(`site/v2/sports/soccer/all/teams/${id}/schedule`))),
+        ]);
+        next = a; last = b;
+      } else {
+        const id = team.key.slice(3);
+        const [a, b] = await Promise.allSettled([
+          cached(`af.tfx.${id}`, 3 * 3600000, async () => (await af('fixtures', { team: id, next: 10, timezone: TZ })).map(afCompact)),
+          cached(`af.tres.${id}`, 3 * 3600000, async () => (await af('fixtures', { team: id, last: 10, timezone: TZ })).map(afCompact)),
+        ]);
+        if (a.status === 'rejected' && b.status === 'rejected') throw a.reason;
+        next = a.value || []; last = b.value || [];
+      }
+      if (!alive()) return;
+      for (const f of [...next, ...last]) extraFx.set(f.id, f);
+      const now = Date.now();
+      next = next.filter((f) => !DONE.has(f.st) && f.ts > now - 3 * 3600000).sort((a, b) => a.ts - b.ts);
+      last = last.filter((f) => DONE.has(f.st) || hasScore(f)).sort((a, b) => b.ts - a.ts);
+      const draw = () => {
+        const list = team.sub === 'next' ? next : last;
+        let html = `<div class="seg2"><button type="button" data-sub="next" class="${team.sub === 'next' ? 'active' : ''}">القادمة <small>${next.length}</small></button><button type="button" data-sub="last" class="${team.sub === 'last' ? 'active' : ''}">انتهت <small>${last.length}</small></button></div>`;
+        if (!list.length) html += `<div class="note">${team.sub === 'next' ? 'مفيش ماتشات جاية متسجلة لسه.' : 'مفيش نتايج متسجلة.'}</div>`;
+        let lastLg = null;
+        for (const f of list) {
+          if (f.lg.key !== lastLg) { html += `<div class="tm-group">${imgTag(f.lg.logo)}<span>${esc(leagueName(f.lg))}</span>${f.lg.round ? `<small>${esc(roundName(f.lg.round))}</small>` : ''}</div>`; lastLg = f.lg.key; }
+          html += teamMatchCard(f);
+        }
+        pane.innerHTML = html;
+        $$('.seg2 button', pane).forEach((b) => (b.onclick = () => { team.sub = b.dataset.sub; draw(); }));
+        $$('.tm-card', pane).forEach((b) => (b.onclick = () => openMatch(b.dataset.id)));
+      };
+      draw();
+    } catch (e) {
+      if (alive()) pane.innerHTML = `<div class="note" style="white-space:pre-line">${esc(e.message)}${team.key.startsWith('af:') ? '\nماتشات فرق الدوري المصري بتيجي من API-Football، والخطة المجانية ممكن ماتسمحش بالطلب ده.' : ''}</div>`;
+    }
+  }
+  function teamMatchCard(f) {
+    const done = hasScore(f);
+    const me = (t) => (t.key === team.key ? ' me' : '');
+    const res = done && f.h.w != null ? ((f.h.key === team.key ? f.h.w : f.a.w) ? 'W' : (f.h.w === false && f.a.w === false) || f.g[0] === f.g[1] ? 'D' : 'L') : '';
+    const mid = done
+      ? `<div class="score">${scoreTxt(f.g)}</div><div class="st">${esc(new Date(f.ts).toLocaleDateString('en-CA'))}</div>`
+      : `<div class="time">${hhmm(f.ts)}</div><div class="st">${esc(fmtDate(f.ts))}</div>`;
+    return `<button type="button" class="tm-card${LIVE.has(f.st) ? ' live' : ''}" data-id="${esc(f.id)}">
+      <div class="team${me(f.h)}">${imgTag(f.h.logo)}<span>${esc(f.h.name)}</span></div>
+      <div class="mid">${mid}${res ? `<i class="res ${res}">${res === 'W' ? 'فوز' : res === 'D' ? 'تعادل' : 'خسارة'}</i>` : ''}</div>
+      <div class="team away${me(f.a)}">${imgTag(f.a.logo)}<span>${esc(f.a.name)}</span></div></button>`;
+  }
+
+  // ---- الترتيب ----
+  async function teamTable(pane, alive) {
+    let l;
+    if (team.key.startsWith('es:')) l = { src: 'es', slug: team.dl || team.slug };
+    else { const af0 = cfg.leagues.find((x) => x.src === 'af'); l = { src: 'af', id: af0?.id || 233 }; }
+    pane.innerHTML = '<div class="table-box tm-tbl"></div>';
+    const box = $('.tm-tbl', pane);
+    await fillTable(l, box, { alive });
+    const row = box.querySelector(`tr[data-row="${CSS.escape(team.key)}"]`);
+    if (row) { row.classList.add('me'); setTimeout(() => row.scrollIntoView({ block: 'center', behavior: 'smooth' }), 50); }
+  }
+
+  // ---- اللاعبين ----
+  function rosterStats(a) {
+    const out = {};
+    for (const c of a?.statistics?.splits?.categories || []) for (const x of c.stats || []) out[x.name] = x.value ?? Number(x.displayValue);
+    return out;
+  }
+  const rosterOf = (slug, id) => cached(`es.roster.${slug}.${id}`, 6 * 3600000, async () => (await espn(`site/v2/sports/soccer/${slug}/teams/${id}/roster`)).athletes || []);
+  async function teamPlayers(pane, alive) {
+    try {
+      const id = team.key.slice(3);
+      const slug = team.dl || team.slug;
+      const list = await rosterOf(slug, id);
+      if (!alive()) return;
+      if (!list.length) { pane.innerHTML = '<div class="note">مفيش قايمة لاعبين متاحة.</div>'; return; }
+      const groups = { G: [], D: [], M: [], F: [] };
+      for (const a of list) (groups[a.position?.abbreviation] || groups.M).push(a);
+      let html = '';
+      for (const [k, arr] of Object.entries(groups)) {
+        if (!arr.length) continue;
+        arr.sort((a, b) => (Number(a.jersey) || 99) - (Number(b.jersey) || 99));
+        html += `<div class="tm-group"><span>${POS_AR[k]}</span><small>${arr.length}</small></div><div class="plist">`;
+        for (const a of arr) {
+          const st = rosterStats(a);
+          const chips = k === 'G'
+            ? [['ماتش', st.appearances], ['تصدي', st.saves], ['دخل فيه', st.goalsConceded]]
+            : [['ماتش', st.appearances], ['جون', st.totalGoals], ['صناعة', st.goalAssists]];
+          html += `<button type="button" class="prow" data-pid="${esc(a.id)}" data-tid="${esc(id)}" data-slug="${esc(slug)}">
+            <span class="pno">${esc(a.jersey ?? '')}</span>
+            <span class="pimg"><img src="https://a.espncdn.com/i/headshots/soccer/players/full/${esc(a.id)}.png" alt="" loading="lazy" onerror="this.remove()"></span>
+            <span class="ptx"><b>${esc(a.displayName)}</b><small>${a.flag?.href ? `<img src="${esc(a.flag.href)}" alt="" loading="lazy" onerror="this.remove()">` : ''}${esc(a.citizenship || '')}${a.age ? ` • ${esc(a.age)} سنة` : ''}</small></span>
+            <span class="pst">${chips.filter(([, v]) => v != null && !Number.isNaN(v)).map(([l, v]) => `<i><b>${esc(v)}</b>${l}</i>`).join('')}</span></button>`;
+        }
+        html += '</div>';
+      }
+      pane.innerHTML = html;
+    } catch (e) {
+      if (alive()) pane.innerHTML = `<div class="note">${esc(e.message)}</div>`;
+    }
+  }
+
+  // ---- الإحصائيات ----
+  async function teamStats(pane, alive) {
+    const t = team.info;
+    const rec = Object.fromEntries((t?.record?.items?.[0]?.stats || []).map((x) => [x.name, x.value]));
+    let top = [];
+    try {
+      const list = await rosterOf(team.dl || team.slug, team.key.slice(3));
+      top = list.map((a) => ({ a, s: rosterStats(a) }));
+    } catch { /* من غير الهدافين */ }
+    if (!alive()) return;
+    if (!Object.keys(rec).length && !top.length) { pane.innerHTML = '<div class="note">مفيش إحصائيات متاحة للفريق ده.</div>'; return; }
+    const box = (v, l, cls = '') => `<div class="sbox ${cls}"><b>${esc(v ?? '—')}</b><span>${l}</span></div>`;
+    let html = '';
+    if (Object.keys(rec).length) {
+      const gd = rec.pointDifferential;
+      html += `<div class="tm-group"><span>${esc(ESPN_AR[team.dl] || 'الدوري')}</span><small>${esc(t?.standingSummary ? standingAr(t.standingSummary) : '')}</small></div>
+        <div class="sgrid">${box(rec.points, 'نقطة', 'big')}${box(rec.gamesPlayed, 'ماتش')}${box(rec.wins, 'فوز', 'w')}${box(rec.ties, 'تعادل', 'd')}${box(rec.losses, 'خسارة', 'l')}
+        ${box(rec.pointsFor, 'جون له')}${box(rec.pointsAgainst, 'جون عليه')}${box(gd > 0 ? '+' + gd : gd, 'الفارق')}</div>
+        <div class="hsplit">
+          <div><h4>في ملعبه</h4><p>${esc(rec.homeWins ?? 0)} فوز • ${esc(rec.homeTies ?? 0)} تعادل • ${esc(rec.homeLosses ?? 0)} خسارة</p><p class="muted2">${esc(rec.homePointsFor ?? 0)} له • ${esc(rec.homePointsAgainst ?? 0)} عليه</p></div>
+          <div><h4>برة ملعبه</h4><p>${esc(rec.awayWins ?? 0)} فوز • ${esc(rec.awayTies ?? 0)} تعادل • ${esc(rec.awayLosses ?? 0)} خسارة</p><p class="muted2">${esc(rec.awayPointsFor ?? 0)} له • ${esc(rec.awayPointsAgainst ?? 0)} عليه</p></div>
+        </div>`;
+    }
+    const leaders = (stat, label) => {
+      const arr = top.filter((x) => (x.s[stat] || 0) > 0).sort((a, b) => b.s[stat] - a.s[stat]).slice(0, 5);
+      if (!arr.length) return '';
+      return `<div class="tm-group"><span>${label}</span></div><div class="plist">${arr.map((x) => `<button type="button" class="prow" data-pid="${esc(x.a.id)}" data-tid="${esc(team.key.slice(3))}" data-slug="${esc(team.dl || team.slug)}">
+        <span class="pimg"><img src="https://a.espncdn.com/i/headshots/soccer/players/full/${esc(x.a.id)}.png" alt="" loading="lazy" onerror="this.remove()"></span>
+        <span class="ptx"><b>${esc(x.a.displayName)}</b><small>${esc(POS1_AR[x.a.position?.abbreviation] || '')}</small></span><span class="lead">${esc(x.s[stat])}</span></button>`).join('')}</div>`;
+    };
+    html += leaders('totalGoals', 'الهدافين') + leaders('goalAssists', 'صناع الأهداف');
+    pane.innerHTML = html;
+  }
+
+  // ---- الأخبار ----
+  async function teamNews(pane, alive) {
+    try {
+      const id = team.key.slice(3);
+      const slug = team.dl || team.slug;
+      const j = await cached(`es.news.${id}`, 30 * 60000, () => espn(`site/v2/sports/soccer/${slug}/news?team=${id}`), { persist: false });
+      if (!alive()) return;
+      const arts = j.articles || [];
+      if (!arts.length) { pane.innerHTML = '<div class="note">مفيش أخبار دلوقتي.</div>'; return; }
+      pane.innerHTML = `<p class="hint" style="padding:10px 16px 0">الأخبار من ESPN بالإنجليزي.</p>` + arts.map((a) => `<a class="news" href="${esc(a.links?.web?.href || '#')}" target="_blank" rel="noopener">
+        ${a.images?.[0]?.url ? `<img src="${esc(a.images[0].url)}" alt="" loading="lazy" onerror="this.remove()">` : ''}
+        <div><b dir="auto">${esc(a.headline)}</b><small>${a.published ? esc(new Date(a.published).toLocaleDateString('ar-EG', { day: 'numeric', month: 'long' })) : ''}</small></div></a>`).join('');
+    } catch (e) {
+      if (alive()) pane.innerHTML = `<div class="note">${esc(e.message)}</div>`;
+    }
+  }
+
+  // ---- صفحة اللاعب ----
+  let openPid = null;
+  async function openPlayer(pid, { tid, slug } = {}) {
+    if (!pid) return;
+    openPid = pid;
+    showModal($('#player'));
+    const body = $('#player-body');
+    body.innerHTML = '<div class="note">جاري التحميل...</div>';
+    try {
+      const j = await cached(`es.ath.${pid}`, 6 * 3600000, () => espn(`common/v3/sports/soccer/athletes/${pid}`));
+      const at = j.athlete || j;
+      let rs = {};
+      const teamId = tid || at.team?.id;
+      const sl = slug || team.dl || null;
+      if (teamId && sl) {
+        try { const list = await rosterOf(sl, teamId); rs = rosterStats(list.find((x) => String(x.id) === String(pid))); } catch { /* من غير تفاصيل */ }
+      }
+      if (openPid !== pid) return;
+      const summary = at.statsSummary?.statistics || [];
+      const seen = new Set();
+      const cells = [];
+      for (const x of summary) { seen.add(x.name); cells.push([PSTAT_AR[x.name] || x.displayName, x.displayValue]); }
+      for (const [k, v] of Object.entries(rs)) if (!seen.has(k) && PSTAT_AR[k] && v != null && !(at.position?.abbreviation !== 'G' && ['saves', 'shotsFaced', 'goalsConceded'].includes(k))) cells.push([PSTAT_AR[k], v]);
+      const tm = at.team;
+      body.innerHTML = `
+        <div class="pl-hero">
+          <div class="tm-bar"><button class="icon-btn" data-close type="button" aria-label="رجوع"><svg viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"/></svg></button></div>
+          <div class="pl-photo"><img src="https://a.espncdn.com/i/headshots/soccer/players/full/${esc(pid)}.png" alt="" onerror="this.remove()"><span>${esc(at.jersey ?? '')}</span></div>
+          <h2 dir="auto">${esc(at.displayName)}</h2>
+          <div class="tm-sum">${esc(POS1_AR[at.position?.abbreviation] || at.position?.displayName || '')}${tm ? ' • ' : ''}${tm ? teamLink({ key: 'es:' + tm.id, name: tm.displayName, logo: tm.logos?.[0]?.href || tm.logo }, sl || team.slug, `<span class="inl">${esc(tm.displayName)}</span>`) : ''}</div>
+        </div>
+        <div class="pinfo">
+          ${at.age ? `<div><b>${esc(at.age)}</b><span>سنة</span></div>` : ''}
+          ${at.displayHeight ? `<div><b>${esc(cm(at.displayHeight))}</b><span>الطول</span></div>` : ''}
+          ${at.citizenship ? `<div><b>${at.flag?.href ? `<img src="${esc(at.flag.href)}" alt="" onerror="this.remove()">` : ''}${esc(at.citizenship)}</b><span>الجنسية</span></div>` : ''}
+          ${at.displayDOB ? `<div><b>${esc(dobAr(at.displayDOB))}</b><span>تاريخ الميلاد</span></div>` : ''}
+        </div>
+        ${cells.length ? `<div class="tm-group"><span>${esc(String(at.statsSummary?.displayName || 'إحصائيات الموسم').replace(/^(\d{4}-\d{2}) (.+) Stats$/, 'إحصائيات $2 $1'))}</span></div>
+          <div class="sgrid">${cells.map(([l, v]) => `<div class="sbox"><b>${esc(v)}</b><span>${esc(l)}</span></div>`).join('')}</div>` : '<div class="note">مفيش إحصائيات للاعب ده في الموسم ده.</div>'}`;
+    } catch (e) {
+      if (openPid === pid) body.innerHTML = `<div class="tm-bar"><button class="icon-btn" data-close type="button" aria-label="رجوع"><svg viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"/></svg></button></div><div class="note">${esc(e.message)}</div>`;
+    }
+  }
+  function closePlayer() { $('#player').classList.add('hidden'); openPid = null; }
+  $('#player').addEventListener('click', (e) => { if (e.target.id === 'player' || e.target.closest('[data-close]')) closePlayer(); });
+
   // =====================================================================
   //                               التنقل
   // =====================================================================
@@ -1142,9 +1454,9 @@
   }
   $$('#nav .nav-btn').forEach((b) => (b.onclick = () => go(b.dataset.view)));
 
-  window.__back = () => { // زرار الرجوع في الأندرويد
-    if (!$('#match').classList.contains('hidden')) { closeMatch(); return true; }
-    if (!$('#league-modal').classList.contains('hidden')) { closeLeagueTable(); return true; }
+  window.__back = () => { // زرار الرجوع في الأندرويد: بيقفل أعلى نافذة
+    const top = $$('.modal:not(.hidden)').sort((a, b) => (Number(b.style.zIndex) || 50) - (Number(a.style.zIndex) || 50))[0];
+    if (top) { ({ match: closeMatch, 'league-modal': closeLeagueTable, team: closeTeam, player: closePlayer })[top.id]?.(); return true; }
     if (state.view !== 'matches') { go('matches'); return true; }
     return false;
   };
