@@ -405,11 +405,13 @@
     if (LIVE.has(f.st) && !ST_TEXT[f.st]) return f.el != null ? `<span dir="ltr">${f.el}${f.ex ? '+' + f.ex : ''}'</span>` : 'مباشر';
     return ST_TEXT[f.st] || '';
   }
+  // الصفحة يمين-لشمال: صاحب الأرض يمين والضيف شمال، فبنكتب "الضيف - صاحب الأرض" من الشمال لليمين
+  const scoreTxt = (p) => `<span dir="ltr">${p[1]} - ${p[0]}</span>`;
   const hasScore = (f) => f.g[0] != null && f.st !== 'NS' && f.st !== 'PST' && f.st !== 'CANC';
   function matchRow(f, fav) {
     const live = LIVE.has(f.st);
     const mid = hasScore(f)
-      ? `<div class="score">${f.g[0]} - ${f.g[1]}</div>${f.pen[0] != null ? `<div class="pen">(${f.pen[0]} - ${f.pen[1]})</div>` : ''}<div class="st">${statusText(f)}</div>`
+      ? `<div class="score">${scoreTxt(f.g)}</div>${f.pen[0] != null ? `<div class="pen">(${scoreTxt(f.pen)})</div>` : ''}<div class="st">${statusText(f)}</div>`
       : `<div class="time">${hhmm(f.ts)}</div><div class="st">${statusText(f)}</div>`;
     const lose = (t) => (DONE.has(f.st) && t.w === false ? ' lose' : '');
     return `<button type="button" class="match${live ? ' live' : ''}${fav ? ' fav' : ''}" data-id="${esc(f.id)}">
@@ -504,7 +506,7 @@
       if (!o || o.g[0] == null || f.g[0] == null) continue;
       if (!(f.g[0] > o.g[0] || f.g[1] > o.g[1])) continue;
       if (!L.has(f.lg.key) && !T.has(f.h.key) && !T.has(f.a.key)) continue;
-      toast(`جوووول! ${f.h.name} ${f.g[0]} - ${f.g[1]} ${f.a.name}`, 'goal');
+      toast(`جوووول! \u2066${f.h.name} ${f.g[0]} - ${f.g[1]} ${f.a.name}\u2069`, 'goal');
       $(`.match[data-id="${CSS.escape(f.id)}"]`)?.classList.add('flash');
       if (navigator.vibrate) navigator.vibrate([120, 60, 120]);
     }
@@ -669,8 +671,8 @@
       <div class="lg">${imgTag(c.lg.logo)}<span>${esc(leagueName(c.lg))}${c.lg.round ? ' • ' + esc(roundName(c.lg.round)) : ''}</span></div>
       <div class="mh-row">
         <div class="mh-team">${imgTag(c.h.logo)}<span>${esc(c.h.name)}</span>${star(c.h)}</div>
-        <div>${hasScore(c) ? `<div class="mh-score">${c.g[0]} - ${c.g[1]}</div>` : `<div class="mh-time">${hhmm(c.ts)}</div>`}
-          ${c.pen[0] != null ? `<div class="pen">ترجيح (${c.pen[0]} - ${c.pen[1]})</div>` : ''}
+        <div>${hasScore(c) ? `<div class="mh-score">${scoreTxt(c.g)}</div>` : `<div class="mh-time">${hhmm(c.ts)}</div>`}
+          ${c.pen[0] != null ? `<div class="pen">ترجيح (${scoreTxt(c.pen)})</div>` : ''}
           <div class="mh-st${live ? ' live' : ''}">${statusText(c) || new Date(c.ts).toLocaleDateString('ar-EG', { weekday: 'long', day: 'numeric', month: 'long' })}</div></div>
         <div class="mh-team">${imgTag(c.a.logo)}<span>${esc(c.a.name)}</span>${star(c.a)}</div>
       </div>
