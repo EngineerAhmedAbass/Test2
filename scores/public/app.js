@@ -25,6 +25,13 @@
   ];
   const ESPN_AR = Object.fromEntries(ESPN_CATALOG);
   const AF_AR = { 233: 'الدوري المصري', 714: 'كأس مصر', 539: 'كأس الرابطة المصرية', 12: 'دوري أبطال أفريقيا', 20: 'الكونفدرالية الأفريقية' };
+  // نفس البطولة في المصدرين: رقمها في API-Football ← اسمها في ESPN
+  const AF_TO_ESPN = {
+    39: 'eng.1', 140: 'esp.1', 135: 'ita.1', 78: 'ger.1', 61: 'fra.1', 2: 'uefa.champions', 3: 'uefa.europa', 848: 'uefa.europa.conf',
+    12: 'caf.champions', 20: 'caf.confed', 307: 'ksa.1', 17: 'afc.champions', 6: 'caf.nations', 1: 'fifa.world', 15: 'fifa.cwc',
+    45: 'eng.fa', 48: 'eng.league_cup', 143: 'esp.copa_del_rey', 137: 'ita.coppa_italia', 40: 'eng.2', 88: 'ned.1', 94: 'por.1',
+    203: 'tur.1', 179: 'sco.1', 144: 'bel.1', 253: 'usa.1', 71: 'bra.1', 128: 'arg.1', 262: 'mex.1', 288: 'rsa.1', 10: 'fifa.friendly',
+  };
   const DEFAULT_LEAGUES = [
     { src: 'af', id: 233, name: 'Premier League', country: 'Egypt', logo: '' },
     ...['caf.champions', 'caf.confed', 'uefa.champions', 'eng.1', 'esp.1', 'ita.1', 'ger.1', 'fra.1', 'ksa.1'].map((slug) => ({ src: 'es', slug })),
@@ -295,7 +302,10 @@
         return e.stale || [];
       });
     }
-    const [esLists, afList] = await Promise.all([esPart, afPart]);
+    const [esLists, afList0] = await Promise.all([esPart, afPart]);
+    // لو البطولة موجودة في ESPN بنسيب نسخة ESPN بس (أي يوم + ترتيب الموسم الحالي)، إلا لو المستخدم ضايفها من API-Football بنفسه
+    const myKeys = myLeagueKeys();
+    const afList = afList0.filter((f) => !AF_TO_ESPN[f.lg.id] || myKeys.has(f.lg.key));
     const list = [...esLists.flat(), ...afList];
     state.days.set(date, { t: Date.now(), list, notes });
     if (date === today()) { state.lastEs = Date.now(); state.lastAf = Date.now(); }
@@ -612,6 +622,7 @@
     const lineups = [...(j.rosters || [])].sort((a, b) => (a.homeAway === 'home' ? -1 : b.homeAway === 'home' ? 1 : 0)).map((r) => ({
       name: r.team?.shortDisplayName || r.team?.displayName || '', formation: r.formation || '', coach: '',
       color: r.uniform?.color || r.team?.color || '', alt: r.uniform?.alternateColor || r.team?.alternateColor || '',
+      club: r.team?.color || '', clubAlt: r.team?.alternateColor || '',
       xi: (r.roster || []).filter((p) => p.starter).map((p) => ({
         no: p.jersey, name: p.athlete?.displayName, short: p.athlete?.lastName || p.athlete?.shortName, pos: p.position?.abbreviation || '', out: !!p.subbedOut,
       })),
@@ -658,7 +669,8 @@
     const L = f.lineups || [];
     const lineups = (L[0]?.team?.id === homeId ? L : [...L].reverse()).map((t) => ({
       name: t.team.name, formation: t.formation || '', coach: t.coach?.name || '',
-      color: t.team.colors?.player?.primary || '', alt: t.team.colors?.player?.number || '',
+      color: t.team.colors?.player?.primary || '', alt: t.team.colors?.player?.border || t.team.colors?.player?.number || '',
+      num: t.team.colors?.player?.number || '', gk: t.team.colors?.goalkeeper?.primary || '', gkNum: t.team.colors?.goalkeeper?.number || '',
       xi: (t.startXI || []).map((p) => ({ no: p.player.number, name: p.player.name, pos: p.player.pos || '', grid: p.player.grid || '' })),
       subs: (t.substitutes || []).map((p) => ({ no: p.player.number, name: p.player.name })),
     }));
@@ -785,31 +797,59 @@
   }
   const shortName = (p) => p.short || String(p.name || '').split(' ').slice(-1)[0];
 
+  const rgb = (hex) => { const n = parseInt(hex.slice(1), 16); return [(n >> 16) & 255, (n >> 8) & 255, n & 255]; };
+  const colorDist = (a, b) => { const [x, y] = [rgb(a), rgb(b)]; return Math.hypot(x[0] - y[0], x[1] - y[1], x[2] - y[2]); };
+  const shade = (hex, k) => '#' + rgb(hex).map((v) => Math.max(0, Math.min(255, Math.round(v * k))).toString(16).padStart(2, '0')).join('');
+  // ألوان طقم الفريق: الجسم، والأكمام/الياقة، ولون الرقم، وطقم الحارس
+  function kit(t, fallback) {
+    const body = hexColor(t.color, hexColor(t.club, fallback));
+    let trim = hexColor(t.alt, hexColor(t.clubAlt, ''));
+    if (!trim || colorDist(trim, body) < 60) trim = shade(body, inkFor(body) === '#ffffff' ? 1.6 : 0.6);
+    let num = hexColor(t.num, '');
+    if (!num || colorDist(num, body) < 110) num = inkFor(body);
+    let gk = hexColor(t.gk, '');
+    if (!gk || colorDist(gk, body) < 90) gk = colorDist('#f2c94c', body) > 120 ? '#f2c94c' : '#9b5de5';
+    const gkNum = hexColor(t.gkNum, '') && colorDist(hexColor(t.gkNum, ''), gk) > 110 ? hexColor(t.gkNum, '') : inkFor(gk);
+    return { body, trim, num, gk, gkTrim: shade(gk, 0.7), gkNum };
+  }
+  function jersey(body, trim, num, no) {
+    return `<svg class="jersey" viewBox="0 0 40 40" aria-hidden="true">
+      <path d="M14 4 8 6.5 2 12.5l5 5.5 3.2-2.7V37h19.6V15.3L33 18l5-5.5L32 6.5 26 4c-1.2 2.6-3.4 4-6 4s-4.8-1.4-6-4z" fill="${body}" stroke="rgba(0,0,0,.45)" stroke-width="1"/>
+      <path d="M8 6.5 2 12.5l5 5.5 3.2-2.7zM32 6.5l6 6-5 5.5-3.2-2.7z" fill="${trim}"/>
+      <path d="M14 4c1.2 2.6 3.4 4 6 4s4.8-1.4 6-4" fill="none" stroke="${trim}" stroke-width="2.4"/>
+      <text x="20" y="28.5" text-anchor="middle" fill="${num}">${esc(no ?? '')}</text></svg>`;
+  }
+
   function pitchHtml(d) {
     const [home, away] = d.lineups;
-    let homeC = hexColor(home.color, '#00e08a');
-    let awayC = hexColor(away?.color, '#4ea8ff');
-    if (away && homeC.toLowerCase() === awayC.toLowerCase()) awayC = hexColor(away.alt, '#4ea8ff');
-    const place = (t, color, isHome) => {
+    const hk = kit(home, '#00e08a');
+    let ak = away ? kit(away, '#4ea8ff') : null;
+    if (ak && colorDist(hk.body, ak.body) < 80) { // الطقمين شبه بعض: الضيف يلبس لونه التاني
+      const swapped = kit({ ...away, color: away.alt || away.clubAlt, alt: away.color }, '#ffffff');
+      ak = colorDist(hk.body, swapped.body) >= 80 ? swapped : kit({ color: '#ffffff', alt: '#1b1b1b' }, '#ffffff');
+    }
+    if (ak && colorDist(hk.gk, ak.gk) < 80) { ak.gk = colorDist('#9b5de5', ak.body) > 100 ? '#9b5de5' : '#22d3ee'; ak.gkTrim = shade(ak.gk, 0.7); ak.gkNum = inkFor(ak.gk); }
+    const place = (t, k, isHome) => {
       const lines = lineupLines(t);
       const L = lines.length;
-      const ink = inkFor(color);
       return lines.map((line, i) => line.map((p, j) => {
         const y = isHome ? 91.5 - (i * (91.5 - 55)) / Math.max(1, L - 1) : 4.5 + (i * (43 - 4.5)) / Math.max(1, L - 1);
         let x = ((j + 1) / (line.length + 1)) * 100;
         if (!isHome) x = 100 - x; // الفريق اللي فوق بيبص للناحية التانية
+        const gk = i === 0;
         return `<div class="pp" style="left:${x.toFixed(1)}%;top:${y.toFixed(1)}%">
-          <span class="shirt" style="background:${color};color:${ink}">${esc(p.no ?? '')}${p.out ? '<i class="out" title="خرج"></i>' : ''}</span>
+          <span class="shirt">${jersey(gk ? k.gk : k.body, gk ? k.gkTrim : k.trim, gk ? k.gkNum : k.num, p.no)}${p.out ? '<i class="out" title="خرج"></i>' : ''}</span>
           <span class="pn">${esc(shortName(p))}</span></div>`;
       }).join('')).join('');
     };
-    return `<div class="pitch-head"><span>${esc(away?.name || '')}</span><b>${esc(away?.formation || '')}</b></div>
+    const sw = (k) => `<i class="sw" style="background:${k.body};border-color:${k.trim}"></i>`;
+    return `<div class="pitch-head"><span>${away ? sw(ak) : ''}${esc(away?.name || '')}</span><b>${esc(away?.formation || '')}</b></div>
       <div class="pitch" role="img" aria-label="التشكيل على الملعب">
         <div class="pl-line half"></div><div class="pl-circle"></div><div class="pl-spot"></div>
         <div class="pl-box at-top"></div><div class="pl-box6 at-top"></div><div class="pl-box at-bot"></div><div class="pl-box6 at-bot"></div>
-        ${away ? place(away, awayC, false) : ''}${place(home, homeC, true)}
+        ${away ? place(away, ak, false) : ''}${place(home, hk, true)}
       </div>
-      <div class="pitch-head"><span>${esc(home.name)}</span><b>${esc(home.formation || '')}</b></div>`;
+      <div class="pitch-head"><span>${sw(hk)}${esc(home.name)}</span><b>${esc(home.formation || '')}</b></div>`;
   }
 
   function lineupsHtml(d) {
@@ -853,10 +893,12 @@
   }
 
   // بيرسم ترتيب الدوري l جوه box. alive() بترجّع false لو المستخدم راح لحاجة تانية
-  async function fillTable(l, box, { force = false, season: seasonOverride = null, alive = () => true } = {}) {
+  async function fillTable(l0, box, { force = false, season: seasonOverride = null, alive = () => true } = {}) {
     box.innerHTML = '<div class="skeleton" style="margin:12px"></div>'.repeat(5);
+    let l = l0;
     try {
       let table;
+      if (l.src === 'af' && AF_TO_ESPN[l.id]) l = { src: 'es', slug: AF_TO_ESPN[l.id] };
       if (l.src === 'es') {
         const j = await cached(`es.table.${l.slug}`, 3600000, () => espn(`v2/sports/soccer/${l.slug}/standings`), { force });
         table = espnTable(j);
@@ -887,7 +929,8 @@
   let openLeague = null;
   function openLeagueTable(lg) {
     if (!lg) return;
-    const l = lg.slug ? { src: 'es', slug: lg.slug, logo: lg.logo, name: lg.name } : { src: 'af', id: lg.id, logo: lg.logo, name: lg.name };
+    const esSlug = lg.slug || AF_TO_ESPN[lg.id];
+    const l = esSlug ? { src: 'es', slug: esSlug, logo: lg.logo, name: lg.name } : { src: 'af', id: lg.id, logo: lg.logo, name: lg.name };
     openLeague = lkey(l);
     $('#lt-title').innerHTML = `${imgTag(lg.logo)}<span>${esc(leagueName(lg))}</span>`;
     $('#league-modal').classList.remove('hidden');

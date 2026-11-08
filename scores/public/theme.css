@@ -151,3 +151,12 @@ tbody tr:nth-child(even) td { background: rgba(255, 255, 255, .02); }
 @media (prefers-reduced-motion: reduce) { .logo .ball { animation: none; } }
 
 .logo .ball { background: none; box-shadow: none; border-radius: 0; }
+
+/* ---------- تيشيرتات التشكيل ---------- */
+.shirt { width: 36px; height: 36px; border-radius: 0; background: none !important; box-shadow: none; display: block; }
+.shirt .jersey { width: 36px; height: 36px; display: block; filter: drop-shadow(0 2px 3px rgba(0, 0, 0, .55)); stroke: none; }
+.shirt .jersey text { font-family: "Teko", "Cairo", sans-serif; font-size: 15px; font-weight: 600; }
+.shirt .out { top: -2px; left: -4px; }
+.pitch-head span { display: inline-flex; align-items: center; gap: 8px; }
+.pitch-head .sw { width: 14px; height: 14px; border-radius: 4px; border: 3px solid; display: inline-block; }
+.pp { transform: translate(-50%, -18px); }
