@@ -605,9 +605,12 @@
       }
     }
     const lineups = [...(j.rosters || [])].sort((a, b) => (a.homeAway === 'home' ? -1 : b.homeAway === 'home' ? 1 : 0)).map((r) => ({
-      name: r.team?.displayName || '', formation: r.formation || '', coach: '',
-      xi: (r.roster || []).filter((p) => p.starter).map((p) => ({ no: p.jersey, name: p.athlete?.displayName })),
-      subs: (r.roster || []).filter((p) => !p.starter).map((p) => ({ no: p.jersey, name: p.athlete?.displayName })),
+      name: r.team?.shortDisplayName || r.team?.displayName || '', formation: r.formation || '', coach: '',
+      color: r.uniform?.color || r.team?.color || '', alt: r.uniform?.alternateColor || r.team?.alternateColor || '',
+      xi: (r.roster || []).filter((p) => p.starter).map((p) => ({
+        no: p.jersey, name: p.athlete?.displayName, short: p.athlete?.lastName || p.athlete?.shortName, pos: p.position?.abbreviation || '', out: !!p.subbedOut,
+      })),
+      subs: (r.roster || []).filter((p) => !p.starter).map((p) => ({ no: p.jersey, name: p.athlete?.displayName, in: !!p.subbedIn })),
     })).filter((r) => r.xi.length);
     return { fx, events, stats, lineups, notStarted: fx?.st === 'NS' };
   }
@@ -650,7 +653,8 @@
     const L = f.lineups || [];
     const lineups = (L[0]?.team?.id === homeId ? L : [...L].reverse()).map((t) => ({
       name: t.team.name, formation: t.formation || '', coach: t.coach?.name || '',
-      xi: (t.startXI || []).map((p) => ({ no: p.player.number, name: p.player.name })),
+      color: t.team.colors?.player?.primary || '', alt: t.team.colors?.player?.number || '',
+      xi: (t.startXI || []).map((p) => ({ no: p.player.number, name: p.player.name, pos: p.player.pos || '', grid: p.player.grid || '' })),
       subs: (t.substitutes || []).map((p) => ({ no: p.player.number, name: p.player.name })),
     }));
     return { fx, events, stats, lineups, notStarted: fx.st === 'NS' };
@@ -724,12 +728,92 @@
         <div class="bars"><div class="h"><i style="width:${(s.hv / tot) * 100}%"></i></div><div class="a"><i style="width:${(s.av / tot) * 100}%"></i></div></div></div>`;
     }).join('');
   }
+  // ---- التشكيل على الملعب ----
+  // عمق اللاعب في الملعب (من الحارس للهجوم) من اختصار مركزه
+  function depth(pos) {
+    const p = String(pos || '').toUpperCase();
+    if (/^(G|GK)$/.test(p)) return 0;
+    if (/^(CD|CB|D|DC|DL|DR|SW|LB|RB)(-|$)/.test(p)) return 1;
+    if (/^(LWB|RWB|WB)/.test(p)) return 1.5;
+    if (/^(DM|CDM)/.test(p)) return 2;
+    if (/^(AM|CAM)/.test(p)) return 4;
+    if (/^(F|CF|ST|S|FW|LW|RW|LF|RF)(-|$)/.test(p)) return 5;
+    return 3; // وسط
+  }
+  // يمين/شمال من وجهة نظر الفريق: 0 شمال، 1 نص، 2 يمين
+  function lateral(pos) {
+    const p = String(pos || '').toUpperCase();
+    if (/^L/.test(p)) return 0; // ظهير/جناح شمال
+    if (/-L$/.test(p)) return 0.75; // نص شمال (زي CD-L)
+    if (/^R/.test(p)) return 2;
+    if (/-R$/.test(p)) return 1.25;
+    return 1;
+  }
+  // بيرجّع خطوط من الحارس للهجوم، وكل خط مترتب من الشمال لليمين
+  function lineupLines(t) {
+    const xi = t.xi.slice(0, 11);
+    if (xi.length && xi.every((p) => /^\d+:\d+$/.test(p.grid || ''))) { // API-Football: row:col
+      const rows = new Map();
+      for (const p of xi) { const [r, c] = p.grid.split(':').map(Number); if (!rows.has(r)) rows.set(r, []); rows.get(r).push({ ...p, c }); }
+      return [...rows.keys()].sort((a, b) => a - b).map((r) => rows.get(r).sort((a, b) => a.c - b.c));
+    }
+    const gkIdx = xi.findIndex((p) => depth(p.pos) === 0);
+    const gk = gkIdx >= 0 ? xi[gkIdx] : xi[0];
+    const rest = xi.filter((p) => p !== gk).map((p, i) => ({ ...p, d: depth(p.pos), i })).sort((a, b) => a.d - b.d || a.i - b.i);
+    const counts = String(t.formation || '').split('-').map(Number).filter((n) => n > 0);
+    let lines = [];
+    if (counts.length && counts.reduce((a, b) => a + b, 0) === rest.length) {
+      let k = 0;
+      for (const n of counts) { lines.push(rest.slice(k, k + n)); k += n; }
+    } else { // من غير خطة: نجمّع حسب العمق
+      const byD = new Map();
+      for (const p of rest) { const d = Math.round(p.d); if (!byD.has(d)) byD.set(d, []); byD.get(d).push(p); }
+      lines = [...byD.keys()].sort((a, b) => a - b).map((d) => byD.get(d));
+    }
+    return [[gk], ...lines.map((l) => l.sort((a, b) => lateral(a.pos) - lateral(b.pos) || a.d - b.d))];
+  }
+  function hexColor(c, fallback) { const h = String(c || '').replace('#', ''); return /^[0-9a-f]{6}$/i.test(h) ? '#' + h : fallback; }
+  function inkFor(hex) {
+    const n = parseInt(hex.slice(1), 16);
+    const [r, g, b] = [(n >> 16) & 255, (n >> 8) & 255, n & 255].map((v) => { v /= 255; return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; });
+    return 0.2126 * r + 0.7152 * g + 0.0722 * b > 0.4 ? '#0a0e13' : '#ffffff';
+  }
+  const shortName = (p) => p.short || String(p.name || '').split(' ').slice(-1)[0];
+
+  function pitchHtml(d) {
+    const [home, away] = d.lineups;
+    let homeC = hexColor(home.color, '#00e08a');
+    let awayC = hexColor(away?.color, '#4ea8ff');
+    if (away && homeC.toLowerCase() === awayC.toLowerCase()) awayC = hexColor(away.alt, '#4ea8ff');
+    const place = (t, color, isHome) => {
+      const lines = lineupLines(t);
+      const L = lines.length;
+      const ink = inkFor(color);
+      return lines.map((line, i) => line.map((p, j) => {
+        const y = isHome ? 91.5 - (i * (91.5 - 55)) / Math.max(1, L - 1) : 4.5 + (i * (43 - 4.5)) / Math.max(1, L - 1);
+        let x = ((j + 1) / (line.length + 1)) * 100;
+        if (!isHome) x = 100 - x; // الفريق اللي فوق بيبص للناحية التانية
+        return `<div class="pp" style="left:${x.toFixed(1)}%;top:${y.toFixed(1)}%">
+          <span class="shirt" style="background:${color};color:${ink}">${esc(p.no ?? '')}${p.out ? '<i class="out" title="خرج"></i>' : ''}</span>
+          <span class="pn">${esc(shortName(p))}</span></div>`;
+      }).join('')).join('');
+    };
+    return `<div class="pitch-head"><span>${esc(away?.name || '')}</span><b>${esc(away?.formation || '')}</b></div>
+      <div class="pitch" role="img" aria-label="التشكيل على الملعب">
+        <div class="pl-line half"></div><div class="pl-circle"></div><div class="pl-spot"></div>
+        <div class="pl-box at-top"></div><div class="pl-box6 at-top"></div><div class="pl-box at-bot"></div><div class="pl-box6 at-bot"></div>
+        ${away ? place(away, awayC, false) : ''}${place(home, homeC, true)}
+      </div>
+      <div class="pitch-head"><span>${esc(home.name)}</span><b>${esc(home.formation || '')}</b></div>`;
+  }
+
   function lineupsHtml(d) {
     if (!d.lineups.length) return '<div class="note">التشكيل بيتعلن عادةً قبل الماتش بساعة تقريبًا.</div>';
-    const pl = (p) => `<div class="pl"><span class="no">${esc(p.no ?? '')}</span><span>${esc(p.name)}</span></div>`;
-    return `<div class="lineups">${d.lineups.map((t) => `<div class="lu"><h4>${esc(t.name)}</h4>
-      <div class="meta">${t.formation ? 'خطة ' + esc(t.formation) : ''}${t.coach ? ' • المدرب: ' + esc(t.coach) : ''}</div>
-      ${t.xi.map(pl).join('')}${t.subs.length ? '<div class="sub-title">الاحتياطي</div>' + t.subs.map(pl).join('') : ''}</div>`).join('')}</div>`;
+    const pl = (p) => `<div class="pl"><span class="no">${esc(p.no ?? '')}</span><span>${esc(p.name)}</span>${p.in ? '<em class="in">دخل</em>' : ''}</div>`;
+    const benches = `<div class="lineups">${d.lineups.map((t) => `<div class="lu"><h4>${esc(t.name)}</h4>
+      ${t.coach ? `<div class="meta">المدرب: ${esc(t.coach)}</div>` : ''}
+      ${t.subs.length ? '<div class="sub-title">الاحتياطي</div>' + t.subs.map(pl).join('') : ''}</div>`).join('')}</div>`;
+    return pitchHtml(d) + benches;
   }
   function closeMatch() { $('#match').classList.add('hidden'); state.openId = null; clearTimeout(state.matchTimer); }
   $('#match').addEventListener('click', (e) => { if (e.target.id === 'match' || e.target.closest('[data-close]')) closeMatch(); });
