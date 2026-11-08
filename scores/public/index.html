@@ -41,6 +41,14 @@
 
     <!-- ===== الإعدادات ===== -->
     <main id="view-settings" class="view hidden">
+      <section class="card">
+        <h3>اللغة <small class="muted-s lang-alt" data-no-tr>Language</small></h3>
+        <div class="seg seg2c" id="lang">
+          <button type="button" data-v="ar" data-no-tr>العربية</button>
+          <button type="button" data-v="en" data-no-tr>English</button>
+        </div>
+      </section>
+
       <section id="welcome" class="card welcome hidden">
         <h2>أهلًا بيك في GOAL</h2>
         <p>النتايج شغالة على طول من غير أي إعداد: الدوريات الأوروبية وأفريقيا وآسيا والسعودي، لأي يوم.</p>
@@ -137,6 +145,7 @@
   </div>
 
   <div id="toasts" class="toasts" aria-live="polite"></div>
+  <script src="i18n.js"></script>
   <script src="app.js"></script>
 </body>
 </html>

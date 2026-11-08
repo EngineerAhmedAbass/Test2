@@ -268,3 +268,11 @@ tr.me td.tm span { color: var(--led); }
 #player-body > .sgrid { margin-bottom: 24px; }
 
 .sbox b { direction: ltr; unicode-bidi: isolate; }
+
+/* ---------- اللغة ---------- */
+.seg2c { grid-template-columns: 1fr 1fr; }
+[dir="ltr"] .tm-bar [data-close] svg { transform: scaleX(-1); }
+
+[dir="ltr"] .lang-alt { display: none; }
+#interval { grid-template-columns: repeat(5, 1fr); }
+#interval button { font-size: 12.5px; padding: 0 2px; }

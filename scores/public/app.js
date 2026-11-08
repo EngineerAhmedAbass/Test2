@@ -14,17 +14,17 @@
 
   // دوريات ESPN المتاحة (اتأكدت إنها شغالة)
   const ESPN_CATALOG = [
-    ['caf.champions', 'دوري أبطال أفريقيا'], ['caf.confed', 'الكونفدرالية الأفريقية'], ['uefa.champions', 'دوري أبطال أوروبا'],
-    ['eng.1', 'الدوري الإنجليزي'], ['esp.1', 'الدوري الإسباني'], ['ita.1', 'الدوري الإيطالي'], ['ger.1', 'الدوري الألماني'],
-    ['fra.1', 'الدوري الفرنسي'], ['ksa.1', 'الدوري السعودي'], ['uefa.europa', 'الدوري الأوروبي'], ['uefa.europa.conf', 'دوري المؤتمر الأوروبي'],
-    ['afc.champions', 'دوري أبطال آسيا'], ['caf.nations', 'كأس أمم أفريقيا'], ['fifa.world', 'كأس العالم'], ['fifa.worldq.caf', 'تصفيات كأس العالم — أفريقيا'],
-    ['fifa.cwc', 'كأس العالم للأندية'], ['fifa.friendly', 'مباريات ودية دولية'], ['eng.fa', 'كأس الاتحاد الإنجليزي'], ['eng.league_cup', 'كأس الرابطة الإنجليزية'],
-    ['esp.copa_del_rey', 'كأس ملك إسبانيا'], ['ita.coppa_italia', 'كأس إيطاليا'], ['eng.2', 'التشامبيونشيب'], ['ned.1', 'الدوري الهولندي'],
-    ['por.1', 'الدوري البرتغالي'], ['tur.1', 'الدوري التركي'], ['sco.1', 'الدوري الاسكتلندي'], ['bel.1', 'الدوري البلجيكي'],
-    ['usa.1', 'الدوري الأمريكي'], ['bra.1', 'الدوري البرازيلي'], ['arg.1', 'الدوري الأرجنتيني'], ['mex.1', 'الدوري المكسيكي'], ['rsa.1', 'دوري جنوب أفريقيا'],
+    ['caf.champions', tr("دوري أبطال أفريقيا")], ['caf.confed', tr("الكونفدرالية الأفريقية")], ['uefa.champions', tr("دوري أبطال أوروبا")],
+    ['eng.1', tr("الدوري الإنجليزي")], ['esp.1', tr("الدوري الإسباني")], ['ita.1', tr("الدوري الإيطالي")], ['ger.1', tr("الدوري الألماني")],
+    ['fra.1', tr("الدوري الفرنسي")], ['ksa.1', tr("الدوري السعودي")], ['uefa.europa', tr("الدوري الأوروبي")], ['uefa.europa.conf', tr("دوري المؤتمر الأوروبي")],
+    ['afc.champions', tr("دوري أبطال آسيا")], ['caf.nations', tr("كأس أمم أفريقيا")], ['fifa.world', tr("كأس العالم")], ['fifa.worldq.caf', tr("تصفيات كأس العالم — أفريقيا")],
+    ['fifa.cwc', tr("كأس العالم للأندية")], ['fifa.friendly', tr("مباريات ودية دولية")], ['eng.fa', tr("كأس الاتحاد الإنجليزي")], ['eng.league_cup', tr("كأس الرابطة الإنجليزية")],
+    ['esp.copa_del_rey', tr("كأس ملك إسبانيا")], ['ita.coppa_italia', tr("كأس إيطاليا")], ['eng.2', tr("التشامبيونشيب")], ['ned.1', tr("الدوري الهولندي")],
+    ['por.1', tr("الدوري البرتغالي")], ['tur.1', tr("الدوري التركي")], ['sco.1', tr("الدوري الاسكتلندي")], ['bel.1', tr("الدوري البلجيكي")],
+    ['usa.1', tr("الدوري الأمريكي")], ['bra.1', tr("الدوري البرازيلي")], ['arg.1', tr("الدوري الأرجنتيني")], ['mex.1', tr("الدوري المكسيكي")], ['rsa.1', tr("دوري جنوب أفريقيا")],
   ];
   const ESPN_AR = Object.fromEntries(ESPN_CATALOG);
-  const AF_AR = { 233: 'الدوري المصري', 714: 'كأس مصر', 539: 'كأس الرابطة المصرية', 12: 'دوري أبطال أفريقيا', 20: 'الكونفدرالية الأفريقية' };
+  const AF_AR = { 233: tr("الدوري المصري"), 714: tr("كأس مصر"), 539: tr("كأس الرابطة المصرية"), 12: tr("دوري أبطال أفريقيا"), 20: tr("الكونفدرالية الأفريقية") };
   // نفس البطولة في المصدرين: رقمها في API-Football ← اسمها في ESPN
   const AF_TO_ESPN = {
     39: 'eng.1', 140: 'esp.1', 135: 'ita.1', 78: 'ger.1', 61: 'fra.1', 2: 'uefa.champions', 3: 'uefa.europa', 848: 'uefa.europa.conf',
@@ -39,7 +39,7 @@
 
   const LIVE = new Set(['1H', 'HT', '2H', 'ET', 'BT', 'P', 'SUSP', 'INT', 'LIVE']);
   const DONE = new Set(['FT', 'AET', 'PEN', 'AWD', 'WO']);
-  const ST_TEXT = { HT: 'استراحة', BT: 'استراحة', P: 'ركلات ترجيح', FT: 'انتهت', AET: 'بعد الإضافي', PEN: 'بالترجيح', PST: 'اتأجلت', CANC: 'اتلغت', ABD: 'اتوقفت', SUSP: 'معلّقة', INT: 'متوقفة', TBD: 'لم يتحدد', AWD: 'قرار إداري', WO: 'انسحاب' };
+  const ST_TEXT = { HT: tr("استراحة"), BT: tr("استراحة"), P: tr("ركلات ترجيح"), FT: tr("انتهت"), AET: tr("بعد الإضافي"), PEN: tr("بالترجيح"), PST: tr("اتأجلت"), CANC: tr("اتلغت"), ABD: tr("اتوقفت"), SUSP: tr("معلّقة"), INT: tr("متوقفة"), TBD: tr("لم يتحدد"), AWD: tr("قرار إداري"), WO: tr("انسحاب") };
 
   // =====================================================================
   //                         الإعدادات والتخزين
@@ -84,7 +84,7 @@
   const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const debounce = (fn, ms) => { let t; return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms); }; };
   const imgTag = (src) => (src ? `<img src="${esc(src)}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.style.visibility='hidden'">` : '');
-  const fmtDay = (k) => { const [y, m, d] = k.split('-').map(Number); return new Date(y, m - 1, d).toLocaleDateString('ar-EG', { weekday: 'long', day: 'numeric', month: 'numeric' }); };
+  const fmtDay = (k) => { const [y, m, d] = k.split('-').map(Number); return new Date(y, m - 1, d).toLocaleDateString(LOC, { weekday: 'long', day: 'numeric', month: 'numeric' }); };
   function leagueName(l) {
     if (l.src === 'es' || l.slug) return ESPN_AR[l.slug] || l.name || l.slug;
     return AF_AR[l.id] || l.name;
@@ -134,8 +134,8 @@
   // =====================================================================
   async function espn(path) {
     let r;
-    try { r = await fetch(`${ESPN}/${path}`); } catch { throw new ApiErr('مفيش اتصال بالنت.', 'net'); }
-    if (!r.ok) throw new ApiErr(`ESPN رد بخطأ ${r.status}.`, 'net');
+    try { r = await fetch(`${ESPN}/${path}`); } catch { throw new ApiErr(tr("مفيش اتصال بالنت."), 'net'); }
+    if (!r.ok) throw new ApiErr(`ESPN ${tr("رد بخطأ")} ${r.status}.`, 'net');
     return r.json();
   }
   // ESPN بيقسّم الأيام بتوقيت أمريكا الشرقي، فيوم عندك ممكن يكون موزّع على يومين عندهم
@@ -200,14 +200,14 @@
     if (!e || (Array.isArray(e) && !e.length) || (typeof e === 'object' && !Object.keys(e).length)) return null;
     const [k, v] = Array.isArray(e) ? ['', typeof e[0] === 'string' ? e[0] : JSON.stringify(e[0])] : Object.entries(e)[0];
     const raw = String(v);
-    if (k === 'token' || /application key|api key|not subscribed|account/i.test(raw)) return new ApiErr('مفتاح API-Football غلط أو الحساب مش متفعّل — راجعه في الإعدادات.\n(' + raw + ')', 'key');
-    if (k === 'requests' || /request limit|limit for the day/i.test(raw)) { setQuota(0); return new ApiErr('خلصت طلبات API-Football النهارده. هتتجدد بكرة.', 'quota'); }
-    if (k === 'rateLimit' || /too many requests/i.test(raw)) return new ApiErr('طلبات كتير ورا بعض — استنى دقيقة.', 'rate');
+    if (k === 'token' || /application key|api key|not subscribed|account/i.test(raw)) return new ApiErr(tr("مفتاح API-Football غلط أو الحساب مش متفعّل — راجعه في الإعدادات.\n(") + raw + ')', 'key');
+    if (k === 'requests' || /request limit|limit for the day/i.test(raw)) { setQuota(0); return new ApiErr(tr("خلصت طلبات API-Football النهارده. هتتجدد بكرة."), 'quota'); }
+    if (k === 'rateLimit' || /too many requests/i.test(raw)) return new ApiErr(tr("طلبات كتير ورا بعض — استنى دقيقة."), 'rate');
     if (k === 'plan' || /plan/i.test(raw)) {
       const days = raw.match(/from (\d{4}-\d{2}-\d{2}) to (\d{4}-\d{2}-\d{2})/);
-      if (days) { setRange(days[1], days[2]); return new ApiErr(`الخطة المجانية بتعرض ${fmtDay(days[1])} لحد ${fmtDay(days[2])} بس.`, 'range'); }
+      if (days) { setRange(days[1], days[2]); return new ApiErr(`${tr("الخطة المجانية بتعرض")} ${fmtDay(days[1])} ${tr("لحد")} ${fmtDay(days[2])} ${tr("بس")}.`, 'range'); }
       const seasons = raw.match(/from (\d{4}) to (\d{4})/);
-      const er = new ApiErr('الخطة المجانية مش بتغطي الطلب ده:\n' + raw, 'plan');
+      const er = new ApiErr(tr("الخطة المجانية مش بتغطي الطلب ده:\n") + raw, 'plan');
       if (seasons) er.seasons = [Number(seasons[1]), Number(seasons[2])];
       return er;
     }
@@ -229,8 +229,8 @@
     const el = $('#quota');
     if (!cfg.key || !q || q.day !== today()) { el.classList.add('hidden'); return; }
     el.classList.remove('hidden');
-    el.textContent = `${q.rem} / ${q.lim} طلب`;
-    el.title = 'طلبات API-Football الباقية النهارده (للدوري المصري)';
+    el.textContent = `${q.rem} / ${q.lim} ${tr("طلب")}`;
+    el.title = tr("طلبات API-Football الباقية النهارده (للدوري المصري)");
     el.classList.toggle('low', q.rem > 0 && q.rem < 25);
     el.classList.toggle('out', q.rem <= 0);
   }
@@ -241,17 +241,17 @@
     const ck = ep + '?' + qs;
     if (inflight.has(ck)) return inflight.get(ck);
     const p = (async () => {
-      if (!cfg.key) throw new ApiErr('محتاج مفتاح API-Football من الإعدادات.', 'nokey');
+      if (!cfg.key) throw new ApiErr(tr("محتاج مفتاح API-Football من الإعدادات."), 'nokey');
       let r;
       try { r = await fetch(`/api/football/${ep}?${qs}${qs ? '&' : ''}_k=${encodeURIComponent(cfg.key)}`); }
-      catch { throw new ApiErr('مفيش اتصال بالنت.', 'net'); }
+      catch { throw new ApiErr(tr("مفيش اتصال بالنت."), 'net'); }
       const rem = r.headers.get('x-ratelimit-requests-remaining');
       if (rem != null && rem !== '') setQuota(rem, r.headers.get('x-ratelimit-requests-limit'));
       let j;
-      try { j = await r.json(); } catch { throw new ApiErr(`رد غير متوقع من API-Football (${r.status}).`, 'net'); }
+      try { j = await r.json(); } catch { throw new ApiErr(`${tr("رد غير متوقع من")} API-Football (${r.status}).`, 'net'); }
       const err = afError(j);
       if (err) throw err;
-      if (!r.ok) throw new ApiErr(`API-Football رد بخطأ ${r.status}.`, 'net');
+      if (!r.ok) throw new ApiErr(`API-Football ${tr("رد بخطأ")} ${r.status}.`, 'net');
       return j.response;
     })();
     inflight.set(ck, p);
@@ -313,13 +313,13 @@
     $('#refresh').classList.remove('spin');
     if (state.date !== date) return;
     if (!list.length && slugs.length && errors.length === slugs.length) { showError(box, errors[0]); return; }
-    if (errors.length) toast(`${errors.length} دوري ماتحمّلش — ${errors[0].message}`);
+    if (errors.length) toast(`${errors.length} ${tr("دوري ماتحمّلش")} — ${errors[0].message}`);
     renderMatches();
     scheduleLive();
   }
 
   function showError(box, e) {
-    box.innerHTML = `<div class="empty"><h4>حصلت مشكلة</h4><div style="white-space:pre-line">${esc(e.message)}</div><button class="btn" data-retry type="button">جرّب تاني</button></div>`;
+    box.innerHTML = `<div class="empty"><h4>${tr("حصلت مشكلة")}</h4><div style="white-space:pre-line">${esc(e.message)}</div><button class="btn" data-retry type="button">${tr("جرّب تاني")}</button></div>`;
     $('[data-retry]', box).onclick = () => loadDay(state.date, true);
   }
 
@@ -334,7 +334,7 @@
       b.type = 'button';
       b.className = 'date' + (k === state.date ? ' active' : '');
       b.setAttribute('role', 'tab');
-      const label = i === 0 ? 'النهارده' : i === -1 ? 'امبارح' : i === 1 ? 'بكرة' : d.toLocaleDateString('ar-EG', { weekday: 'short' });
+      const label = i === 0 ? tr("النهارده") : i === -1 ? tr("امبارح") : i === 1 ? tr("بكرة") : d.toLocaleDateString(LOC, { weekday: 'short' });
       b.innerHTML = `<b>${label}</b><small>${d.getDate()}/${d.getMonth() + 1}</small>`;
       b.onclick = () => { state.date = k; renderDates(); loadDay(k); };
       box.appendChild(b);
@@ -369,7 +369,7 @@
     const day = state.days.get(state.date);
     if (!day) return;
     const list = visibleFixtures();
-    $('#updated').textContent = state.date === today() ? `اتحدّث ${hhmm(Math.max(day.t, state.lastEs))}` : '';
+    $('#updated').textContent = state.date === today() ? `${tr("اتحدّث")} ${hhmm(Math.max(day.t, state.lastEs))}` : '';
     const order = new Map(cfg.leagues.map((l, i) => [lkey(l), i]));
     const groups = new Map();
     for (const f of list) {
@@ -380,11 +380,11 @@
     const afLeague = cfg.leagues.find((l) => l.src === 'af');
     const notesHtml = day.notes.length && afLeague && state.filter !== 'live'
       ? day.notes.map((n) => `<section class="league"><div class="league-head">${imgTag(afLeague.logo)}<div><div class="nm">${esc(leagueName(afLeague))}</div></div></div>
-          <div class="league-note">${n.kind === 'range' ? 'الخطة المجانية بتاعة API-Football بتعرض الدوري المصري لامبارح والنهارده وبكرة بس.' : esc(n.msg)}</div></section>`).join('')
+          <div class="league-note">${n.kind === 'range' ? tr("الخطة المجانية بتاعة API-Football بتعرض الدوري المصري لامبارح والنهارده وبكرة بس.") : esc(n.msg)}</div></section>`).join('')
       : '';
     if (!list.length) {
-      const msg = state.filter === 'live' ? 'مفيش ماتشات شغالة دلوقتي' : state.filter === 'mine' ? 'مفيش ماتشات لدورياتك في اليوم ده' : 'مفيش ماتشات في اليوم ده';
-      box.innerHTML = notesHtml + `<div class="empty"><h4>${msg}</h4>${state.filter === 'mine' ? '<button class="btn" data-all type="button">اعرض كل الدوريات</button>' : ''}</div>`;
+      const msg = state.filter === 'live' ? tr("مفيش ماتشات شغالة دلوقتي") : state.filter === 'mine' ? tr("مفيش ماتشات لدورياتك في اليوم ده") : tr("مفيش ماتشات في اليوم ده");
+      box.innerHTML = notesHtml + `<div class="empty"><h4>${msg}</h4>${state.filter === 'mine' ? `<button class="btn" data-all type="button">${tr("اعرض كل الدوريات")}</button>` : ''}</div>`;
       $('[data-all]', box)?.addEventListener('click', () => $('.filters .chip[data-filter=all]').click());
       return;
     }
@@ -398,9 +398,9 @@
     for (const g of sorted) {
       g.items.sort((a, b) => a.ts - b.ts || String(a.id).localeCompare(String(b.id)));
       const rounds = [...new Set(g.items.map((f) => f.lg.round))];
-      html += `<section class="league"><button type="button" class="league-head" data-lg="${esc(g.lg.key)}" aria-label="ترتيب ${esc(leagueName(g.lg))}">${imgTag(g.lg.logo)}<div><div class="nm">${esc(leagueName(g.lg))}</div>${g.lg.country ? `<div class="ct">${esc(g.lg.country)}</div>` : ''}</div>
+      html += `<section class="league"><button type="button" class="league-head" data-lg="${esc(g.lg.key)}" aria-label="${tr("ترتيب")} ${esc(leagueName(g.lg))}">${imgTag(g.lg.logo)}<div><div class="nm">${esc(leagueName(g.lg))}</div>${g.lg.country ? `<div class="ct">${esc(g.lg.country)}</div>` : ''}</div>
         <span class="round">${rounds.length === 1 ? esc(roundName(rounds[0])) : ''}</span>
-        <span class="to-table"><svg viewBox="0 0 24 24"><path d="M8 4h8v5a4 4 0 0 1-8 0z"/><path d="M12 13v4M9 20h6"/></svg>الترتيب</span></button>`;
+        <span class="to-table"><svg viewBox="0 0 24 24"><path d="M8 4h8v5a4 4 0 0 1-8 0z"/><path d="M12 13v4M9 20h6"/></svg>${tr("الترتيب")}</span></button>`;
       for (const f of g.items) html += matchRow(f, T.has(f.h.key) || T.has(f.a.key));
       html += '</section>';
     }
@@ -411,16 +411,17 @@
   }
 
   function roundName(r) {
-    return String(r || '').replace(/Regular Season - (\d+)/, 'الجولة $1').replace(/Group Stage - (\d+)/, 'دور المجموعات — الجولة $1')
-      .replace('Round of 16', 'دور الـ16').replace('Quarter-finals', 'ربع النهائي').replace('Semi-finals', 'نص النهائي').replace(/^Final$/, 'النهائي');
+    return String(r || '').replace(/Regular Season - (\d+)/, tr("الجولة $1")).replace(/Group Stage - (\d+)/, tr("دور المجموعات — الجولة $1"))
+      .replace('Round of 16', tr("دور الـ16")).replace('Quarter-finals', tr("ربع النهائي")).replace('Semi-finals', tr("نص النهائي")).replace(/^Final$/, tr("النهائي"));
   }
   function statusText(f) {
     if (f.st === 'LIVE' && f.clock) return `<span dir="ltr">${esc(f.clock)}</span>`;
-    if (LIVE.has(f.st) && !ST_TEXT[f.st]) return f.el != null ? `<span dir="ltr">${f.el}${f.ex ? '+' + f.ex : ''}'</span>` : 'مباشر';
+    if (LIVE.has(f.st) && !ST_TEXT[f.st]) return f.el != null ? `<span dir="ltr">${f.el}${f.ex ? '+' + f.ex : ''}'</span>` : tr("مباشر");
     return ST_TEXT[f.st] || '';
   }
   // الصفحة يمين-لشمال: صاحب الأرض يمين والضيف شمال، فبنكتب "الضيف - صاحب الأرض" من الشمال لليمين
-  const scoreTxt = (p) => `<span dir="ltr">${p[1]} - ${p[0]}</span>`;
+  // بالإنجليزي (شمال لليمين) صاحب الأرض على الشمال، فالترتيب بيتعكس
+  const scoreTxt = (p) => (RTL ? `<span dir="ltr">${p[1]} - ${p[0]}</span>` : `<span dir="ltr">${p[0]} - ${p[1]}</span>`);
   const hasScore = (f) => f.g[0] != null && f.st !== 'NS' && f.st !== 'PST' && f.st !== 'CANC';
   function matchRow(f, fav) {
     const live = LIVE.has(f.st);
@@ -520,7 +521,7 @@
       if (!o || o.g[0] == null || f.g[0] == null) continue;
       if (!(f.g[0] > o.g[0] || f.g[1] > o.g[1])) continue;
       if (!L.has(f.lg.key) && !T.has(f.h.key) && !T.has(f.a.key)) continue;
-      toast(`جوووول! \u2066${f.h.name} ${f.g[0]} - ${f.g[1]} ${f.a.name}\u2069`, 'goal');
+      toast(`${tr("جوووول")}! \u2066${f.h.name} ${f.g[0]} - ${f.g[1]} ${f.a.name}\u2069`, 'goal');
       $(`.match[data-id="${CSS.escape(f.id)}"]`)?.classList.add('flash');
       if (navigator.vibrate) navigator.vibrate([120, 60, 120]);
     }
@@ -547,7 +548,7 @@
     const body = $('#match-body');
     let base = findFixture(id);
     if (!silent) {
-      body.innerHTML = (base ? header(base) : '') + '<div class="note">جاري تحميل التفاصيل...</div>';
+      body.innerHTML = (base ? header(base) : '') + `<div class="note">${tr("جاري تحميل التفاصيل")}...</div>`;
       bindStars(body);
     }
     const live = base && LIVE.has(base.st);
@@ -561,7 +562,7 @@
       } else {
         const fid = id.slice(3);
         const resp = await cached('af.fx.' + fid, ttl, () => af('fixtures', { id: fid }), { persist: !live, force: !!silent });
-        if (!resp[0]) throw new ApiErr('الماتش ده مش موجود.');
+        if (!resp[0]) throw new ApiErr(tr("الماتش ده مش موجود."));
         detail = afDetail(resp[0]);
       }
       if (state.openId !== id) return;
@@ -579,10 +580,10 @@
   // ---- ESPN → شكل موحّد ----
   const pctFmt = (v) => { const n = parseFloat(v) || 0; return `${Math.round(n <= 1 ? n * 100 : n)}%`; };
   const ES_STAT = [
-    ['possessionPct', 'الاستحواذ', pctFmt], ['totalShots', 'التسديدات'], ['shotsOnTarget', 'على المرمى'],
-    ['wonCorners', 'الركنيات'], ['foulsCommitted', 'الأخطاء'], ['offsides', 'التسلل'], ['yellowCards', 'إنذارات'], ['redCards', 'طرد'],
-    ['saves', 'تصديات الحارس'], ['totalPasses', 'التمريرات'], ['passPct', 'دقة التمرير', pctFmt],
-    ['totalTackles', 'الالتحامات'], ['interceptions', 'قطع الكورة'],
+    ['possessionPct', tr("الاستحواذ"), pctFmt], ['totalShots', tr("التسديدات")], ['shotsOnTarget', tr("على المرمى")],
+    ['wonCorners', tr("الركنيات")], ['foulsCommitted', tr("الأخطاء")], ['offsides', tr("التسلل")], ['yellowCards', tr("إنذارات")], ['redCards', tr("طرد")],
+    ['saves', tr("تصديات الحارس")], ['totalPasses', tr("التمريرات")], ['passPct', tr("دقة التمرير"), pctFmt],
+    ['totalTackles', tr("الالتحامات")], ['interceptions', tr("قطع الكورة")],
   ];
   function espnDetail(j, slug, base) {
     const comp = j.header?.competitions?.[0];
@@ -597,15 +598,15 @@
       const side = k.team?.id === homeId ? 'h' : 'a';
       const names = (k.participants || []).map((p) => p.athlete?.displayName).filter(Boolean);
       const min = k.clock?.displayValue || '';
-      if (t === 'halftime') { events.push({ sep: 'الاستراحة' }); continue; }
-      if (/missed|saved/.test(t)) events.push({ min, side, kind: 'miss', title: names[0] || '', sub: 'ضيّع ضربة جزاء' });
+      if (t === 'halftime') { events.push({ sep: tr("الاستراحة") }); continue; }
+      if (/missed|saved/.test(t)) events.push({ min, side, kind: 'miss', title: names[0] || '', sub: tr("ضيّع ضربة جزاء") });
       else if (/goal|penalty---scored/.test(t)) {
         const own = /own/.test(t);
         const pen = /penalty/.test(t);
-        events.push({ min, side, kind: 'goal', title: names[0] || '', sub: own ? 'في مرماه' : pen ? 'ضربة جزاء' : names[1] ? 'صناعة: ' + names[1] : '' });
-      } else if (t === 'yellow-card') events.push({ min, side, kind: 'yc', title: names[0] || '', sub: 'إنذار' });
-      else if (/red-card/.test(t)) events.push({ min, side, kind: 'rc', title: names[0] || '', sub: 'طرد' });
-      else if (t === 'substitution') events.push({ min, side, kind: 'sub', title: 'دخل: ' + (names[0] || ''), sub: 'خرج: ' + (names[1] || '') });
+        events.push({ min, side, kind: 'goal', title: names[0] || '', sub: own ? tr("في مرماه") : pen ? tr("ضربة جزاء") : names[1] ? tr("صناعة: ") + names[1] : '' });
+      } else if (t === 'yellow-card') events.push({ min, side, kind: 'yc', title: names[0] || '', sub: tr("إنذار") });
+      else if (/red-card/.test(t)) events.push({ min, side, kind: 'rc', title: names[0] || '', sub: tr("طرد") });
+      else if (t === 'substitution') events.push({ min, side, kind: 'sub', title: tr("دخل: ") + (names[0] || ''), sub: tr("خرج: ") + (names[1] || '') });
     }
     const teams = j.boxscore?.teams || [];
     const ht = teams.find((t) => t.team?.id === homeId) || teams[0];
@@ -636,9 +637,9 @@
 
   // ---- API-Football → شكل موحّد ----
   const AF_STAT = {
-    'Ball Possession': 'الاستحواذ', 'Total Shots': 'التسديدات', 'Shots on Goal': 'على المرمى', 'Corner Kicks': 'الركنيات', Fouls: 'الأخطاء',
-    Offsides: 'التسلل', 'Yellow Cards': 'إنذارات', 'Red Cards': 'طرد', 'Goalkeeper Saves': 'تصديات الحارس', 'Total passes': 'التمريرات',
-    'Passes %': 'دقة التمرير', expected_goals: 'الأهداف المتوقعة (xG)', 'Shots off Goal': 'خارج المرمى', 'Blocked Shots': 'تسديدات اتصدت',
+    'Ball Possession': tr("الاستحواذ"), 'Total Shots': tr("التسديدات"), 'Shots on Goal': tr("على المرمى"), 'Corner Kicks': tr("الركنيات"), Fouls: tr("الأخطاء"),
+    Offsides: tr("التسلل"), 'Yellow Cards': tr("إنذارات"), 'Red Cards': tr("طرد"), 'Goalkeeper Saves': tr("تصديات الحارس"), 'Total passes': tr("التمريرات"),
+    'Passes %': tr("دقة التمرير"), expected_goals: tr("الأهداف المتوقعة (xG)"), 'Shots off Goal': tr("خارج المرمى"), 'Blocked Shots': tr("تسديدات اتصدت"),
   };
   function afDetail(f) {
     const fx = afCompact(f);
@@ -646,16 +647,16 @@
     const events = [];
     let ht = false;
     for (const e of f.events || []) {
-      if (!ht && e.time.elapsed > 45 && !e.time.extra) { events.push({ sep: 'الشوط التاني' }); ht = true; }
+      if (!ht && e.time.elapsed > 45 && !e.time.extra) { events.push({ sep: tr("الشوط التاني") }); ht = true; }
       const side = e.team?.id === homeId ? 'h' : 'a';
       const min = `${e.time.elapsed}${e.time.extra ? '+' + e.time.extra : ''}'`;
       const name = e.player?.name || '';
       if (e.type === 'Goal') {
-        if (e.detail === 'Missed Penalty') events.push({ min, side, kind: 'miss', title: name, sub: 'ضيّع ضربة جزاء' });
-        else events.push({ min, side, kind: 'goal', title: name, sub: e.detail === 'Own Goal' ? 'في مرماه' : e.detail === 'Penalty' ? 'ضربة جزاء' : e.assist?.name ? 'صناعة: ' + e.assist.name : '' });
-      } else if (e.type === 'Card') events.push({ min, side, kind: /red|second/i.test(e.detail) ? 'rc' : 'yc', title: name, sub: /second/i.test(e.detail) ? 'إنذار تاني' : /red/i.test(e.detail) ? 'طرد' : 'إنذار' });
-      else if (e.type === 'subst') events.push({ min, side, kind: 'sub', title: name, sub: 'تبديل مع ' + (e.assist?.name || '') });
-      else if (e.type === 'Var') events.push({ min, side, kind: 'var', title: name, sub: e.detail || 'فار' });
+        if (e.detail === 'Missed Penalty') events.push({ min, side, kind: 'miss', title: name, sub: tr("ضيّع ضربة جزاء") });
+        else events.push({ min, side, kind: 'goal', title: name, sub: e.detail === 'Own Goal' ? tr("في مرماه") : e.detail === 'Penalty' ? tr("ضربة جزاء") : e.assist?.name ? tr("صناعة: ") + e.assist.name : '' });
+      } else if (e.type === 'Card') events.push({ min, side, kind: /red|second/i.test(e.detail) ? 'rc' : 'yc', title: name, sub: /second/i.test(e.detail) ? tr("إنذار تاني") : /red/i.test(e.detail) ? tr("طرد") : tr("إنذار") });
+      else if (e.type === 'subst') events.push({ min, side, kind: 'sub', title: name, sub: tr("تبديل مع ") + (e.assist?.name || '') });
+      else if (e.type === 'Var') events.push({ min, side, kind: 'var', title: name, sub: e.detail || tr("فار") });
     }
     const s = f.statistics || [];
     const stats = [];
@@ -684,17 +685,17 @@
   function header(c) {
     const T = teamKeys();
     const live = LIVE.has(c.st);
-    const star = (t) => `<button type="button" class="star${T.has(t.key) ? ' on' : ''}" data-team="${esc(JSON.stringify({ key: t.key, name: t.name, logo: t.logo }))}" aria-label="فريق مفضل"><svg viewBox="0 0 24 24"><path d="M12 3.5l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.9l-5.2 2.7 1-5.8-4.3-4.1 5.9-.9z"/></svg></button>`;
+    const star = (t) => `<button type="button" class="star${T.has(t.key) ? ' on' : ''}" data-team="${esc(JSON.stringify({ key: t.key, name: t.name, logo: t.logo }))}" aria-label="${tr("فريق مفضل")}"><svg viewBox="0 0 24 24"><path d="M12 3.5l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.9l-5.2 2.7 1-5.8-4.3-4.1 5.9-.9z"/></svg></button>`;
     return `<div class="mh">
       <div class="lg">${imgTag(c.lg.logo)}<span>${esc(leagueName(c.lg))}${c.lg.round ? ' • ' + esc(roundName(c.lg.round)) : ''}</span></div>
       <div class="mh-row">
         <div class="mh-team">${teamLink(c.h, c.slug, `${imgTag(c.h.logo)}<span>${esc(c.h.name)}</span>`)}${star(c.h)}</div>
         <div>${hasScore(c) ? `<div class="mh-score">${scoreTxt(c.g)}</div>` : `<div class="mh-time">${hhmm(c.ts)}</div>`}
-          ${c.pen[0] != null ? `<div class="pen">ترجيح (${scoreTxt(c.pen)})</div>` : ''}
-          <div class="mh-st${live ? ' live' : ''}">${statusText(c) || new Date(c.ts).toLocaleDateString('ar-EG', { weekday: 'long', day: 'numeric', month: 'long' })}</div></div>
+          ${c.pen[0] != null ? `<div class="pen">${tr("ترجيح")} (${scoreTxt(c.pen)})</div>` : ''}
+          <div class="mh-st${live ? ' live' : ''}">${statusText(c) || new Date(c.ts).toLocaleDateString(LOC, { weekday: 'long', day: 'numeric', month: 'long' })}</div></div>
         <div class="mh-team">${teamLink(c.a, c.slug, `${imgTag(c.a.logo)}<span>${esc(c.a.name)}</span>`)}${star(c.a)}</div>
       </div>
-      <div class="mh-meta">${[c.ven, c.city].filter(Boolean).map(esc).join('، ')}${c.ref ? ' • الحكم: ' + esc(c.ref) : ''}</div>
+      <div class="mh-meta">${[c.ven, c.city].filter(Boolean).map(esc).join(tr("، "))}${c.ref ? tr(" • الحكم: ") + esc(c.ref) : ''}</div>
     </div>`;
   }
   function bindStars(root) {
@@ -705,7 +706,7 @@
         cfg.teams = has ? cfg.teams.filter((x) => x.key !== t.key) : [...cfg.teams, t];
         saveCfg();
         b.classList.toggle('on', !has);
-        toast(has ? `${t.name} اتشال من فرقك` : `${t.name} اتضاف لفرقك`);
+        toast(has ? `${t.name} ${tr("اتشال من فرقك")}` : `${t.name} ${tr("اتضاف لفرقك")}`);
         renderMatches();
         renderTeams();
       };
@@ -715,7 +716,7 @@
   let matchTab = 'events';
   function renderMatch(d) {
     const body = $('#match-body');
-    const tabs = [['events', 'الأحداث'], ['stats', 'الإحصائيات'], ['lineups', 'التشكيل']];
+    const tabs = [['events', tr("الأحداث")], ['stats', tr("الإحصائيات")], ['lineups', tr("التشكيل")]];
     body.innerHTML = header(d.fx) + `<div class="tabs">${tabs.map(([k, l]) => `<button type="button" class="tab${k === matchTab ? ' active' : ''}" data-tab="${k}">${l}</button>`).join('')}</div><div class="pane"></div>`;
     bindStars(body);
     const pane = $('.pane', body);
@@ -733,7 +734,7 @@
     miss: '<span class="ic var">X</span>', var: '<span class="ic var">VAR</span>',
   };
   function eventsHtml(d) {
-    if (!d.events.filter((e) => !e.sep).length) return `<div class="note">${d.notStarted ? 'الماتش لسه مابدأش.' : 'مفيش أحداث متسجلة.'}</div>`;
+    if (!d.events.filter((e) => !e.sep).length) return `<div class="note">${d.notStarted ? tr("الماتش لسه مابدأش.") : tr("مفيش أحداث متسجلة.")}</div>`;
     return d.events.map((e) => {
       if (e.sep) return `<div class="ht-sep">— ${esc(e.sep)} —</div>`;
       const side = `<div class="side${e.side === 'h' ? '' : ' away'}">${IC[e.kind] || ''}<div class="who"><b>${esc(e.title)}</b><small>${esc(e.sub)}</small></div></div>`;
@@ -741,7 +742,7 @@
     }).join('');
   }
   function statsHtml(d) {
-    if (!d.stats.length) return `<div class="note">${d.notStarted ? 'الإحصائيات بتظهر لما الماتش يبدأ.' : 'مفيش إحصائيات للماتش ده.'}</div>`;
+    if (!d.stats.length) return `<div class="note">${d.notStarted ? tr("الإحصائيات بتظهر لما الماتش يبدأ.") : tr("مفيش إحصائيات للماتش ده.")}</div>`;
     return d.stats.map((s) => {
       const tot = s.hv + s.av || 1;
       return `<div class="stat"><div class="stat-top"><span>${esc(s.h)}</span><span>${esc(s.label)}</span><span>${esc(s.a)}</span></div>
@@ -841,13 +842,13 @@
         if (!isHome) x = 100 - x; // الفريق اللي فوق بيبص للناحية التانية
         const gk = i === 0;
         return `<div class="pp${p.id ? ' tap' : ''}"${p.id ? ` data-pid="${esc(p.id)}" data-tid="${esc(t.tid || '')}" data-slug="${esc(t.slug || '')}" role="button" tabindex="0"` : ''} style="left:${x.toFixed(1)}%;top:${y.toFixed(1)}%">
-          <span class="shirt">${jersey(gk ? k.gk : k.body, gk ? k.gkTrim : k.trim, gk ? k.gkNum : k.num, p.no)}${p.out ? '<i class="out" title="خرج"></i>' : ''}</span>
+          <span class="shirt">${jersey(gk ? k.gk : k.body, gk ? k.gkTrim : k.trim, gk ? k.gkNum : k.num, p.no)}${p.out ? `<i class="out" title="${tr("خرج")}"></i>` : ''}</span>
           <span class="pn">${esc(shortName(p))}</span></div>`;
       }).join('')).join('');
     };
     const sw = (k) => `<i class="sw" style="background:${k.body};border-color:${k.trim}"></i>`;
     return `<div class="pitch-head"><span>${away ? sw(ak) : ''}${esc(away?.name || '')}</span><b>${esc(away?.formation || '')}</b></div>
-      <div class="pitch" role="img" aria-label="التشكيل على الملعب">
+      <div class="pitch" role="img" aria-label="${tr("التشكيل على الملعب")}">
         <div class="pl-line half"></div><div class="pl-circle"></div><div class="pl-spot"></div>
         <div class="pl-box at-top"></div><div class="pl-box6 at-top"></div><div class="pl-box at-bot"></div><div class="pl-box6 at-bot"></div>
         ${away ? place(away, ak, false) : ''}${place(home, hk, true)}
@@ -856,11 +857,11 @@
   }
 
   function lineupsHtml(d) {
-    if (!d.lineups.length) return '<div class="note">التشكيل بيتعلن عادةً قبل الماتش بساعة تقريبًا.</div>';
-    const pl = (p) => `<div class="pl${p.id ? ' tap' : ''}"${p.id ? ` data-pid="${esc(p.id)}" role="button" tabindex="0"` : ''}><span class="no">${esc(p.no ?? '')}</span><span>${esc(p.name)}</span>${p.in ? '<em class="in">دخل</em>' : ''}</div>`;
+    if (!d.lineups.length) return `<div class="note">${tr("التشكيل بيتعلن عادةً قبل الماتش بساعة تقريبًا")}.</div>`;
+    const pl = (p) => `<div class="pl${p.id ? ' tap' : ''}"${p.id ? ` data-pid="${esc(p.id)}" role="button" tabindex="0"` : ''}><span class="no">${esc(p.no ?? '')}</span><span>${esc(p.name)}</span>${p.in ? `<em class="in">${tr("دخل")}</em>` : ''}</div>`;
     const benches = `<div class="lineups">${d.lineups.map((t) => `<div class="lu"><h4>${esc(t.name)}</h4>
-      ${t.coach ? `<div class="meta">المدرب: ${esc(t.coach)}</div>` : ''}
-      ${t.subs.length ? '<div class="sub-title">الاحتياطي</div>' + t.subs.map(pl).join('') : ''}</div>`).join('')}</div>`;
+      ${t.coach ? `<div class="meta">${tr("المدرب")}: ${esc(t.coach)}</div>` : ''}
+      ${t.subs.length ? `<div class="sub-title">${tr("الاحتياطي")}</div>` + t.subs.map(pl).join('') : ''}</div>`).join('')}</div>`;
     return pitchHtml(d) + benches;
   }
   function closeMatch() { $('#match').classList.add('hidden'); state.openId = null; clearTimeout(state.matchTimer); }
@@ -888,7 +889,7 @@
   async function loadTable(force = false) {
     const key = cfg.tableLeague;
     const box = $('#table');
-    if (!key) { box.innerHTML = '<div class="empty"><h4>مفيش دوريات</h4><div>ضيف دوري من الإعدادات.</div></div>'; return; }
+    if (!key) { box.innerHTML = `<div class="empty"><h4>${tr("مفيش دوريات")}</h4><div>${tr("ضيف دوري من الإعدادات")}.</div></div>`; return; }
     const l = cfg.leagues.find((x) => lkey(x) === key);
     $('#refresh').classList.add('spin');
     await fillTable(l, box, { force, alive: () => cfg.tableLeague === key && state.view === 'table' });
@@ -906,13 +907,13 @@
         const j = await cached(`es.table.${l.slug}`, 3600000, () => espn(`v2/sports/soccer/${l.slug}/standings`), { force });
         table = espnTable({ ...j, __slug: l.slug });
       } else {
-        if (!cfg.key) throw new ApiErr('ترتيب الدوري ده محتاج مفتاح API-Football من الإعدادات.', 'nokey');
+        if (!cfg.key) throw new ApiErr(tr("ترتيب الدوري ده محتاج مفتاح API-Football من الإعدادات."), 'nokey');
         const season = seasonOverride || await cached('af.season.' + l.id, 7 * 86400000, async () => {
           const r = await af('leagues', { id: l.id, current: 'true' });
           const s = r[0]?.seasons?.find((x) => x.current) || r[0]?.seasons?.slice(-1)[0];
           return s ? s.year : null;
         });
-        if (!season) throw new ApiErr('مالقيتش موسم حالي للبطولة دي.');
+        if (!season) throw new ApiErr(tr("مالقيتش موسم حالي للبطولة دي."));
         const data = await cached(`af.table.${l.id}.${season}`, 3 * 3600000, () => af('standings', { league: l.id, season }), { force });
         table = afTable(data, season);
       }
@@ -921,10 +922,10 @@
       if (!alive()) return;
       if (e.seasons) {
         const last = e.seasons[1];
-        box.innerHTML = `<div class="empty"><h4>الموسم الحالي مش متاح في الخطة المجانية</h4><div>API-Football المجاني بيعرض مواسم ${e.seasons[0]} لحد ${last} بس.</div>
-          <button class="btn" data-season type="button">اعرض ترتيب موسم ${last}/${last + 1}</button></div>`;
+        box.innerHTML = `<div class="empty"><h4>${tr("الموسم الحالي مش متاح في الخطة المجانية")}</h4><div>API-Football ${tr("المجاني بيعرض مواسم")} ${e.seasons[0]} ${tr("لحد")} ${last} ${tr("بس")}.</div>
+          <button class="btn" data-season type="button">${tr("اعرض ترتيب موسم")} ${last}/${last + 1}</button></div>`;
         $('[data-season]', box).onclick = () => fillTable(l, box, { season: last, alive });
-      } else box.innerHTML = `<div class="empty"><h4>حصلت مشكلة</h4><div style="white-space:pre-line">${esc(e.message)}</div></div>`;
+      } else box.innerHTML = `<div class="empty"><h4>${tr("حصلت مشكلة")}</h4><div style="white-space:pre-line">${esc(e.message)}</div></div>`;
     }
   }
 
@@ -947,7 +948,7 @@
   function espnTable(j) {
     const kids = j.children?.length ? j.children : j.standings ? [j] : [];
     const groups = kids.map((c) => ({
-      title: kids.length > 1 ? String(c.name || '').replace(/^.* - /, '').replace('Group', 'مجموعة') : '',
+      title: kids.length > 1 ? String(c.name || '').replace(/^.* - /, '').replace('Group', tr("مجموعة")) : '',
       rows: (c.standings?.entries || []).map((e) => {
         const st = Object.fromEntries((e.stats || []).map((s) => [s.name, s.value ?? s.displayValue]));
         return {
@@ -959,9 +960,9 @@
     })).filter((g) => g.rows.length);
     return { groups, season: j.children?.[0]?.standings?.seasonDisplayName || j.season?.displayName || '', slug: j.__slug };
   }
-  const ZONE_AR = [[/champions league qualif/i, 'تصفيات دوري الأبطال'], [/champions league/i, 'دوري الأبطال'], [/europa league qualif/i, 'تصفيات الدوري الأوروبي'], [/europa league/i, 'الدوري الأوروبي'],
-    [/conference league qualif/i, 'تصفيات دوري المؤتمر'], [/conference league/i, 'دوري المؤتمر'], [/relegation play/i, 'ملحق الهبوط'], [/relegation/i, 'هبوط'],
-    [/promotion play/i, 'ملحق الصعود'], [/promotion/i, 'صعود'], [/knockout|next round|qualif/i, 'التأهل للدور الجاي']];
+  const ZONE_AR = [[/champions league qualif/i, tr("تصفيات دوري الأبطال")], [/champions league/i, tr("دوري الأبطال")], [/europa league qualif/i, tr("تصفيات الدوري الأوروبي")], [/europa league/i, tr("الدوري الأوروبي")],
+    [/conference league qualif/i, tr("تصفيات دوري المؤتمر")], [/conference league/i, tr("دوري المؤتمر")], [/relegation play/i, tr("ملحق الهبوط")], [/relegation/i, tr("هبوط")],
+    [/promotion play/i, tr("ملحق الصعود")], [/promotion/i, tr("صعود")], [/knockout|next round|qualif/i, tr("التأهل للدور الجاي")]];
   const zoneAr = (d) => { for (const [re, ar] of ZONE_AR) if (re.test(d || '')) return ar; return d; };
   function afZone(desc) {
     if (!desc) return null;
@@ -971,27 +972,27 @@
   }
   function afTable(data, season) {
     const groups = (data?.[0]?.league?.standings || []).map((g) => ({
-      title: String(g[0]?.group || '').replace('Group', 'مجموعة'),
+      title: String(g[0]?.group || '').replace('Group', tr("مجموعة")),
       rows: g.map((r) => ({
         rank: r.rank, team: { key: 'af:' + r.team.id, name: r.team.name, logo: r.team.logo },
         p: r.all.played, w: r.all.win, d: r.all.draw, l: r.all.lose, gd: r.goalsDiff, pts: r.points, zone: afZone(r.description), form: r.form || '',
       })),
     }));
     if (groups.length === 1) groups[0].title = '';
-    return { groups, season: `موسم ${season}/${season + 1}` };
+    return { groups, season: `${tr("موسم")} ${season}/${season + 1}` };
   }
   function renderTable(t, box = $('#table')) {
-    if (!t.groups.length) { box.innerHTML = '<div class="empty"><h4>مفيش جدول ترتيب</h4><div>البطولة دي ممكن تكون بنظام خروج المغلوب، أو الموسم لسه مابدأش.</div></div>'; return; }
+    if (!t.groups.length) { box.innerHTML = `<div class="empty"><h4>${tr("مفيش جدول ترتيب")}</h4><div>${tr("البطولة دي ممكن تكون بنظام خروج المغلوب، أو الموسم لسه مابدأش")}.</div></div>`; return; }
     const T = teamKeys();
     const legend = new Map();
     const hasForm = t.groups.some((g) => g.rows.some((r) => r.form));
     let html = '';
     for (const g of t.groups) {
       if (g.title) html += `<div class="group-title">${esc(g.title)}</div>`;
-      html += `<table><thead><tr><th>#</th><th class="tm">الفريق</th><th>لعب</th><th>ف</th><th>ت</th><th>خ</th><th>+/-</th><th>نقاط</th>${hasForm ? '<th class="f">آخر 5</th>' : ''}</tr></thead><tbody>`;
+      html += `<table><thead><tr><th>#</th><th class="tm">${tr("الفريق")}</th><th>${tr("لعب")}</th><th>${tr("ف")}</th><th>${tr("ت")}</th><th>${tr("خ")}</th><th>+/-</th><th>${tr("نقاط")}</th>${hasForm ? `<th class="f">${tr("آخر")} 5</th>` : ''}</tr></thead><tbody>`;
       for (const r of g.rows) {
         if (r.zone?.desc) legend.set(r.zone.desc, r.zone.color);
-        const form = String(r.form).slice(-5).split('').filter(Boolean).map((x) => `<i class="${x}">${x === 'W' ? 'ف' : x === 'D' ? 'ت' : 'خ'}</i>`).join('');
+        const form = String(r.form).slice(-5).split('').filter(Boolean).map((x) => `<i class="${x}">${x === 'W' ? tr("ف") : x === 'D' ? tr("ت") : tr("خ")}</i>`).join('');
         html += `<tr data-row="${esc(r.team.key)}" class="${T.has(r.team.key) ? 'fav' : ''}"><td class="rk" style="--q:${esc(r.zone?.color || 'transparent')}">${esc(r.rank)}</td>
           <td class="tm">${teamLink(r.team, t.slug, `<div>${imgTag(r.team.logo)}<span>${esc(r.team.name)}</span></div>`)}</td>
           <td>${esc(r.p)}</td><td>${esc(r.w)}</td><td>${esc(r.d)}</td><td>${esc(r.l)}</td>
@@ -1013,6 +1014,7 @@
     $('#key').value = cfg.key;
     $$('.af-only').forEach((el) => el.classList.toggle('off', !cfg.key));
     $$('#interval button').forEach((b) => b.classList.toggle('active', Number(b.dataset.v) === cfg.interval));
+    $$('#lang button').forEach((b) => b.classList.toggle('active', b.dataset.v === LANG));
     renderLeagues();
     renderCatalog();
     renderTeams();
@@ -1025,8 +1027,8 @@
     cfg.key = $('#key').value.trim();
     saveCfg();
     box.className = 'status-box';
-    if (!cfg.key) { box.textContent = 'اتشال المفتاح. الدوري المصري مش هيظهر.'; renderQuota(); return; }
-    box.textContent = 'بختبر المفتاح...';
+    if (!cfg.key) { box.textContent = tr("اتشال المفتاح. الدوري المصري مش هيظهر."); renderQuota(); return; }
+    box.textContent = tr("بختبر المفتاح...");
     btn.disabled = true;
     try {
       const s = await af('status');
@@ -1034,7 +1036,7 @@
       const req = s.requests || {};
       if (req.limit_day != null) setQuota(req.limit_day - (req.current || 0), req.limit_day);
       box.className = 'status-box ok';
-      box.innerHTML = `المفتاح شغال ✓<br>الخطة: <b>${esc(sub.plan || '—')}</b>${sub.end ? ` • لحد ${esc(String(sub.end).slice(0, 10))}` : ''}<br>استخدمت النهارده <b>${esc(req.current ?? 0)}</b> من <b>${esc(req.limit_day ?? '?')}</b> طلب`;
+      box.innerHTML = `${tr("المفتاح شغال")} ✓<br>${tr("الخطة")}: <b>${esc(sub.plan || '—')}</b>${sub.end ? ` • ${tr("لحد")} ${esc(String(sub.end).slice(0, 10))}` : ''}<br>${tr("استخدمت النهارده")} <b>${esc(req.current ?? 0)}</b> ${tr("من")} <b>${esc(req.limit_day ?? '?')}</b> ${tr("طلب")}`;
       if (!cfg.leagues.some((l) => l.src === 'af')) { cfg.leagues.unshift({ ...DEFAULT_LEAGUES[0] }); saveCfg(); }
       state.days.clear();
       $$('.af-only').forEach((el) => el.classList.remove('off'));
@@ -1056,8 +1058,8 @@
       row.className = 'row';
       const needsKey = l.src === 'af' && !cfg.key;
       row.innerHTML = `${imgTag(l.logo)}<div class="tx"><b>${esc(leagueName(l))}<span class="src">${l.src === 'es' ? 'ESPN' : 'API-Football'}</span></b>
-        <small>${needsKey ? 'محتاج مفتاح API-Football (تحت)' : l.src === 'af' ? 'امبارح والنهارده وبكرة بس' : 'أي يوم'}</small></div>
-        ${i > 0 ? '<button type="button" class="act" data-up aria-label="لفوق">↑</button>' : ''}<button type="button" class="act" data-rm>شيل</button>`;
+        <small>${needsKey ? tr("محتاج مفتاح API-Football (تحت)") : l.src === 'af' ? tr("امبارح والنهارده وبكرة بس") : tr("أي يوم")}</small></div>
+        ${i > 0 ? `<button type="button" class="act" data-up aria-label="${tr("لفوق")}">↑</button>` : ''}<button type="button" class="act" data-rm>${tr("شيل")}</button>`;
       $('[data-rm]', row).onclick = () => { cfg.leagues = cfg.leagues.filter((x) => x !== l); saveCfg(); state.days.clear(); renderLeagues(); renderCatalog(); };
       const up = $('[data-up]', row);
       if (up) up.onclick = () => { const a = cfg.leagues; [a[i - 1], a[i]] = [a[i], a[i - 1]]; saveCfg(); renderLeagues(); };
@@ -1072,7 +1074,7 @@
       const b = document.createElement('button');
       b.type = 'button';
       b.className = 'cat';
-      b.textContent = 'الدوري المصري (API-Football)';
+      b.textContent = tr("الدوري المصري (API-Football)");
       b.onclick = () => { cfg.leagues.unshift({ ...DEFAULT_LEAGUES[0] }); saveCfg(); state.days.clear(); renderLeagues(); renderCatalog(); };
       box.appendChild(b);
     }
@@ -1082,7 +1084,7 @@
       b.type = 'button';
       b.className = 'cat';
       b.textContent = name;
-      b.onclick = () => { cfg.leagues.push({ src: 'es', slug }); saveCfg(); state.days.clear(); renderLeagues(); renderCatalog(); toast('اتضاف ' + name); };
+      b.onclick = () => { cfg.leagues.push({ src: 'es', slug }); saveCfg(); state.days.clear(); renderLeagues(); renderCatalog(); toast(tr("اتضاف ") + name); };
       box.appendChild(b);
     }
   }
@@ -1091,21 +1093,21 @@
     const q = e.target.value.trim();
     const box = $('#league-results');
     if (q.length < 3) { box.innerHTML = ''; return; }
-    box.innerHTML = '<div class="hint">بدوّر...</div>';
+    box.innerHTML = `<div class="hint">${tr("بدوّر")}...</div>`;
     try {
       const res = await cached('af.ls.' + q.toLowerCase(), 7 * 86400000, () => af('leagues', { search: q }));
       if (e.target.value.trim() !== q) return;
       const mine = myLeagueKeys();
-      box.innerHTML = res.length ? '' : '<div class="hint">مالقيتش حاجة. جرّب اسم الدولة بالإنجليزي.</div>';
+      box.innerHTML = res.length ? '' : `<div class="hint">${tr("مالقيتش حاجة")}. ${tr("جرّب اسم الدولة بالإنجليزي")}.</div>`;
       for (const r of res.slice(0, 25)) {
         const l = { src: 'af', id: r.league.id, name: r.league.name, country: r.country?.name, logo: r.league.logo };
         const has = mine.has(lkey(l));
         const row = document.createElement('div');
         row.className = 'row';
-        row.innerHTML = `${imgTag(l.logo)}<div class="tx"><b>${esc(leagueName(l))}</b><small>${esc(l.country || '')} • ${r.league.type === 'Cup' ? 'كأس' : 'دوري'}</small></div>
-          <button type="button" class="act${has ? '' : ' add'}">${has ? 'موجود' : 'ضيف'}</button>`;
+        row.innerHTML = `${imgTag(l.logo)}<div class="tx"><b>${esc(leagueName(l))}</b><small>${esc(l.country || '')} • ${r.league.type === 'Cup' ? tr("كأس") : tr("دوري")}</small></div>
+          <button type="button" class="act${has ? '' : ' add'}">${has ? tr("موجود") : tr("ضيف")}</button>`;
         const b = $('.act', row);
-        if (!has) b.onclick = () => { cfg.leagues.push(l); saveCfg(); state.days.clear(); renderLeagues(); b.textContent = 'موجود'; b.classList.remove('add'); b.onclick = null; };
+        if (!has) b.onclick = () => { cfg.leagues.push(l); saveCfg(); state.days.clear(); renderLeagues(); b.textContent = tr("موجود"); b.classList.remove('add'); b.onclick = null; };
         box.appendChild(row);
       }
     } catch (err) {
@@ -1119,11 +1121,12 @@
     for (const t of cfg.teams) {
       const row = document.createElement('div');
       row.className = 'row';
-      row.innerHTML = `${imgTag(t.logo)}<div class="tx"><b>${esc(t.name)}</b></div><button type="button" class="act">شيل</button>`;
+      row.innerHTML = `${imgTag(t.logo)}<div class="tx"><b>${esc(t.name)}</b></div><button type="button" class="act">${tr("شيل")}</button>`;
       $('.act', row).onclick = () => { cfg.teams = cfg.teams.filter((x) => x.key !== t.key); saveCfg(); renderTeams(); };
       box.appendChild(row);
     }
   }
+  $$('#lang button').forEach((b) => { b.onclick = () => { if (b.dataset.v !== LANG) setLang(b.dataset.v); }; });
   $$('#interval button').forEach((b) => { b.onclick = () => { cfg.interval = Number(b.dataset.v); saveCfg(); $$('#interval button').forEach((x) => x.classList.toggle('active', x === b)); }; });
 
 
@@ -1146,16 +1149,16 @@
     if (e.key === 'Enter' && e.target.matches?.('[data-pid]')) openPlayer(e.target.dataset.pid, { tid: e.target.dataset.tid, slug: e.target.dataset.slug });
   });
 
-  const POS_AR = { G: 'حراس المرمى', D: 'الدفاع', M: 'الوسط', F: 'الهجوم' };
-  const POS1_AR = { G: 'حارس مرمى', D: 'مدافع', M: 'لاعب وسط', F: 'مهاجم' };
+  const POS_AR = { G: tr("حراس المرمى"), D: tr("الدفاع"), M: tr("الوسط"), F: tr("الهجوم") };
+  const POS1_AR = { G: tr("حارس مرمى"), D: tr("مدافع"), M: tr("لاعب وسط"), F: tr("مهاجم") };
   const PSTAT_AR = {
-    'starts-subIns': 'أساسي (بديل)', appearances: 'ماتشات', totalGoals: 'أهداف', goalAssists: 'صناعة', totalShots: 'تسديدات', shotsOnTarget: 'على المرمى',
-    foulsCommitted: 'أخطاء ارتكبها', foulsSuffered: 'أخطاء عليه', yellowCards: 'إنذارات', redCards: 'طرد', offsides: 'تسلل', ownGoals: 'في مرماه',
-    subIns: 'نزل بديل', saves: 'تصديات', shotsFaced: 'تسديدات عليه', goalsConceded: 'أهداف دخلت فيه', cleanSheet: 'شباك نظيفة',
+    'starts-subIns': tr("أساسي (بديل)"), appearances: tr("ماتشات"), totalGoals: tr("أهداف"), goalAssists: tr("صناعة"), totalShots: tr("تسديدات"), shotsOnTarget: tr("على المرمى"),
+    foulsCommitted: tr("أخطاء ارتكبها"), foulsSuffered: tr("أخطاء عليه"), yellowCards: tr("إنذارات"), redCards: tr("طرد"), offsides: tr("تسلل"), ownGoals: tr("في مرماه"),
+    subIns: tr("نزل بديل"), saves: tr("تصديات"), shotsFaced: tr("تسديدات عليه"), goalsConceded: tr("أهداف دخلت فيه"), cleanSheet: tr("شباك نظيفة"),
   };
-  const fmtDate = (ms) => new Date(ms).toLocaleDateString('ar-EG', { weekday: 'long', day: 'numeric', month: 'long' });
-  const dobAr = (d) => { const m = String(d).match(/^(\d+)\/(\d+)\/(\d{4})$/); return m ? new Date(+m[3], +m[2] - 1, +m[1]).toLocaleDateString('ar-EG', { day: 'numeric', month: 'long', year: 'numeric' }) : d; };
-  const cm = (h) => { const m = String(h || '').match(/(\d+)'\s*(\d+)?/); return m ? Math.round((Number(m[1]) * 12 + Number(m[2] || 0)) * 2.54) + ' سم' : h || ''; };
+  const fmtDate = (ms) => new Date(ms).toLocaleDateString(LOC, { weekday: 'long', day: 'numeric', month: 'long' });
+  const dobAr = (d) => { const m = String(d).match(/^(\d+)\/(\d+)\/(\d{4})$/); return m ? new Date(+m[3], +m[2] - 1, +m[1]).toLocaleDateString(LOC, { day: 'numeric', month: 'long', year: 'numeric' }) : d; };
+  const cm = (h) => { const m = String(h || '').match(/(\d+)'\s*(\d+)?/); return m ? Math.round((Number(m[1]) * 12 + Number(m[2] || 0)) * 2.54) + tr(" سم") : h || ''; };
 
   const team = { key: null, slug: null, dl: null, tab: 'matches', sub: 'next', info: null };
 
@@ -1181,9 +1184,10 @@
   $('#team').addEventListener('click', (e) => { if (e.target.id === 'team' || e.target.closest('[data-close]')) closeTeam(); });
 
   function standingAr(s) {
+    if (!RTL) return s || '';
     const m = String(s || '').match(/^(\d+)\w*\s+in\s+(.+)$/i);
     if (!m) return s || '';
-    return `المركز ${m[1]} في ${ESPN_AR[team.dl] || m[2]}`;
+    return `${tr("المركز")} ${m[1]} ${tr("في")} ${ESPN_AR[team.dl] || m[2]}`;
   }
 
   function renderTeamShell() {
@@ -1193,13 +1197,13 @@
     const isEs = team.key.startsWith('es:');
     const fav = cfg.teams.some((x) => x.key === team.key);
     const tabs = isEs
-      ? [['matches', 'المباريات'], ['table', 'الترتيب'], ['players', 'اللاعبين'], ['stats', 'الإحصائيات'], ['news', 'الأخبار']]
-      : [['matches', 'المباريات'], ['table', 'الترتيب']];
+      ? [['matches', tr("المباريات")], ['table', tr("الترتيب")], ['players', tr("اللاعبين")], ['stats', tr("الإحصائيات")], ['news', tr("الأخبار")]]
+      : [['matches', tr("المباريات")], ['table', tr("الترتيب")]];
     $('#team-body').innerHTML = `
       <div class="tm-hero">
         <div class="tm-bar">
-          <button class="icon-btn" data-close type="button" aria-label="رجوع"><svg viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"/></svg></button>
-          <button class="icon-btn tm-fav${fav ? ' on' : ''}" type="button" aria-label="فريق مفضل"><svg viewBox="0 0 24 24"><path d="M12 3.5l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.9l-5.2 2.7 1-5.8-4.3-4.1 5.9-.9z"/></svg></button>
+          <button class="icon-btn" data-close type="button" aria-label="${tr("رجوع")}"><svg viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"/></svg></button>
+          <button class="icon-btn tm-fav${fav ? ' on' : ''}" type="button" aria-label="${tr("فريق مفضل")}"><svg viewBox="0 0 24 24"><path d="M12 3.5l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.9l-5.2 2.7 1-5.8-4.3-4.1 5.9-.9z"/></svg></button>
         </div>
         <div class="tm-logo">${imgTag(logo)}</div>
         <h2>${esc(name)}</h2>
@@ -1213,7 +1217,7 @@
       cfg.teams = has ? cfg.teams.filter((x) => x.key !== team.key) : [...cfg.teams, { key: team.key, name, logo }];
       saveCfg();
       b.classList.toggle('on', !has);
-      toast(has ? `${name} اتشال من فرقك` : `${name} اتضاف لفرقك`);
+      toast(has ? `${name} ${tr("اتشال من فرقك")}` : `${name} ${tr("اتضاف لفرقك")}`);
       renderMatches(); renderTeams();
     };
     $$('.tm-tab', $('#team-body')).forEach((b) => (b.onclick = () => { team.tab = b.dataset.tab; $$('.tm-tab').forEach((x) => x.classList.toggle('active', x === b)); drawTeamTab(); }));
@@ -1257,8 +1261,8 @@
       last = last.filter((f) => DONE.has(f.st) || hasScore(f)).sort((a, b) => b.ts - a.ts);
       const draw = () => {
         const list = team.sub === 'next' ? next : last;
-        let html = `<div class="seg2"><button type="button" data-sub="next" class="${team.sub === 'next' ? 'active' : ''}">القادمة <small>${next.length}</small></button><button type="button" data-sub="last" class="${team.sub === 'last' ? 'active' : ''}">انتهت <small>${last.length}</small></button></div>`;
-        if (!list.length) html += `<div class="note">${team.sub === 'next' ? 'مفيش ماتشات جاية متسجلة لسه.' : 'مفيش نتايج متسجلة.'}</div>`;
+        let html = `<div class="seg2"><button type="button" data-sub="next" class="${team.sub === 'next' ? 'active' : ''}">${tr("القادمة")} <small>${next.length}</small></button><button type="button" data-sub="last" class="${team.sub === 'last' ? 'active' : ''}">${tr("انتهت")} <small>${last.length}</small></button></div>`;
+        if (!list.length) html += `<div class="note">${team.sub === 'next' ? tr("مفيش ماتشات جاية متسجلة لسه.") : tr("مفيش نتايج متسجلة.")}</div>`;
         let lastLg = null;
         for (const f of list) {
           if (f.lg.key !== lastLg) { html += `<div class="tm-group">${imgTag(f.lg.logo)}<span>${esc(leagueName(f.lg))}</span>${f.lg.round ? `<small>${esc(roundName(f.lg.round))}</small>` : ''}</div>`; lastLg = f.lg.key; }
@@ -1270,7 +1274,7 @@
       };
       draw();
     } catch (e) {
-      if (alive()) pane.innerHTML = `<div class="note" style="white-space:pre-line">${esc(e.message)}${team.key.startsWith('af:') ? '\nماتشات فرق الدوري المصري بتيجي من API-Football، والخطة المجانية ممكن ماتسمحش بالطلب ده.' : ''}</div>`;
+      if (alive()) pane.innerHTML = `<div class="note" style="white-space:pre-line">${esc(e.message)}${team.key.startsWith('af:') ? tr("\nماتشات فرق الدوري المصري بتيجي من API-Football، والخطة المجانية ممكن ماتسمحش بالطلب ده.") : ''}</div>`;
     }
   }
   function teamMatchCard(f) {
@@ -1282,7 +1286,7 @@
       : `<div class="time">${hhmm(f.ts)}</div><div class="st">${esc(fmtDate(f.ts))}</div>`;
     return `<button type="button" class="tm-card${LIVE.has(f.st) ? ' live' : ''}" data-id="${esc(f.id)}">
       <div class="team${me(f.h)}">${imgTag(f.h.logo)}<span>${esc(f.h.name)}</span></div>
-      <div class="mid">${mid}${res ? `<i class="res ${res}">${res === 'W' ? 'فوز' : res === 'D' ? 'تعادل' : 'خسارة'}</i>` : ''}</div>
+      <div class="mid">${mid}${res ? `<i class="res ${res}">${res === 'W' ? tr("فوز") : res === 'D' ? tr("تعادل") : tr("خسارة")}</i>` : ''}</div>
       <div class="team away${me(f.a)}">${imgTag(f.a.logo)}<span>${esc(f.a.name)}</span></div></button>`;
   }
 
@@ -1311,7 +1315,7 @@
       const slug = team.dl || team.slug;
       const list = await rosterOf(slug, id);
       if (!alive()) return;
-      if (!list.length) { pane.innerHTML = '<div class="note">مفيش قايمة لاعبين متاحة.</div>'; return; }
+      if (!list.length) { pane.innerHTML = `<div class="note">${tr("مفيش قايمة لاعبين متاحة")}.</div>`; return; }
       const groups = { G: [], D: [], M: [], F: [] };
       for (const a of list) (groups[a.position?.abbreviation] || groups.M).push(a);
       let html = '';
@@ -1322,12 +1326,12 @@
         for (const a of arr) {
           const st = rosterStats(a);
           const chips = k === 'G'
-            ? [['ماتش', st.appearances], ['تصدي', st.saves], ['دخل فيه', st.goalsConceded]]
-            : [['ماتش', st.appearances], ['جون', st.totalGoals], ['صناعة', st.goalAssists]];
+            ? [[tr("ماتش"), st.appearances], [tr("تصدي"), st.saves], [tr("دخل فيه"), st.goalsConceded]]
+            : [[tr("ماتش"), st.appearances], [tr("جون"), st.totalGoals], [tr("صناعة"), st.goalAssists]];
           html += `<button type="button" class="prow" data-pid="${esc(a.id)}" data-tid="${esc(id)}" data-slug="${esc(slug)}">
             <span class="pno">${esc(a.jersey ?? '')}</span>
             <span class="pimg"><img src="https://a.espncdn.com/i/headshots/soccer/players/full/${esc(a.id)}.png" alt="" loading="lazy" onerror="this.remove()"></span>
-            <span class="ptx"><b>${esc(a.displayName)}</b><small>${a.flag?.href ? `<img src="${esc(a.flag.href)}" alt="" loading="lazy" onerror="this.remove()">` : ''}${esc(a.citizenship || '')}${a.age ? ` • ${esc(a.age)} سنة` : ''}</small></span>
+            <span class="ptx"><b>${esc(a.displayName)}</b><small>${a.flag?.href ? `<img src="${esc(a.flag.href)}" alt="" loading="lazy" onerror="this.remove()">` : ''}${esc(a.citizenship || '')}${a.age ? ` • ${esc(a.age)} ${tr("سنة")}` : ''}</small></span>
             <span class="pst">${chips.filter(([, v]) => v != null && !Number.isNaN(v)).map(([l, v]) => `<i><b>${esc(v)}</b>${l}</i>`).join('')}</span></button>`;
         }
         html += '</div>';
@@ -1348,17 +1352,17 @@
       top = list.map((a) => ({ a, s: rosterStats(a) }));
     } catch { /* من غير الهدافين */ }
     if (!alive()) return;
-    if (!Object.keys(rec).length && !top.length) { pane.innerHTML = '<div class="note">مفيش إحصائيات متاحة للفريق ده.</div>'; return; }
+    if (!Object.keys(rec).length && !top.length) { pane.innerHTML = `<div class="note">${tr("مفيش إحصائيات متاحة للفريق ده")}.</div>`; return; }
     const box = (v, l, cls = '') => `<div class="sbox ${cls}"><b>${esc(v ?? '—')}</b><span>${l}</span></div>`;
     let html = '';
     if (Object.keys(rec).length) {
       const gd = rec.pointDifferential;
-      html += `<div class="tm-group"><span>${esc(ESPN_AR[team.dl] || 'الدوري')}</span><small>${esc(t?.standingSummary ? standingAr(t.standingSummary) : '')}</small></div>
-        <div class="sgrid">${box(rec.points, 'نقطة', 'big')}${box(rec.gamesPlayed, 'ماتش')}${box(rec.wins, 'فوز', 'w')}${box(rec.ties, 'تعادل', 'd')}${box(rec.losses, 'خسارة', 'l')}
-        ${box(rec.pointsFor, 'جون له')}${box(rec.pointsAgainst, 'جون عليه')}${box(gd > 0 ? '+' + gd : gd, 'الفارق')}</div>
+      html += `<div class="tm-group"><span>${esc(ESPN_AR[team.dl] || tr("الدوري"))}</span><small>${esc(t?.standingSummary ? standingAr(t.standingSummary) : '')}</small></div>
+        <div class="sgrid">${box(rec.points, tr("نقطة"), 'big')}${box(rec.gamesPlayed, tr("ماتش"))}${box(rec.wins, tr("فوز"), 'w')}${box(rec.ties, tr("تعادل"), 'd')}${box(rec.losses, tr("خسارة"), 'l')}
+        ${box(rec.pointsFor, tr("جون له"))}${box(rec.pointsAgainst, tr("جون عليه"))}${box(gd > 0 ? '+' + gd : gd, tr("الفارق"))}</div>
         <div class="hsplit">
-          <div><h4>في ملعبه</h4><p>${esc(rec.homeWins ?? 0)} فوز • ${esc(rec.homeTies ?? 0)} تعادل • ${esc(rec.homeLosses ?? 0)} خسارة</p><p class="muted2">${esc(rec.homePointsFor ?? 0)} له • ${esc(rec.homePointsAgainst ?? 0)} عليه</p></div>
-          <div><h4>برة ملعبه</h4><p>${esc(rec.awayWins ?? 0)} فوز • ${esc(rec.awayTies ?? 0)} تعادل • ${esc(rec.awayLosses ?? 0)} خسارة</p><p class="muted2">${esc(rec.awayPointsFor ?? 0)} له • ${esc(rec.awayPointsAgainst ?? 0)} عليه</p></div>
+          <div><h4>${tr("في ملعبه")}</h4><p>${esc(rec.homeWins ?? 0)} ${tr("فوز")} • ${esc(rec.homeTies ?? 0)} ${tr("تعادل")} • ${esc(rec.homeLosses ?? 0)} ${tr("خسارة")}</p><p class="muted2">${esc(rec.homePointsFor ?? 0)} ${tr("له")} • ${esc(rec.homePointsAgainst ?? 0)} ${tr("عليه")}</p></div>
+          <div><h4>${tr("برة ملعبه")}</h4><p>${esc(rec.awayWins ?? 0)} ${tr("فوز")} • ${esc(rec.awayTies ?? 0)} ${tr("تعادل")} • ${esc(rec.awayLosses ?? 0)} ${tr("خسارة")}</p><p class="muted2">${esc(rec.awayPointsFor ?? 0)} ${tr("له")} • ${esc(rec.awayPointsAgainst ?? 0)} ${tr("عليه")}</p></div>
         </div>`;
     }
     const leaders = (stat, label) => {
@@ -1368,7 +1372,7 @@
         <span class="pimg"><img src="https://a.espncdn.com/i/headshots/soccer/players/full/${esc(x.a.id)}.png" alt="" loading="lazy" onerror="this.remove()"></span>
         <span class="ptx"><b>${esc(x.a.displayName)}</b><small>${esc(POS1_AR[x.a.position?.abbreviation] || '')}</small></span><span class="lead">${esc(x.s[stat])}</span></button>`).join('')}</div>`;
     };
-    html += leaders('totalGoals', 'الهدافين') + leaders('goalAssists', 'صناع الأهداف');
+    html += leaders('totalGoals', tr("الهدافين")) + leaders('goalAssists', tr("صناع الأهداف"));
     pane.innerHTML = html;
   }
 
@@ -1380,10 +1384,10 @@
       const j = await cached(`es.news.${id}`, 30 * 60000, () => espn(`site/v2/sports/soccer/${slug}/news?team=${id}`), { persist: false });
       if (!alive()) return;
       const arts = j.articles || [];
-      if (!arts.length) { pane.innerHTML = '<div class="note">مفيش أخبار دلوقتي.</div>'; return; }
-      pane.innerHTML = `<p class="hint" style="padding:10px 16px 0">الأخبار من ESPN بالإنجليزي.</p>` + arts.map((a) => `<a class="news" href="${esc(a.links?.web?.href || '#')}" target="_blank" rel="noopener">
+      if (!arts.length) { pane.innerHTML = `<div class="note">${tr("مفيش أخبار دلوقتي")}.</div>`; return; }
+      pane.innerHTML = `<p class="hint" style="padding:10px 16px 0">${tr("الأخبار من")} ESPN ${tr("بالإنجليزي")}.</p>` + arts.map((a) => `<a class="news" href="${esc(a.links?.web?.href || '#')}" target="_blank" rel="noopener">
         ${a.images?.[0]?.url ? `<img src="${esc(a.images[0].url)}" alt="" loading="lazy" onerror="this.remove()">` : ''}
-        <div><b dir="auto">${esc(a.headline)}</b><small>${a.published ? esc(new Date(a.published).toLocaleDateString('ar-EG', { day: 'numeric', month: 'long' })) : ''}</small></div></a>`).join('');
+        <div><b dir="auto">${esc(a.headline)}</b><small>${a.published ? esc(new Date(a.published).toLocaleDateString(LOC, { day: 'numeric', month: 'long' })) : ''}</small></div></a>`).join('');
     } catch (e) {
       if (alive()) pane.innerHTML = `<div class="note">${esc(e.message)}</div>`;
     }
@@ -1396,7 +1400,7 @@
     openPid = pid;
     showModal($('#player'));
     const body = $('#player-body');
-    body.innerHTML = '<div class="note">جاري التحميل...</div>';
+    body.innerHTML = `<div class="note">${tr("جاري التحميل")}...</div>`;
     try {
       const j = await cached(`es.ath.${pid}`, 6 * 3600000, () => espn(`common/v3/sports/soccer/athletes/${pid}`));
       const at = j.athlete || j;
@@ -1415,21 +1419,21 @@
       const tm = at.team;
       body.innerHTML = `
         <div class="pl-hero">
-          <div class="tm-bar"><button class="icon-btn" data-close type="button" aria-label="رجوع"><svg viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"/></svg></button></div>
+          <div class="tm-bar"><button class="icon-btn" data-close type="button" aria-label="${tr("رجوع")}"><svg viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"/></svg></button></div>
           <div class="pl-photo"><img src="https://a.espncdn.com/i/headshots/soccer/players/full/${esc(pid)}.png" alt="" onerror="this.remove()"><span>${esc(at.jersey ?? '')}</span></div>
           <h2 dir="auto">${esc(at.displayName)}</h2>
           <div class="tm-sum">${esc(POS1_AR[at.position?.abbreviation] || at.position?.displayName || '')}${tm ? ' • ' : ''}${tm ? teamLink({ key: 'es:' + tm.id, name: tm.displayName, logo: tm.logos?.[0]?.href || tm.logo }, sl || team.slug, `<span class="inl">${esc(tm.displayName)}</span>`) : ''}</div>
         </div>
         <div class="pinfo">
-          ${at.age ? `<div><b>${esc(at.age)}</b><span>سنة</span></div>` : ''}
-          ${at.displayHeight ? `<div><b>${esc(cm(at.displayHeight))}</b><span>الطول</span></div>` : ''}
-          ${at.citizenship ? `<div><b>${at.flag?.href ? `<img src="${esc(at.flag.href)}" alt="" onerror="this.remove()">` : ''}${esc(at.citizenship)}</b><span>الجنسية</span></div>` : ''}
-          ${at.displayDOB ? `<div><b>${esc(dobAr(at.displayDOB))}</b><span>تاريخ الميلاد</span></div>` : ''}
+          ${at.age ? `<div><b>${esc(at.age)}</b><span>${tr("سنة")}</span></div>` : ''}
+          ${at.displayHeight ? `<div><b>${esc(cm(at.displayHeight))}</b><span>${tr("الطول")}</span></div>` : ''}
+          ${at.citizenship ? `<div><b>${at.flag?.href ? `<img src="${esc(at.flag.href)}" alt="" onerror="this.remove()">` : ''}${esc(at.citizenship)}</b><span>${tr("الجنسية")}</span></div>` : ''}
+          ${at.displayDOB ? `<div><b>${esc(dobAr(at.displayDOB))}</b><span>${tr("تاريخ الميلاد")}</span></div>` : ''}
         </div>
-        ${cells.length ? `<div class="tm-group"><span>${esc(String(at.statsSummary?.displayName || 'إحصائيات الموسم').replace(/^(\d{4}-\d{2}) (.+) Stats$/, 'إحصائيات $2 $1'))}</span></div>
-          <div class="sgrid">${cells.map(([l, v]) => `<div class="sbox"><b>${esc(v)}</b><span>${esc(l)}</span></div>`).join('')}</div>` : '<div class="note">مفيش إحصائيات للاعب ده في الموسم ده.</div>'}`;
+        ${cells.length ? `<div class="tm-group"><span>${esc(String(at.statsSummary?.displayName || tr("إحصائيات الموسم")).replace(/^(\d{4}-\d{2}) (.+) Stats$/, tr("إحصائيات $2 $1")))}</span></div>
+          <div class="sgrid">${cells.map(([l, v]) => `<div class="sbox"><b>${esc(v)}</b><span>${esc(l)}</span></div>`).join('')}</div>` : `<div class="note">${tr("مفيش إحصائيات للاعب ده في الموسم ده")}.</div>`}`;
     } catch (e) {
-      if (openPid === pid) body.innerHTML = `<div class="tm-bar"><button class="icon-btn" data-close type="button" aria-label="رجوع"><svg viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"/></svg></button></div><div class="note">${esc(e.message)}</div>`;
+      if (openPid === pid) body.innerHTML = `<div class="tm-bar"><button class="icon-btn" data-close type="button" aria-label="${tr("رجوع")}"><svg viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"/></svg></button></div><div class="note">${esc(e.message)}</div>`;
     }
   }
   function closePlayer() { $('#player').classList.add('hidden'); openPid = null; }
@@ -1463,7 +1467,7 @@
   document.addEventListener('keydown', (e) => { if (e.key === 'Escape') window.__back(); });
 
   setInterval(() => { // يوم جديد؟ نرجّع لـ "النهارده"
-    if (state.view === 'matches' && state.date < today() && $('#dates .date.active b')?.textContent === 'النهارده') { state.date = today(); renderDates(); loadDay(state.date); }
+    if (state.view === 'matches' && state.date < today() && $('#dates .date.active b')?.textContent === tr("النهارده")) { state.date = today(); renderDates(); loadDay(state.date); }
   }, 60000);
 
   renderQuota();
