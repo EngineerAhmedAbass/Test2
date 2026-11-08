@@ -42,32 +42,20 @@
     <main id="view-settings" class="view hidden">
       <section id="welcome" class="card welcome hidden">
         <h2>أهلًا بيك في GOAL</h2>
-        <p>عشان تشوف النتايج محتاج مفتاح مجاني من <b>API-Football</b> — مرة واحدة بس:</p>
+        <p>النتايج شغالة على طول من غير أي إعداد: الدوريات الأوروبية وأفريقيا وآسيا والسعودي، لأي يوم.</p>
+        <p><b>الدوري المصري</b> بس محتاج مفتاح مجاني من API-Football (ESPN مفيهوش الدوري المصري):</p>
         <ol>
           <li>اعمل حساب مجاني على <a href="https://dashboard.api-football.com/register" target="_blank" rel="noopener">dashboard.api-football.com</a></li>
-          <li>من الصفحة الرئيسية للحساب انسخ الـ <b>API Key</b></li>
+          <li>انسخ الـ <b>API Key</b> من الصفحة الرئيسية للحساب</li>
           <li>الصقه تحت ودوس "حفظ واختبار"</li>
         </ol>
       </section>
 
       <section class="card">
-        <h3>مفتاح API-Football</h3>
-        <div class="key-row">
-          <input id="key" type="password" dir="ltr" autocomplete="off" spellcheck="false" placeholder="الصق المفتاح هنا" aria-label="مفتاح API-Football" />
-          <button id="key-show" class="icon-btn" type="button" aria-label="إظهار المفتاح"><svg viewBox="0 0 24 24"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg></button>
-        </div>
-        <button id="key-save" class="btn primary block" type="button">حفظ واختبار</button>
-        <div id="key-status" class="status-box hidden"></div>
-      </section>
-
-      <section class="card">
         <h3>الدوريات اللي بتابعها</h3>
         <div id="my-leagues" class="list"></div>
-        <div class="search">
-          <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
-          <input id="league-search" placeholder="ضيف دوري… اكتب اسمه بالإنجليزي (مثلاً Egypt)" aria-label="بحث عن دوري" />
-        </div>
-        <div id="league-results" class="list"></div>
+        <h4 class="sub-h">ضيف دوري</h4>
+        <div id="catalog" class="catalog"></div>
       </section>
 
       <section class="card">
@@ -79,12 +67,29 @@
       <section class="card">
         <h3>التحديث التلقائي للماتشات المباشرة</h3>
         <div class="seg" id="interval">
-          <button type="button" data-v="60">كل دقيقة</button>
-          <button type="button" data-v="120">كل دقيقتين</button>
-          <button type="button" data-v="300">كل 5 دقايق</button>
+          <button type="button" data-v="30">30 ث</button>
+          <button type="button" data-v="60">دقيقة</button>
+          <button type="button" data-v="120">دقيقتين</button>
+          <button type="button" data-v="300">5 دقايق</button>
           <button type="button" data-v="0">يدوي</button>
         </div>
-        <p class="hint">الخطة المجانية فيها 100 طلب في اليوم. التحديث بيشتغل بس والتطبيق مفتوح وفيه ماتش شغال، وبيبطّأ لوحده لما الطلبات تقرب تخلص.</p>
+        <p class="hint">بيشتغل بس والتطبيق مفتوح وفيه ماتش شغال. ماتشات الدوري المصري بتتحدث كل دقيقتين على الأقل عشان توفّر الـ 100 طلب اليومية، وبتبطّأ لوحدها لما الطلبات تقرب تخلص.</p>
+      </section>
+
+      <section class="card">
+        <h3>مفتاح API-Football <small class="muted-s">(للدوري المصري بس — اختياري)</small></h3>
+        <div class="key-row">
+          <input id="key" type="password" dir="ltr" autocomplete="off" spellcheck="false" placeholder="الصق المفتاح هنا" aria-label="مفتاح API-Football" />
+          <button id="key-show" class="icon-btn" type="button" aria-label="إظهار المفتاح"><svg viewBox="0 0 24 24"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg></button>
+        </div>
+        <button id="key-save" class="btn primary block" type="button">حفظ واختبار</button>
+        <div id="key-status" class="status-box hidden"></div>
+        <div class="search af-only">
+          <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+          <input id="league-search" placeholder="دوري تاني من API-Football… اكتب اسمه بالإنجليزي" aria-label="بحث عن دوري في API-Football" />
+        </div>
+        <div id="league-results" class="list af-only"></div>
+        <p class="hint">الخطة المجانية: 100 طلب في اليوم، وأيام امبارح والنهارده وبكرة بس.</p>
       </section>
     </main>
 
