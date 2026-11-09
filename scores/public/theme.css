@@ -276,3 +276,10 @@ tr.me td.tm span { color: var(--led); }
 [dir="ltr"] .lang-alt { display: none; }
 #interval { grid-template-columns: repeat(5, 1fr); }
 #interval button { font-size: 12.5px; padding: 0 2px; }
+
+/* ---------- السحب لتغيير اليوم ---------- */
+#view-matches { touch-action: pan-y; min-height: 70vh; }
+#matches.in-l { animation: inL .28s cubic-bezier(.2, .8, .2, 1); }
+#matches.in-r { animation: inR .28s cubic-bezier(.2, .8, .2, 1); }
+@keyframes inL { from { opacity: 0; transform: translateX(-36px); } }
+@keyframes inR { from { opacity: 0; transform: translateX(36px); } }

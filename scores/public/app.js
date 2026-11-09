@@ -327,7 +327,8 @@
     const box = $('#dates');
     box.innerHTML = '';
     const base = new Date();
-    for (let i = -7; i <= 7; i++) {
+    const diff = dayDiff(state.date);
+    for (let i = Math.min(-7, diff - 3); i <= Math.max(7, diff + 3); i++) {
       const d = new Date(base.getFullYear(), base.getMonth(), base.getDate() + i);
       const k = dayKey(d);
       const b = document.createElement('button');
@@ -339,8 +340,48 @@
       b.onclick = () => { state.date = k; renderDates(); loadDay(k); };
       box.appendChild(b);
     }
-    $('#dates .date.active')?.scrollIntoView({ inline: 'center', block: 'nearest' });
+    $('#dates .date.active')?.scrollIntoView({ inline: 'center', block: 'nearest', behavior: 'smooth' });
   }
+
+  // كام يوم بين اليوم المختار والنهارده
+  function dayDiff(k) {
+    const [y, m, d] = k.split('-').map(Number);
+    const n = new Date();
+    return Math.round((new Date(y, m - 1, d) - new Date(n.getFullYear(), n.getMonth(), n.getDate())) / 86400000);
+  }
+  // يوم لقدام (+1) أو لورا (-1)، والماتشات بتدخل من ناحية السحب
+  function shiftDay(step, fromLeft) {
+    const [y, m, d] = state.date.split('-').map(Number);
+    state.date = dayKey(new Date(y, m - 1, d + step));
+    renderDates();
+    const box = $('#matches');
+    box.classList.remove('in-l', 'in-r');
+    void box.offsetWidth;
+    box.classList.add(fromLeft ? 'in-l' : 'in-r');
+    loadDay(state.date);
+  }
+
+  // السحب يمين/شمال على قايمة الماتشات بيغيّر اليوم
+  // بالعربي (يمين لشمال) بكرة على الشمال: السحب لليمين = بكرة. بالإنجليزي العكس.
+  (() => {
+    const area = $('#view-matches');
+    let sx = 0, sy = 0, st = 0, ok = false;
+    area.addEventListener('touchstart', (e) => {
+      ok = e.touches.length === 1 && !e.target.closest('.dates, .filters');
+      if (!ok) return;
+      sx = e.touches[0].clientX; sy = e.touches[0].clientY; st = Date.now();
+    }, { passive: true });
+    area.addEventListener('touchend', (e) => {
+      if (!ok || state.view !== 'matches') return;
+      ok = false;
+      const t = e.changedTouches[0];
+      const dx = t.clientX - sx;
+      const dy = t.clientY - sy;
+      if (Math.abs(dx) < 60 || Math.abs(dx) < Math.abs(dy) * 1.6 || Date.now() - st > 800) return;
+      const forward = RTL ? dx > 0 : dx < 0;
+      shiftDay(forward ? 1 : -1, dx > 0);
+    }, { passive: true });
+  })();
 
   $$('.filters .chip').forEach((c) => {
     c.classList.toggle('active', c.dataset.filter === state.filter);
@@ -1511,7 +1552,10 @@
     window.scrollTo(0, 0);
     clearTimeout(state.timers.es);
     clearTimeout(state.timers.af);
-    if (view === 'matches') { renderDates(); loadDay(state.date); }
+    if (view === 'matches') {
+      renderDates(); loadDay(state.date);
+      if (!ls.get('goal.swipeHint', false) && matchMedia('(pointer: coarse)').matches) { ls.set('goal.swipeHint', true); setTimeout(() => toast(tr("اسحب يمين أو شمال عشان تغيّر اليوم")), 1200); }
+    }
     if (view === 'table') { renderTableChips(); loadTable(); }
     if (view === 'settings') renderSettings();
   }

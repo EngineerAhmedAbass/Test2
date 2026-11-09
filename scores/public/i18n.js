@@ -11,6 +11,7 @@
   const RTL = LANG === 'ar';
   const LOC = RTL ? 'ar-EG' : 'en-GB';
   const EN = {
+"اسحب يمين أو شمال عشان تغيّر اليوم": "Swipe left or right to change the day",
 "\nماتشات فرق الدوري المصري بتيجي من API-Football، والخطة المجانية ممكن ماتسمحش بالطلب ده.": "\nEgyptian league teams come from API-Football, and the free plan may not allow this request.",
 " سم": " cm",
 " • الحكم: ": " • Referee: ",
