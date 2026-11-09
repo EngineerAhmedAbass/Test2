@@ -192,6 +192,66 @@
     return lists.flat().filter((f) => dayKey(new Date(f.ts)) === date);
   }
 
+  // scorepanel: طلب واحد بيرجّع معظم الدوريات مع بعض. بعض البطولات (زي أفريقيا) مش بتيجي فيه،
+  // فبنفتكر الدوريات اللي شفناها فيه، والباقي بنطلبه لوحده.
+  const PANEL_SEED = ['eng.1', 'esp.1', 'ita.1', 'ger.1', 'fra.1', 'ksa.1', 'uefa.champions', 'ned.1', 'por.1', 'tur.1', 'bra.1', 'arg.1', 'mex.1', 'sco.1', 'eng.fa'];
+  const panelSlugs = new Set([...PANEL_SEED, ...ls.get('goal.panelSlugs', [])]);
+  const savePanelSlugs = debounce(() => ls.set('goal.panelSlugs', [...panelSlugs]), 1000);
+  function espnPanel(etd, ttl, force) {
+    return cached(`es.panel.${etd}`, ttl, async () => {
+      const j = await espn(`site/v2/sports/soccer/scorepanel?dates=${etd}`);
+      const out = {};
+      for (const sc of j.scores || []) {
+        const L = sc.leagues?.[0];
+        if (!L?.slug) continue;
+        out[L.slug] = (sc.events || []).map((ev) => esCompact(ev, L.slug, L));
+        if (!panelSlugs.has(L.slug)) { panelSlugs.add(L.slug); savePanelSlugs(); }
+      }
+      return out;
+    }, { force });
+  }
+  // ماتشات يوم محلي لدوريات معيّنة من ESPN بأقل عدد طلبات
+  async function espnFor(slugs, date, force) {
+    const etds = espnDatesFor(date);
+    const viaPanel = slugs.filter((x) => panelSlugs.has(x));
+    let single = slugs.filter((x) => !panelSlugs.has(x));
+    const errors = [];
+    const one = (x) => espnDay(x, date, force).catch((e) => { errors.push(e); return e.stale || []; });
+    // الطلب المجمّع والطلبات المنفصلة بيمشوا مع بعض في نفس الوقت
+    const [fromPanel, singles] = await Promise.all([
+      viaPanel.length
+        ? Promise.all(etds.map((d) => espnPanel(d, ttlFor(date), force)))
+          .then((panels) => panels.flatMap((pn) => viaPanel.flatMap((x) => pn[x] || [])))
+          .catch(async () => (await pool(viaPanel, 6, one)).flat()) // الطلب المجمّع فشل: نرجع للمنفصلة
+        : [],
+      pool(single, 6, one).then((x) => x.flat()),
+    ]);
+    const fromSingle = singles;
+    const seen = new Set();
+    const list = [...fromPanel, ...fromSingle].filter((f) => dayKey(new Date(f.ts)) === date && !seen.has(f.id) && seen.add(f.id));
+    return { list, errors, failedAll: errors.length && errors.length === single.length && !fromPanel.length };
+  }
+  // اللي متخزن على الجهاز من غير ما نبص على الصلاحية (للعرض الفوري)
+  function peek(key) { const h = mem.get(key) || ls.get('goal.c.' + key, null); return h ? h.d : undefined; }
+  function peekDay(date, slugs) {
+    const etds = espnDatesFor(date);
+    let any = false;
+    const out = [];
+    for (const d of etds) {
+      const pn = peek(`es.panel.${d}`);
+      if (pn) { any = true; for (const x of slugs) if (panelSlugs.has(x)) out.push(...(pn[x] || [])); }
+    }
+    for (const x of slugs) {
+      if (panelSlugs.has(x)) continue;
+      for (const d of etds) { const l = peek(`es.${x}.${d}`); if (l) { any = true; out.push(...l); } }
+    }
+    const afl = peek('af.day.' + date);
+    if (afl) { any = true; out.push(...afl); }
+    if (!any) return null;
+    const seen = new Set();
+    return out.filter((f) => dayKey(new Date(f.ts)) === date && !seen.has(f.id) && seen.add(f.id));
+  }
+
   // =====================================================================
   //                      مصدر 2: API-Football
   // =====================================================================
@@ -289,33 +349,56 @@
 
   async function loadDay(date, force = false) {
     const box = $('#matches');
-    if (!state.days.has(date)) box.innerHTML = '<div class="skeleton"></div>'.repeat(6);
+    const slugs = espnLeaguesNeeded();
+    const wantAf = afNeeded();
+    // العرض الفوري: آخر نسخة متخزنة حتى لو قديمة، والتحديث بيكمل في الخلفية
+    if (!state.days.has(date) || force === false) {
+      const cachedList = peekDay(date, slugs);
+      if (cachedList) {
+        const prev = state.days.get(date);
+        state.days.set(date, { t: prev?.t || 0, list: cachedList, notes: prev?.notes || [] });
+        if (state.date === date) renderMatches();
+      } else if (!state.days.has(date)) box.innerHTML = '<div class="skeleton"></div>'.repeat(6);
+    }
     $('#refresh').classList.add('spin');
     const notes = [];
-    const errors = [];
-    const slugs = espnLeaguesNeeded();
-    const esPart = pool(slugs, 6, (slug) => espnDay(slug, date, force).catch((e) => { errors.push(e); return e.stale ? e.stale.filter((f) => dayKey(new Date(f.ts)) === date) : []; }));
-    let afPart = Promise.resolve([]);
-    if (afNeeded()) {
-      if (afLocked(date)) notes.push({ kind: 'range' });
-      else afPart = afDay(date, force).catch((e) => {
-        notes.push(e.kind === 'range' ? { kind: 'range' } : { kind: 'af', msg: e.message });
-        return e.stale || [];
-      });
-    }
-    const [esLists, afList0] = await Promise.all([esPart, afPart]);
-    // لو البطولة موجودة في ESPN بنسيب نسخة ESPN بس (أي يوم + ترتيب الموسم الحالي)، إلا لو المستخدم ضايفها من API-Football بنفسه
+    let afList = [];
+    let esList = [];
+    const afPart = !wantAf ? Promise.resolve([]) : afLocked(date)
+      ? (notes.push({ kind: 'range' }), Promise.resolve([]))
+      : afDay(date, force).catch((e) => { notes.push(e.kind === 'range' ? { kind: 'range' } : { kind: 'af', msg: e.message }); return e.stale || []; });
     const myKeys = myLeagueKeys();
-    const afList = afList0.filter((f) => !AF_TO_ESPN[f.lg.id] || myKeys.has(f.lg.key));
-    const list = [...esLists.flat(), ...afList];
-    state.days.set(date, { t: Date.now(), list, notes });
-    if (date === today()) { state.lastEs = Date.now(); state.lastAf = Date.now(); }
+    const publish = () => {
+      const list = [...esList, ...afList.filter((f) => !AF_TO_ESPN[f.lg.id] || myKeys.has(f.lg.key))];
+      state.days.set(date, { t: Date.now(), list, notes: [...notes] });
+      if (date === today()) { state.lastEs = Date.now(); state.lastAf = Date.now(); }
+      if (state.date === date) { renderMatches(); scheduleLive(); }
+    };
+    // ESPN الأول (أسرع)، و API-Football بيتضاف لما يوصل
+    const es = await espnFor(slugs, date, force);
+    esList = es.list;
+    if (state.date === date && es.failedAll && !state.days.get(date)?.list.length) { $('#refresh').classList.remove('spin'); showError(box, es.errors[0]); return; }
+    if (es.errors.length && state.date === date) toast(`${es.errors.length} ${tr("دوري ماتحمّلش")} — ${es.errors[0].message}`);
+    publish();
+    afList = await afPart;
+    if (wantAf) publish();
     $('#refresh').classList.remove('spin');
-    if (state.date !== date) return;
-    if (!list.length && slugs.length && errors.length === slugs.length) { showError(box, errors[0]); return; }
-    if (errors.length) toast(`${errors.length} ${tr("دوري ماتحمّلش")} — ${errors[0].message}`);
-    renderMatches();
-    scheduleLive();
+    if (date === state.date) prefetchAround(date);
+  }
+
+  // تحميل امبارح وبكرة في الخلفية عشان التنقل والسحب يبقوا فوريين (ESPN بس، من غير طلبات API-Football)
+  const prefetched = new Set();
+  function prefetchAround(date) {
+    const go = () => {
+      for (const step of [1, -1]) {
+        const [y, m, d] = date.split('-').map(Number);
+        const k = dayKey(new Date(y, m - 1, d + step));
+        if (prefetched.has(k + state.filter)) continue;
+        prefetched.add(k + state.filter);
+        espnFor(espnLeaguesNeeded(), k, false).catch(() => {});
+      }
+    };
+    (window.requestIdleCallback || ((f) => setTimeout(f, 800)))(go);
   }
 
   function showError(box, e) {
@@ -522,7 +605,7 @@
     try {
       if (src === 'es') {
         const slugs = [...new Set(visibleFixtures().filter((f) => f.src === 'es' && (liveish(f, now) || (f.st === 'NS' && f.ts < now + 120000))).map((f) => f.slug))];
-        const fresh = (await pool(slugs, 6, (s) => espnDay(s, today(), true).catch(() => null))).filter(Boolean).flat();
+        const fresh = slugs.length ? (await espnFor(slugs, today(), true)).list : [];
         const map = new Map(fresh.map((f) => [f.id, f]));
         day.list = day.list.map((f) => map.get(f.id) || f);
         state.lastEs = Date.now();
