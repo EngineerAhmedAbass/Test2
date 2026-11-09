@@ -56,6 +56,9 @@
     cfg.interval = 60;
     cfg.tableLeague = null;
   }
+  const validTeam = (t) => t && typeof t.key === 'string' && /^(es|af):./.test(t.key) && !/:(undefined|null)$/.test(t.key);
+  cfg.teams = (Array.isArray(cfg.teams) ? cfg.teams : []).filter(validTeam);
+  cfg.leagues = (Array.isArray(cfg.leagues) && cfg.leagues.length ? cfg.leagues : DEFAULT_LEAGUES).filter((l) => l && (l.src === 'es' ? l.slug : l.id));
   const saveCfg = () => ls.set('goal.cfg', cfg);
   saveCfg();
   const lkey = (l) => (l.src === 'es' ? 'es:' + l.slug : 'af:' + l.id);
@@ -369,7 +372,7 @@
   const espnLeaguesNeeded = () => (state.filter === 'mine'
     ? cfg.leagues.filter((l) => l.src === 'es').map((l) => l.slug)
     : ESPN_CATALOG.map(([s]) => s));
-  const afNeeded = () => !!cfg.key && (state.filter !== 'mine' || cfg.leagues.some((l) => l.src === 'af') || cfg.teams.some((t) => t.key.startsWith('af:')));
+  const afNeeded = () => !!cfg.key && (state.filter !== 'mine' || cfg.leagues.some((l) => l.src === 'af') || cfg.teams.some((t) => String(t?.key || '').startsWith('af:')));
 
   const loadingDays = new Set();
   async function loadDay(date, force = false) {
@@ -888,6 +891,7 @@
     $$('.star[data-team]', root).forEach((b) => {
       b.onclick = () => {
         const t = JSON.parse(b.dataset.team);
+        if (!validTeam(t)) return;
         const has = cfg.teams.some((x) => x.key === t.key);
         cfg.teams = has ? cfg.teams.filter((x) => x.key !== t.key) : [...cfg.teams, t];
         saveCfg();
@@ -1408,6 +1412,7 @@
       <div id="tm-pane" class="tm-pane"></div>`;
     $('.tm-fav', $('#team-body')).onclick = (e) => {
       const b = e.currentTarget;
+      if (!validTeam({ key: team.key })) return;
       const has = cfg.teams.some((x) => x.key === team.key);
       cfg.teams = has ? cfg.teams.filter((x) => x.key !== team.key) : [...cfg.teams, { key: team.key, name, logo }];
       saveCfg();
