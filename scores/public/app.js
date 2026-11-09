@@ -1330,13 +1330,14 @@
             : [[tr("ماتش"), st.appearances], [tr("جون"), st.totalGoals], [tr("صناعة"), st.goalAssists]];
           html += `<button type="button" class="prow" data-pid="${esc(a.id)}" data-tid="${esc(id)}" data-slug="${esc(slug)}">
             <span class="pno">${esc(a.jersey ?? '')}</span>
-            <span class="pimg"><img src="https://a.espncdn.com/i/headshots/soccer/players/full/${esc(a.id)}.png" alt="" loading="lazy" onerror="this.remove()"></span>
+            ${photoSpan(a.id, a.displayName, a.headshot?.href)}
             <span class="ptx"><b>${esc(a.displayName)}</b><small>${a.flag?.href ? `<img src="${esc(a.flag.href)}" alt="" loading="lazy" onerror="this.remove()">` : ''}${esc(a.citizenship || '')}${a.age ? ` • ${esc(a.age)} ${tr("سنة")}` : ''}</small></span>
             <span class="pst">${chips.filter(([, v]) => v != null && !Number.isNaN(v)).map(([l, v]) => `<i><b>${esc(v)}</b>${l}</i>`).join('')}</span></button>`;
         }
         html += '</div>';
       }
       pane.innerHTML = html;
+      fillPhotos(pane);
     } catch (e) {
       if (alive()) pane.innerHTML = `<div class="note">${esc(e.message)}</div>`;
     }
@@ -1369,9 +1370,10 @@
       const arr = top.filter((x) => (x.s[stat] || 0) > 0).sort((a, b) => b.s[stat] - a.s[stat]).slice(0, 5);
       if (!arr.length) return '';
       return `<div class="tm-group"><span>${label}</span></div><div class="plist">${arr.map((x) => `<button type="button" class="prow" data-pid="${esc(x.a.id)}" data-tid="${esc(team.key.slice(3))}" data-slug="${esc(team.dl || team.slug)}">
-        <span class="pimg"><img src="https://a.espncdn.com/i/headshots/soccer/players/full/${esc(x.a.id)}.png" alt="" loading="lazy" onerror="this.remove()"></span>
+        ${photoSpan(x.a.id, x.a.displayName, x.a.headshot?.href)}
         <span class="ptx"><b>${esc(x.a.displayName)}</b><small>${esc(POS1_AR[x.a.position?.abbreviation] || '')}</small></span><span class="lead">${esc(x.s[stat])}</span></button>`).join('')}</div>`;
     };
+    setTimeout(() => fillPhotos(pane), 0);
     html += leaders('totalGoals', tr("الهدافين")) + leaders('goalAssists', tr("صناع الأهداف"));
     pane.innerHTML = html;
   }
@@ -1420,7 +1422,7 @@
       body.innerHTML = `
         <div class="pl-hero">
           <div class="tm-bar"><button class="icon-btn" data-close type="button" aria-label="${tr("رجوع")}"><svg viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"/></svg></button></div>
-          <div class="pl-photo"><img src="https://a.espncdn.com/i/headshots/soccer/players/full/${esc(pid)}.png" alt="" onerror="this.remove()"><span>${esc(at.jersey ?? '')}</span></div>
+          <div class="pl-photo" data-ph="${esc(pid)}" data-nm="${esc(at.displayName)}" data-hs="${esc(at.headshot?.href || '')}" data-one="1">${photoImg(pid)}<span>${esc(at.jersey ?? '')}</span></div>
           <h2 dir="auto">${esc(at.displayName)}</h2>
           <div class="tm-sum">${esc(POS1_AR[at.position?.abbreviation] || at.position?.displayName || '')}${tm ? ' • ' : ''}${tm ? teamLink({ key: 'es:' + tm.id, name: tm.displayName, logo: tm.logos?.[0]?.href || tm.logo }, sl || team.slug, `<span class="inl">${esc(tm.displayName)}</span>`) : ''}</div>
         </div>
@@ -1432,10 +1434,67 @@
         </div>
         ${cells.length ? `<div class="tm-group"><span>${esc(String(at.statsSummary?.displayName || tr("إحصائيات الموسم")).replace(/^(\d{4}-\d{2}) (.+) Stats$/, tr("إحصائيات $2 $1")))}</span></div>
           <div class="sgrid">${cells.map(([l, v]) => `<div class="sbox"><b>${esc(v)}</b><span>${esc(l)}</span></div>`).join('')}</div>` : `<div class="note">${tr("مفيش إحصائيات للاعب ده في الموسم ده")}.</div>`}`;
+      fillPhotos(body);
     } catch (e) {
       if (openPid === pid) body.innerHTML = `<div class="tm-bar"><button class="icon-btn" data-close type="button" aria-label="${tr("رجوع")}"><svg viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"/></svg></button></div><div class="note">${esc(e.message)}</div>`;
     }
   }
+  // ---- صور اللاعبين: ESPN لو موجودة، وإلا Wikipedia (مع كاش 30 يوم) ----
+  const PH_KEY = 'goal.ph';
+  const phStore = ls.get(PH_KEY, {});
+  let phBackoff = 0;
+  const phGet = (id) => { const r = phStore[id]; if (!r) return undefined; const ttl = r.u ? 30 * 86400000 : 7 * 86400000; return Date.now() - r.t < ttl ? r.u : undefined; };
+  const phSet = (id, u) => { phStore[id] = { u: u || '', t: Date.now() }; };
+  const phSave = debounce(() => { if (!ls.set(PH_KEY, phStore)) { /* المساحة خلصت: نمسح القديم */ for (const k of Object.keys(phStore).slice(0, 300)) delete phStore[k]; ls.set(PH_KEY, phStore); } }, 500);
+  function photoImg(id) { const u = phGet(id); return u ? `<img src="${esc(u)}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.remove()">` : ''; }
+  function photoSpan(id, name, hs) {
+    if (hs && phGet(id) === undefined) phSet(id, hs);
+    return `<span class="pimg" data-ph="${esc(id)}" data-nm="${esc(name || '')}">${photoImg(id)}</span>`;
+  }
+  async function wiki(params) {
+    if (Date.now() < phBackoff) throw new Error('backoff');
+    const q = new URLSearchParams({ action: 'query', format: 'json', formatversion: '2', origin: '*', redirects: '1', prop: 'pageimages|pageprops', ppprop: 'disambiguation', piprop: 'thumbnail', pithumbsize: '240', ...params });
+    const r = await fetch('https://en.wikipedia.org/w/api.php?' + q);
+    if (r.status === 429) { phBackoff = Date.now() + 5 * 60000; throw new Error('rate'); }
+    if (!r.ok) throw new Error('wiki ' + r.status);
+    return (await r.json()).query || {};
+  }
+  const goodPage = (pg) => pg && pg.thumbnail && !(pg.pageprops && 'disambiguation' in pg.pageprops) ? pg.thumbnail.source : '';
+  async function wikiBatch(people) { // people: [{id, name}] — طلب واحد لحد 50 لاعب
+    for (let i = 0; i < people.length; i += 50) {
+      const chunk = people.slice(i, i + 50);
+      const d = await wiki({ titles: chunk.map((x) => x.name).join('|'), pilimit: '50' });
+      const map = new Map();
+      for (const n of d.normalized || []) map.set(n.from, n.to);
+      for (const n of d.redirects || []) map.set(n.from, n.to);
+      const byTitle = new Map((d.pages || []).map((pg) => [pg.title, pg]));
+      for (const x of chunk) {
+        let t = x.name;
+        for (let k = 0; k < 3 && map.has(t); k++) t = map.get(t);
+        phSet(x.id, goodPage(byTitle.get(t)));
+      }
+    }
+    phSave();
+  }
+  async function wikiOne(name) {
+    const d = await wiki({ generator: 'search', gsrsearch: `${name} footballer`, gsrlimit: '1' });
+    return goodPage((d.pages || [])[0]);
+  }
+  async function fillPhotos(root) {
+    const els = [...root.querySelectorAll('[data-ph]')].filter((el) => !el.querySelector('img'));
+    if (!els.length) return;
+    const put = () => els.forEach((el) => { const u = phGet(el.dataset.ph); if (u && !el.querySelector('img')) el.insertAdjacentHTML('afterbegin', photoImg(el.dataset.ph)); });
+    els.forEach((el) => { if (el.dataset.hs && phGet(el.dataset.ph) === undefined) phSet(el.dataset.ph, el.dataset.hs); });
+    put();
+    try {
+      const one = els.find((el) => el.dataset.one);
+      if (one && !phGet(one.dataset.ph)) { phSet(one.dataset.ph, await wikiOne(one.dataset.nm)); phSave(); }
+      const need = els.filter((el) => !el.dataset.one && phGet(el.dataset.ph) === undefined && el.dataset.nm).map((el) => ({ id: el.dataset.ph, name: el.dataset.nm }));
+      if (need.length) await wikiBatch([...new Map(need.map((x) => [x.id, x])).values()]);
+    } catch { /* من غير صور */ }
+    put();
+  }
+
   function closePlayer() { $('#player').classList.add('hidden'); openPid = null; }
   $('#player').addEventListener('click', (e) => { if (e.target.id === 'player' || e.target.closest('[data-close]')) closePlayer(); });
 
