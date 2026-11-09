@@ -283,3 +283,5 @@ tr.me td.tm span { color: var(--led); }
 #matches.in-r { animation: inR .28s cubic-bezier(.2, .8, .2, 1); }
 @keyframes inL { from { opacity: 0; transform: translateX(-36px); } }
 @keyframes inR { from { opacity: 0; transform: translateX(36px); } }
+
+.err-pre { margin: 0; padding: 10px; border-radius: 10px; background: var(--board); color: #ffb0b8; font-size: 11.5px; line-height: 1.5; white-space: pre-wrap; word-break: break-word; max-height: 180px; overflow: auto; }

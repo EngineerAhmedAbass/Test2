@@ -103,6 +103,15 @@
     return out;
   }
 
+  function logErr(e, where) {
+    try {
+      const msg = (e && (e.stack || e.message)) || String(e);
+      ls.set('goal.lastErr', { t: Date.now(), where: where || '', msg: String(msg).slice(0, 600) });
+    } catch { /* مفيش */ }
+  }
+  window.addEventListener('error', (ev) => logErr(ev.error || ev.message, 'window'));
+  window.addEventListener('unhandledrejection', (ev) => logErr(ev.reason, 'promise'));
+
   class ApiErr extends Error { constructor(msg, kind) { super(msg); this.kind = kind || 'api'; } }
 
   // كاش في الذاكرة + على الجهاز، ولو الطلب فشل نرجّع آخر نسخة محفوظة
@@ -362,7 +371,19 @@
     : ESPN_CATALOG.map(([s]) => s));
   const afNeeded = () => !!cfg.key && (state.filter !== 'mine' || cfg.leagues.some((l) => l.src === 'af') || cfg.teams.some((t) => t.key.startsWith('af:')));
 
+  const loadingDays = new Set();
   async function loadDay(date, force = false) {
+    if (loadingDays.has(date) && !force) return;
+    loadingDays.add(date);
+    try { await loadDayInner(date, force); } catch (e) {
+      logErr(e, 'loadDay');
+      if (state.date === date && !state.days.get(date)?.list?.length) showError($('#matches'), e);
+    } finally {
+      loadingDays.delete(date);
+      $('#refresh').classList.remove('spin');
+    }
+  }
+  async function loadDayInner(date, force = false) {
     const box = $('#matches');
     const slugs = espnLeaguesNeeded();
     const wantAf = afNeeded();
@@ -442,10 +463,16 @@
       b.setAttribute('role', 'tab');
       const label = i === 0 ? tr("النهارده") : i === -1 ? tr("امبارح") : i === 1 ? tr("بكرة") : d.toLocaleDateString(LOC, { weekday: 'short' });
       b.innerHTML = `<b>${label}</b><small>${d.getDate()}/${d.getMonth() + 1}</small>`;
-      b.onclick = () => { state.date = k; renderDates(); loadDay(k); };
+      b.onclick = () => selectDay(k);
       box.appendChild(b);
     }
-    $('#dates .date.active')?.scrollIntoView({ inline: 'center', block: 'nearest', behavior: 'smooth' });
+    try { $('#dates .date.active')?.scrollIntoView({ inline: 'center', block: 'nearest' }); } catch (e) { logErr(e, 'scrollIntoView'); }
+  }
+
+  function selectDay(k) {
+    state.date = k;
+    loadDay(k); // الأول: نبدأ تحميل الماتشات
+    try { renderDates(); } catch (e) { logErr(e, 'renderDates'); }
   }
 
   // كام يوم بين اليوم المختار والنهارده
@@ -458,7 +485,7 @@
   function shiftDay(step, fromLeft) {
     const [y, m, d] = state.date.split('-').map(Number);
     state.date = dayKey(new Date(y, m - 1, d + step));
-    renderDates();
+    try { renderDates(); } catch (e) { logErr(e, 'renderDates'); }
     const box = $('#matches');
     box.classList.remove('in-l', 'in-r');
     void box.offsetWidth;
@@ -495,7 +522,7 @@
       state.filter = c.dataset.filter;
       ls.set('goal.filter', state.filter);
       $$('.filters .chip').forEach((x) => x.classList.toggle('active', x === c));
-      if (prev === 'mine' && state.filter !== 'mine') loadDay(state.date); // محتاجين دوريات أكتر
+      if ((prev === 'mine' && state.filter !== 'mine') || !state.days.has(state.date)) loadDay(state.date); // محتاجين دوريات أكتر
       else { renderMatches(); scheduleLive(); }
     };
   });
@@ -522,7 +549,11 @@
     const box = $('#matches');
     box.dataset.date = state.date;
     const day = state.days.get(state.date);
-    if (!day) { box.innerHTML = '<div class="skeleton"></div>'.repeat(6); return; }
+    if (!day) {
+      box.innerHTML = '<div class="skeleton"></div>'.repeat(6);
+      if (!loadingDays.has(state.date)) loadDay(state.date); // مفيش بيانات ومفيش تحميل شغال: نبدأه
+      return;
+    }
     const list = visibleFixtures();
     $('#updated').textContent = state.date === today() ? `${tr("اتحدّث")} ${hhmm(Math.max(day.t, state.lastEs))}` : '';
     const order = new Map(cfg.leagues.map((l, i) => [lkey(l), i]));
@@ -1163,7 +1194,15 @@
   // =====================================================================
   //                              الإعدادات
   // =====================================================================
+  function renderLastErr() {
+    const el = $('#last-err');
+    if (!el) return;
+    const e = ls.get('goal.lastErr', null);
+    el.classList.toggle('hidden', !e);
+    if (e) $('#last-err-text').textContent = `${new Date(e.t).toLocaleString(LOC)} • ${e.where}\n${e.msg}`;
+  }
   function renderSettings() {
+    renderLastErr();
     $('#welcome').classList.toggle('hidden', !!cfg.key || ls.get('goal.seenWelcome', false));
     ls.set('goal.seenWelcome', true);
     $('#key').value = cfg.key;
@@ -1281,6 +1320,7 @@
       box.appendChild(row);
     }
   }
+  $('#last-err-clear').onclick = () => { localStorage.removeItem('goal.lastErr'); renderLastErr(); };
   $$('#lang button').forEach((b) => { b.onclick = () => { if (b.dataset.v !== LANG) setLang(b.dataset.v); }; });
   $$('#interval button').forEach((b) => { b.onclick = () => { cfg.interval = Number(b.dataset.v); saveCfg(); $$('#interval button').forEach((x) => x.classList.toggle('active', x === b)); }; });
 
