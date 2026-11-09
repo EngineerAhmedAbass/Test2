@@ -107,9 +107,10 @@
 
   // كاش في الذاكرة + على الجهاز، ولو الطلب فشل نرجّع آخر نسخة محفوظة
   const mem = new Map();
-  async function cached(key, ttl, fn, { persist = true, force = false } = {}) {
+  async function cached(key, ttl, fn, { persist = true, force = false, finalAt = 0 } = {}) {
     const hit = mem.get(key) || (persist ? ls.get('goal.c.' + key, null) : null);
-    if (hit && !force && Date.now() - hit.t < ttl) return hit.d;
+    const notFinal = finalAt && hit && hit.t < finalAt && Date.now() > finalAt;
+    if (hit && !force && !notFinal && Date.now() - hit.t < ttl) return hit.d;
     try {
       const d = await fn();
       const rec = { t: Date.now(), d };
@@ -132,14 +133,28 @@
   // =====================================================================
   //                         مصدر 1: ESPN
   // =====================================================================
+  function fetchT(url, ms = 12000) {
+    const ac = new AbortController();
+    const timer = setTimeout(() => ac.abort(), ms);
+    return fetch(url, { signal: ac.signal }).finally(() => clearTimeout(timer));
+  }
   async function espn(path) {
     let r;
-    try { r = await fetch(`${ESPN}/${path}`); } catch { throw new ApiErr(tr("مفيش اتصال بالنت."), 'net'); }
+    try { r = await fetchT(`${ESPN}/${path}`); } catch { throw new ApiErr(tr("مفيش اتصال بالنت."), 'net'); }
     if (!r.ok) throw new ApiErr(`ESPN ${tr("رد بخطأ")} ${r.status}.`, 'net');
     return r.json();
   }
   // ESPN بيقسّم الأيام بتوقيت أمريكا الشرقي، فيوم عندك ممكن يكون موزّع على يومين عندهم
-  const etDate = (ms) => new Intl.DateTimeFormat('en-CA', { timeZone: 'America/New_York', year: 'numeric', month: '2-digit', day: '2-digit' }).format(ms).replace(/-/g, '');
+  const ET_FMT = new Intl.DateTimeFormat('en-US', { timeZone: 'America/New_York', year: 'numeric', month: '2-digit', day: '2-digit' });
+  const etDate = (ms) => {
+    const o = Object.fromEntries(ET_FMT.formatToParts(ms).map((x) => [x.type, x.value]));
+    return `${o.year}${String(o.month).padStart(2, '0')}${String(o.day).padStart(2, '0')}`;
+  };
+  // آخر لحظة في يوم ESPN (بتوقيت أمريكا الشرقي) + 6 ساعات: بعدها نتايج اليوم ده بقت نهائية
+  function etFinalAt(etd) {
+    const y = +etd.slice(0, 4), m = +etd.slice(4, 6), d = +etd.slice(6, 8);
+    return Date.UTC(y, m - 1, d + 1, 5) + 6 * 3600000; // نهاية اليوم في أمريكا الشرقية ≈ 05:00 UTC اليوم اللي بعده
+  }
   function espnDatesFor(date) {
     const [y, m, d] = date.split('-').map(Number);
     const start = new Date(y, m - 1, d).getTime();
@@ -184,11 +199,11 @@
   function scoreNum(x) { const v = x && typeof x === 'object' ? x.value ?? x.displayValue : x; return Number(v ?? 0) || 0; }
   async function espnDay(slug, date, force) {
     const lists = await Promise.all(espnDatesFor(date).map((d) =>
-      cached(`es.${slug}.${d}`, ttlFor(date), async () => {
+      cached(`es.${slug}.${d}`, Math.min(ttlFor(date), Date.now() < etFinalAt(d) ? 5 * 60000 : ttlFor(date)), async () => {
         const j = await espn(`site/v2/sports/soccer/${slug}/scoreboard?dates=${d}`);
         const L = j.leagues?.[0];
         return (j.events || []).map((ev) => esCompact(ev, slug, L));
-      }, { force })));
+      }, { force, finalAt: etFinalAt(d) })));
     return lists.flat().filter((f) => dayKey(new Date(f.ts)) === date);
   }
 
@@ -198,7 +213,7 @@
   const panelSlugs = new Set([...PANEL_SEED, ...ls.get('goal.panelSlugs', [])]);
   const savePanelSlugs = debounce(() => ls.set('goal.panelSlugs', [...panelSlugs]), 1000);
   function espnPanel(etd, ttl, force) {
-    return cached(`es.panel.${etd}`, ttl, async () => {
+    return cached(`es.panel.${etd}`, Math.min(ttl, Date.now() < etFinalAt(etd) ? 5 * 60000 : ttl), async () => {
       const j = await espn(`site/v2/sports/soccer/scorepanel?dates=${etd}`);
       const out = {};
       for (const sc of j.scores || []) {
@@ -208,7 +223,7 @@
         if (!panelSlugs.has(L.slug)) { panelSlugs.add(L.slug); savePanelSlugs(); }
       }
       return out;
-    }, { force });
+    }, { force, finalAt: etFinalAt(etd) });
   }
   // ماتشات يوم محلي لدوريات معيّنة من ESPN بأقل عدد طلبات
   async function espnFor(slugs, date, force) {
@@ -303,7 +318,7 @@
     const p = (async () => {
       if (!cfg.key) throw new ApiErr(tr("محتاج مفتاح API-Football من الإعدادات."), 'nokey');
       let r;
-      try { r = await fetch(`/api/football/${ep}?${qs}${qs ? '&' : ''}_k=${encodeURIComponent(cfg.key)}`); }
+      try { r = await fetchT(`/api/football/${ep}?${qs}${qs ? '&' : ''}_k=${encodeURIComponent(cfg.key)}`, 15000); }
       catch { throw new ApiErr(tr("مفيش اتصال بالنت."), 'net'); }
       const rem = r.headers.get('x-ratelimit-requests-remaining');
       if (rem != null && rem !== '') setQuota(rem, r.headers.get('x-ratelimit-requests-limit'));
@@ -352,13 +367,17 @@
     const slugs = espnLeaguesNeeded();
     const wantAf = afNeeded();
     // العرض الفوري: آخر نسخة متخزنة حتى لو قديمة، والتحديث بيكمل في الخلفية
-    if (!state.days.has(date) || force === false) {
+    if (!force) {
       const cachedList = peekDay(date, slugs);
       if (cachedList) {
         const prev = state.days.get(date);
         state.days.set(date, { t: prev?.t || 0, list: cachedList, notes: prev?.notes || [] });
         if (state.date === date) renderMatches();
-      } else if (!state.days.has(date)) box.innerHTML = '<div class="skeleton"></div>'.repeat(6);
+      } else if (state.date === date) {
+        box.dataset.date = date;
+        box.innerHTML = '<div class="skeleton"></div>'.repeat(6);
+        $('#updated').textContent = '';
+      }
     }
     $('#refresh').classList.add('spin');
     const notes = [];
@@ -390,13 +409,16 @@
   const prefetched = new Set();
   function prefetchAround(date) {
     const go = () => {
-      for (const step of [1, -1]) {
-        const [y, m, d] = date.split('-').map(Number);
-        const k = dayKey(new Date(y, m - 1, d + step));
-        if (prefetched.has(k + state.filter)) continue;
-        prefetched.add(k + state.filter);
-        espnFor(espnLeaguesNeeded(), k, false).catch(() => {});
-      }
+      (async () => {
+        for (const step of [1, -1]) {
+          if (state.date !== date) return; // المستخدم راح ليوم تاني: نسيبه ياخد الشبكة
+          const [y, m, d] = date.split('-').map(Number);
+          const k = dayKey(new Date(y, m - 1, d + step));
+          if (prefetched.has(k + state.filter)) continue;
+          prefetched.add(k + state.filter);
+          await espnFor(espnLeaguesNeeded(), k, false).catch(() => {});
+        }
+      })();
     };
     (window.requestIdleCallback || ((f) => setTimeout(f, 800)))(go);
   }
@@ -483,15 +505,24 @@
     if (!day) return [];
     const L = myLeagueKeys();
     const T = teamKeys();
-    if (state.filter === 'live') return day.list.filter((f) => LIVE.has(f.st));
-    if (state.filter === 'mine') return day.list.filter((f) => L.has(f.lg.key) || T.has(f.h.key) || T.has(f.a.key));
-    return day.list;
+    const onDay = day.list.filter((f) => dayKey(new Date(f.ts)) === state.date);
+    if (state.filter === 'live') return onDay.filter((f) => LIVE.has(f.st));
+    if (state.filter === 'mine') return onDay.filter((f) => L.has(f.lg.key) || T.has(f.h.key) || T.has(f.a.key));
+    return onDay;
   }
 
   function renderMatches() {
+    try { renderMatchesInner(); } catch (e) {
+      const box = $('#matches');
+      box.dataset.date = state.date;
+      box.innerHTML = `<div class="empty"><h4>${tr("حصلت مشكلة")}</h4><div>${esc(e.message)}</div></div>`;
+    }
+  }
+  function renderMatchesInner() {
     const box = $('#matches');
+    box.dataset.date = state.date;
     const day = state.days.get(state.date);
-    if (!day) return;
+    if (!day) { box.innerHTML = '<div class="skeleton"></div>'.repeat(6); return; }
     const list = visibleFixtures();
     $('#updated').textContent = state.date === today() ? `${tr("اتحدّث")} ${hhmm(Math.max(day.t, state.lastEs))}` : '';
     const order = new Map(cfg.leagues.map((l, i) => [lkey(l), i]));
