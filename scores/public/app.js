@@ -42,6 +42,17 @@
     ...['caf.champions', 'caf.confed', 'uefa.champions', 'eng.1', 'esp.1', 'ita.1', 'ger.1', 'fra.1', 'ksa.1'].map((slug) => ({ src: 'es', slug })),
   ];
 
+  const TAR = window.TEAM_AR || { es: {}, af: {} };
+  function tname(t) {
+    if (!t) return '';
+    const n = t.name || '';
+    if (!RTL) return n;
+    const k = String(t.key || '');
+    if (k.startsWith('es:')) return TAR.es[k.slice(3)] || n;
+    if (k.startsWith('af:')) return TAR.af[n] || n;
+    return n;
+  }
+
   const LIVE = new Set(['1H', 'HT', '2H', 'ET', 'BT', 'P', 'SUSP', 'INT', 'LIVE']);
   const DONE = new Set(['FT', 'AET', 'PEN', 'AWD', 'WO']);
   const ST_TEXT = { HT: tr("استراحة"), BT: tr("استراحة"), P: tr("ركلات ترجيح"), FT: tr("انتهت"), AET: tr("بعد الإضافي"), PEN: tr("بالترجيح"), PST: tr("اتأجلت"), CANC: tr("اتلغت"), ABD: tr("اتوقفت"), SUSP: tr("معلّقة"), INT: tr("متوقفة"), TBD: tr("لم يتحدد"), AWD: tr("قرار إداري"), WO: tr("انسحاب") };
@@ -624,9 +635,9 @@
       : `<div class="time">${hhmm(f.ts)}</div><div class="st">${statusText(f)}</div>`;
     const lose = (t) => (DONE.has(f.st) && t.w === false ? ' lose' : '');
     return `<button type="button" class="match${live ? ' live' : ''}${fav ? ' fav' : ''}" data-id="${esc(f.id)}">
-      <div class="team${lose(f.h)}">${imgTag(f.h.logo)}<span>${esc(f.h.name)}</span></div>
+      <div class="team${lose(f.h)}">${imgTag(f.h.logo)}<span>${esc(tname(f.h))}</span></div>
       <div class="mid">${mid}</div>
-      <div class="team away${lose(f.a)}">${imgTag(f.a.logo)}<span>${esc(f.a.name)}</span></div></button>`;
+      <div class="team away${lose(f.a)}">${imgTag(f.a.logo)}<span>${esc(tname(f.a))}</span></div></button>`;
   }
 
   // ---------- التحديث المباشر ----------
@@ -715,7 +726,7 @@
       if (!o || o.g[0] == null || f.g[0] == null) continue;
       if (!(f.g[0] > o.g[0] || f.g[1] > o.g[1])) continue;
       if (!L.has(f.lg.key) && !T.has(f.h.key) && !T.has(f.a.key)) continue;
-      toast(`${tr("جوووول")}! \u2066${f.h.name} ${f.g[0]} - ${f.g[1]} ${f.a.name}\u2069`, 'goal');
+      toast(`${tr("جوووول")}! \u2066${tname(f.h)} ${f.g[0]} - ${f.g[1]} ${tname(f.a)}\u2069`, 'goal');
       $(`.match[data-id="${CSS.escape(f.id)}"]`)?.classList.add('flash');
       if (navigator.vibrate) navigator.vibrate([120, 60, 120]);
     }
@@ -817,7 +828,7 @@
       }
     }
     const lineups = [...(j.rosters || [])].sort((a, b) => (a.homeAway === 'home' ? -1 : b.homeAway === 'home' ? 1 : 0)).map((r) => ({
-      name: r.team?.shortDisplayName || r.team?.displayName || '', formation: r.formation || '', coach: '',
+      key: 'es:' + r.team?.id, name: r.team?.shortDisplayName || r.team?.displayName || '', formation: r.formation || '', coach: '',
       color: r.uniform?.color || r.team?.color || '', alt: r.uniform?.alternateColor || r.team?.alternateColor || '',
       club: r.team?.color || '', clubAlt: r.team?.alternateColor || '',
       xi: (r.roster || []).filter((p) => p.starter).map((p) => ({
@@ -866,7 +877,7 @@
     }
     const L = f.lineups || [];
     const lineups = (L[0]?.team?.id === homeId ? L : [...L].reverse()).map((t) => ({
-      name: t.team.name, formation: t.formation || '', coach: t.coach?.name || '',
+      key: 'af:' + t.team.id, name: t.team.name, formation: t.formation || '', coach: t.coach?.name || '',
       color: t.team.colors?.player?.primary || '', alt: t.team.colors?.player?.border || t.team.colors?.player?.number || '',
       num: t.team.colors?.player?.number || '', gk: t.team.colors?.goalkeeper?.primary || '', gkNum: t.team.colors?.goalkeeper?.number || '',
       xi: (t.startXI || []).map((p) => ({ no: p.player.number, name: p.player.name, pos: p.player.pos || '', grid: p.player.grid || '' })),
@@ -883,11 +894,11 @@
     return `<div class="mh">
       <div class="lg">${imgTag(c.lg.logo)}<span>${esc(leagueName(c.lg))}${c.lg.round ? ' • ' + esc(roundName(c.lg.round)) : ''}</span></div>
       <div class="mh-row">
-        <div class="mh-team">${teamLink(c.h, c.slug, `${imgTag(c.h.logo)}<span>${esc(c.h.name)}</span>`)}${star(c.h)}</div>
+        <div class="mh-team">${teamLink(c.h, c.slug, `${imgTag(c.h.logo)}<span>${esc(tname(c.h))}</span>`)}${star(c.h)}</div>
         <div>${hasScore(c) ? `<div class="mh-score">${scoreTxt(c.g)}</div>` : `<div class="mh-time">${hhmm(c.ts)}</div>`}
           ${c.pen[0] != null ? `<div class="pen">${tr("ترجيح")} (${scoreTxt(c.pen)})</div>` : ''}
           <div class="mh-st${live ? ' live' : ''}">${statusText(c) || new Date(c.ts).toLocaleDateString(LOC, { weekday: 'long', day: 'numeric', month: 'long' })}</div></div>
-        <div class="mh-team">${teamLink(c.a, c.slug, `${imgTag(c.a.logo)}<span>${esc(c.a.name)}</span>`)}${star(c.a)}</div>
+        <div class="mh-team">${teamLink(c.a, c.slug, `${imgTag(c.a.logo)}<span>${esc(tname(c.a))}</span>`)}${star(c.a)}</div>
       </div>
       <div class="mh-meta">${[c.ven, c.city].filter(Boolean).map(esc).join(tr("، "))}${c.ref ? tr(" • الحكم: ") + esc(c.ref) : ''}</div>
     </div>`;
@@ -901,7 +912,7 @@
         cfg.teams = has ? cfg.teams.filter((x) => x.key !== t.key) : [...cfg.teams, t];
         saveCfg();
         b.classList.toggle('on', !has);
-        toast(has ? `${t.name} ${tr("اتشال من فرقك")}` : `${t.name} ${tr("اتضاف لفرقك")}`);
+        toast(has ? `${tname(t)} ${tr("اتشال من فرقك")}` : `${tname(t)} ${tr("اتضاف لفرقك")}`);
         renderMatches();
         renderTeams();
       };
@@ -1042,19 +1053,19 @@
       }).join('')).join('');
     };
     const sw = (k) => `<i class="sw" style="background:${k.body};border-color:${k.trim}"></i>`;
-    return `<div class="pitch-head"><span>${away ? sw(ak) : ''}${esc(away?.name || '')}</span><b>${esc(away?.formation || '')}</b></div>
+    return `<div class="pitch-head"><span>${away ? sw(ak) : ''}${esc(tname(away))}</span><b>${esc(away?.formation || '')}</b></div>
       <div class="pitch" role="img" aria-label="${tr("التشكيل على الملعب")}">
         <div class="pl-line half"></div><div class="pl-circle"></div><div class="pl-spot"></div>
         <div class="pl-box at-top"></div><div class="pl-box6 at-top"></div><div class="pl-box at-bot"></div><div class="pl-box6 at-bot"></div>
         ${away ? place(away, ak, false) : ''}${place(home, hk, true)}
       </div>
-      <div class="pitch-head"><span>${sw(hk)}${esc(home.name)}</span><b>${esc(home.formation || '')}</b></div>`;
+      <div class="pitch-head"><span>${sw(hk)}${esc(tname(home))}</span><b>${esc(home.formation || '')}</b></div>`;
   }
 
   function lineupsHtml(d) {
     if (!d.lineups.length) return `<div class="note">${tr("التشكيل بيتعلن عادةً قبل الماتش بساعة تقريبًا")}.</div>`;
     const pl = (p) => `<div class="pl${p.id ? ' tap' : ''}"${p.id ? ` data-pid="${esc(p.id)}" role="button" tabindex="0"` : ''}><span class="no">${esc(p.no ?? '')}</span><span>${esc(p.name)}</span>${p.in ? `<em class="in">${tr("دخل")}</em>` : ''}</div>`;
-    const benches = `<div class="lineups">${d.lineups.map((t) => `<div class="lu"><h4>${esc(t.name)}</h4>
+    const benches = `<div class="lineups">${d.lineups.map((t) => `<div class="lu"><h4>${esc(tname(t))}</h4>
       ${t.coach ? `<div class="meta">${tr("المدرب")}: ${esc(t.coach)}</div>` : ''}
       ${t.subs.length ? `<div class="sub-title">${tr("الاحتياطي")}</div>` + t.subs.map(pl).join('') : ''}</div>`).join('')}</div>`;
     return pitchHtml(d) + benches;
@@ -1189,7 +1200,7 @@
         if (r.zone?.desc) legend.set(r.zone.desc, r.zone.color);
         const form = String(r.form).slice(-5).split('').filter(Boolean).map((x) => `<i class="${x}">${x === 'W' ? tr("ف") : x === 'D' ? tr("ت") : tr("خ")}</i>`).join('');
         html += `<tr data-row="${esc(r.team.key)}" class="${T.has(r.team.key) ? 'fav' : ''}"><td class="rk" style="--q:${esc(r.zone?.color || 'transparent')}">${esc(r.rank)}</td>
-          <td class="tm">${teamLink(r.team, t.slug, `<div>${imgTag(r.team.logo)}<span>${esc(r.team.name)}</span></div>`)}</td>
+          <td class="tm">${teamLink(r.team, t.slug, `<div>${imgTag(r.team.logo)}<span>${esc(tname(r.team))}</span></div>`)}</td>
           <td>${esc(r.p)}</td><td>${esc(r.w)}</td><td>${esc(r.d)}</td><td>${esc(r.l)}</td>
           <td dir="ltr">${r.gd > 0 ? '+' : ''}${esc(r.gd)}</td><td class="pts">${esc(r.pts)}</td>${hasForm ? `<td class="f"><span class="form" dir="ltr">${form}</span></td>` : ''}</tr>`;
       }
@@ -1337,7 +1348,7 @@
     for (const t of cfg.teams) {
       const row = document.createElement('div');
       row.className = 'row';
-      row.innerHTML = `${imgTag(t.logo)}<div class="tx"><b>${esc(t.name)}</b></div><button type="button" class="act">${tr("شيل")}</button>`;
+      row.innerHTML = `${imgTag(t.logo)}<div class="tx"><b>${esc(tname(t))}</b></div><button type="button" class="act">${tr("شيل")}</button>`;
       $('.act', row).onclick = () => { cfg.teams = cfg.teams.filter((x) => x.key !== t.key); saveCfg(); renderTeams(); };
       box.appendChild(row);
     }
@@ -1354,7 +1365,7 @@
   function showModal(el) { el.style.zIndex = String(++zTop); el.classList.remove('hidden'); }
   function teamLink(t, slug, inner) {
     if (!t || !t.key) return inner;
-    return `<button type="button" class="team-link" data-team-key="${esc(t.key)}" data-slug="${esc(slug || '')}" data-name="${esc(t.name || '')}" data-logo="${esc(t.logo || '')}">${inner}</button>`;
+    return `<button type="button" class="team-link" data-team-key="${esc(t.key)}" data-slug="${esc(slug || '')}" data-name="${esc(tname(t))}" data-logo="${esc(t.logo || '')}">${inner}</button>`;
   }
   document.addEventListener('click', (e) => {
     const tl = e.target.closest('[data-team-key]');
@@ -1409,7 +1420,7 @@
 
   function renderTeamShell() {
     const t = team.info;
-    const name = t?.displayName || team.name || '';
+    const name = tname({ key: team.key, name: t?.displayName || team.name || '' });
     const logo = t?.logos?.[0]?.href || team.logo || '';
     const isEs = team.key.startsWith('es:');
     const fav = cfg.teams.some((x) => x.key === team.key);
@@ -1503,9 +1514,9 @@
       ? `<div class="score">${scoreTxt(f.g)}</div><div class="st">${esc(new Date(f.ts).toLocaleDateString('en-CA'))}</div>`
       : `<div class="time">${hhmm(f.ts)}</div><div class="st">${esc(fmtDate(f.ts))}</div>`;
     return `<button type="button" class="tm-card${LIVE.has(f.st) ? ' live' : ''}" data-id="${esc(f.id)}">
-      <div class="team${me(f.h)}">${imgTag(f.h.logo)}<span>${esc(f.h.name)}</span></div>
+      <div class="team${me(f.h)}">${imgTag(f.h.logo)}<span>${esc(tname(f.h))}</span></div>
       <div class="mid">${mid}${res ? `<i class="res ${res}">${res === 'W' ? tr("فوز") : res === 'D' ? tr("تعادل") : tr("خسارة")}</i>` : ''}</div>
-      <div class="team away${me(f.a)}">${imgTag(f.a.logo)}<span>${esc(f.a.name)}</span></div></button>`;
+      <div class="team away${me(f.a)}">${imgTag(f.a.logo)}<span>${esc(tname(f.a))}</span></div></button>`;
   }
 
   // ---- الترتيب ----
@@ -1661,7 +1672,7 @@
           <div class="tm-bar"><button class="icon-btn" data-close type="button" aria-label="${tr("رجوع")}"><svg viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"/></svg></button></div>
           <div class="pl-photo" data-ph="${esc(pid)}" data-nm="${esc(at.displayName)}" data-hs="${esc(at.headshot?.href || '')}" data-one="1">${photoImg(pid)}<span>${esc(at.jersey ?? '')}</span></div>
           <h2 dir="auto">${esc(at.displayName)}</h2>
-          <div class="tm-sum">${esc(POS1_AR[at.position?.abbreviation] || at.position?.displayName || '')}${tm ? ' • ' : ''}${tm ? teamLink({ key: 'es:' + tm.id, name: tm.displayName, logo: tm.logos?.[0]?.href || tm.logo }, sl || team.slug, `<span class="inl">${esc(tm.displayName)}</span>`) : ''}</div>
+          <div class="tm-sum">${esc(POS1_AR[at.position?.abbreviation] || at.position?.displayName || '')}${tm ? ' • ' : ''}${tm ? teamLink({ key: 'es:' + tm.id, name: tm.displayName, logo: tm.logos?.[0]?.href || tm.logo }, sl || team.slug, `<span class="inl">${esc(tname({ key: 'es:' + tm.id, name: tm.displayName }))}</span>`) : ''}</div>
         </div>
         <div class="pinfo">
           ${at.age ? `<div><b>${esc(at.age)}</b><span>${tr("سنة")}</span></div>` : ''}

@@ -285,3 +285,7 @@ tr.me td.tm span { color: var(--led); }
 @keyframes inR { from { opacity: 0; transform: translateX(36px); } }
 
 .err-pre { margin: 0; padding: 10px; border-radius: 10px; background: var(--board); color: #ffb0b8; font-size: 11.5px; line-height: 1.5; white-space: pre-wrap; word-break: break-word; max-height: 180px; overflow: auto; }
+
+/* النتيجة ماتنزلش سطرين حتى لو الخط ماتحمّلش */
+.match .score, .match .time, .tm-card .score, .tm-card .time, .mh-score, .mh-time { white-space: nowrap; }
+.match .mid { min-width: 0; }
