@@ -6,6 +6,8 @@ import android.content.Intent;
 import android.graphics.Color;
 import android.net.Uri;
 import android.os.Bundle;
+import android.content.SharedPreferences;
+import android.webkit.JavascriptInterface;
 import android.webkit.ValueCallback;
 import android.webkit.WebResourceRequest;
 import android.webkit.WebResourceResponse;
@@ -54,6 +56,7 @@ public class MainActivity extends Activity {
         s.setDomStorageEnabled(true);
         s.setMixedContentMode(WebSettings.MIXED_CONTENT_COMPATIBILITY_MODE);
         s.setAllowFileAccess(false);
+        web.addJavascriptInterface(new Store(getSharedPreferences("goal", MODE_PRIVATE)), "GoalNative");
 
         web.setWebViewClient(new WebViewClient() {
             @Override
@@ -106,6 +109,16 @@ public class MainActivity extends Activity {
                 if (v == null || !v.contains("yes")) moveTaskToBack(true);
             }
         });
+    }
+
+    /** نسخة احتياطي من إعدادات التطبيق برا الـ WebView (بتتكتب على الجهاز على طول). */
+    static class Store {
+        private final SharedPreferences prefs;
+        Store(SharedPreferences p) { prefs = p; }
+        @JavascriptInterface public String loadCfg() { return prefs.getString("cfg", ""); }
+        @JavascriptInterface public void saveCfg(String json) {
+            if (json != null && json.length() < 200000) prefs.edit().putString("cfg", json).commit();
+        }
     }
 
     // ---------- الطلبات ----------

@@ -62,9 +62,9 @@
   // =====================================================================
   const ls = {
     get(k, d) { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; } catch { return d; } },
-    set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); return true; } catch { return false; } },
+    set(k, v) { try { return window.goalStore ? window.goalStore.lsSet(k, JSON.stringify(v)) : (localStorage.setItem(k, JSON.stringify(v)), true); } catch { return false; } },
   };
-  const cfg = Object.assign({ v: 2, key: '', leagues: DEFAULT_LEAGUES, teams: [], interval: 60, tableLeague: null }, ls.get('goal.cfg', {}));
+  const cfg = Object.assign({ v: 2, key: '', leagues: DEFAULT_LEAGUES, teams: [], interval: 60, tableLeague: null }, window.goalStore ? window.goalStore.readCfg() : ls.get('goal.cfg', {}));
   if (cfg.v !== 2) { // ترحيل من النسخة الأولى (API-Football بس)
     cfg.v = 2;
     cfg.leagues = DEFAULT_LEAGUES;
@@ -75,7 +75,7 @@
   const validTeam = (t) => t && typeof t.key === 'string' && /^(es|af):./.test(t.key) && !/:(undefined|null)$/.test(t.key);
   cfg.teams = (Array.isArray(cfg.teams) ? cfg.teams : []).filter(validTeam);
   cfg.leagues = (Array.isArray(cfg.leagues) && cfg.leagues.length ? cfg.leagues : DEFAULT_LEAGUES).filter((l) => l && (l.src === 'es' ? l.slug : l.id));
-  const saveCfg = () => ls.set('goal.cfg', cfg);
+  const saveCfg = () => (window.goalStore ? window.goalStore.writeCfg(cfg) : ls.set('goal.cfg', cfg));
   saveCfg();
   const lkey = (l) => (l.src === 'es' ? 'es:' + l.slug : 'af:' + l.id);
   const myLeagueKeys = () => new Set(cfg.leagues.map(lkey));

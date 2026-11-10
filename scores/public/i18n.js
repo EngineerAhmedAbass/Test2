@@ -4,8 +4,45 @@
  */
 (function () {
   'use strict';
-  let saved = null;
-  try { saved = (JSON.parse(localStorage.getItem('goal.cfg') || '{}') || {}).lang || null; } catch (e) { saved = null; }
+  // الإعدادات بتتحفظ في localStorage وكمان نسخة احتياطي في تخزين أندرويد (GoalNative)،
+  // عشان لو localStorage اتملى أو التطبيق اتقفل قبل ما يكتب على الجهاز متضيعش.
+  const NATIVE = window.GoalNative || null;
+  function readCfg() {
+    let a = null, b = null;
+    try { a = JSON.parse(localStorage.getItem('goal.cfg') || 'null'); } catch (e) { a = null; }
+    try { if (NATIVE) b = JSON.parse(NATIVE.loadCfg() || 'null'); } catch (e) { b = null; }
+    if (a && typeof a !== 'object') a = null;
+    if (b && typeof b !== 'object') b = null;
+    if (b && (!a || (b.savedAt || 0) > (a.savedAt || 0))) return b;
+    return a || {};
+  }
+  // لو المساحة خلصت: نمسح أقدم نص الكاش ونجرب تاني
+  function freeCache() {
+    const items = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i);
+      if (k && k.startsWith('goal.c.')) { let t = 0; try { t = JSON.parse(localStorage.getItem(k)).t || 0; } catch (e) { /* */ } items.push([t, k]); }
+    }
+    if (!items.length) return false;
+    items.sort((x, y) => x[0] - y[0]);
+    for (const [, k] of items.slice(0, Math.max(1, Math.ceil(items.length / 2)))) localStorage.removeItem(k);
+    return true;
+  }
+  function lsSet(k, str) {
+    for (let i = 0; i < 4; i++) {
+      try { localStorage.setItem(k, str); return true; } catch (e) { try { if (!freeCache()) return false; } catch (e2) { return false; } }
+    }
+    return false;
+  }
+  function writeCfg(c) {
+    c.savedAt = Date.now();
+    const str = JSON.stringify(c);
+    const ok = lsSet('goal.cfg', str);
+    try { if (NATIVE) NATIVE.saveCfg(str); } catch (e) { /* */ }
+    return ok;
+  }
+  window.goalStore = { readCfg, writeCfg, lsSet, freeCache };
+  const saved = readCfg().lang || null;
   const guess = /^ar/i.test(navigator.language || '') ? 'ar' : 'en';
   const LANG = saved === 'ar' || saved === 'en' ? saved : guess;
   const RTL = LANG === 'ar';
@@ -352,9 +389,9 @@
 
   function setLang(l) {
     try {
-      const c = JSON.parse(localStorage.getItem('goal.cfg') || '{}') || {};
+      const c = readCfg();
       c.lang = l;
-      localStorage.setItem('goal.cfg', JSON.stringify(c));
+      writeCfg(c);
     } catch (e) { /* مفيش تخزين */ }
     location.reload();
   }
