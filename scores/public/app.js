@@ -22,8 +22,13 @@
     ['esp.copa_del_rey', tr("كأس ملك إسبانيا")], ['ita.coppa_italia', tr("كأس إيطاليا")], ['eng.2', tr("التشامبيونشيب")], ['ned.1', tr("الدوري الهولندي")],
     ['por.1', tr("الدوري البرتغالي")], ['tur.1', tr("الدوري التركي")], ['sco.1', tr("الدوري الاسكتلندي")], ['bel.1', tr("الدوري البلجيكي")],
     ['usa.1', tr("الدوري الأمريكي")], ['bra.1', tr("الدوري البرازيلي")], ['arg.1', tr("الدوري الأرجنتيني")], ['mex.1', tr("الدوري المكسيكي")], ['rsa.1', tr("دوري جنوب أفريقيا")],
+    ['caf.nations_qual', tr("تصفيات أمم أفريقيا")], ['uefa.nations', tr("دوري الأمم الأوروبية")], ['afc.asian.cup', tr("كأس آسيا")], ['afc.cupq', tr("تصفيات كأس آسيا")], ['uefa.euro', tr("كأس الأمم الأوروبية")], ['uefa.euroq', tr("تصفيات كأس الأمم الأوروبية")], ['conmebol.america', tr("كوبا أمريكا")], ['concacaf.gold', tr("الكأس الذهبية")], ['fifa.worldq.uefa', tr("تصفيات كأس العالم — أوروبا")], ['fifa.worldq.afc', tr("تصفيات كأس العالم — آسيا")], ['fifa.worldq.conmebol', tr("تصفيات كأس العالم — أمريكا الجنوبية")], ['fifa.world.u20', tr("كأس العالم للشباب")], ['fifa.world.u17', tr("كأس العالم للناشئين")], ['fifa.olympics', tr("الأولمبياد")],
   ];
   const ESPN_AR = Object.fromEntries(ESPN_CATALOG);
+  const NATIONAL = ['fifa.world', 'fifa.worldq.caf', 'caf.nations', 'caf.nations_qual', 'fifa.friendly', 'afc.asian.cup', 'afc.cupq',
+    'uefa.nations', 'uefa.euro', 'uefa.euroq', 'fifa.worldq.uefa', 'fifa.worldq.afc', 'fifa.worldq.conmebol', 'conmebol.america',
+    'concacaf.gold', 'fifa.world.u20', 'fifa.world.u17', 'fifa.olympics'];
+  const NATIONAL_SET = new Set(NATIONAL);
   const AF_AR = { 233: tr("الدوري المصري"), 714: tr("كأس مصر"), 539: tr("كأس الرابطة المصرية"), 12: tr("دوري أبطال أفريقيا"), 20: tr("الكونفدرالية الأفريقية") };
   // نفس البطولة في المصدرين: رقمها في API-Football ← اسمها في ESPN
   const AF_TO_ESPN = {
@@ -1255,7 +1260,7 @@
       const row = document.createElement('div');
       row.className = 'row';
       const needsKey = l.src === 'af' && !cfg.key;
-      row.innerHTML = `${imgTag(l.logo)}<div class="tx"><b>${esc(leagueName(l))}<span class="src">${l.src === 'es' ? 'ESPN' : 'API-Football'}</span></b>
+      row.innerHTML = `${imgTag(l.logo)}<div class="tx"><b>${esc(leagueName(l))}<span class="src">${l.src === 'es' ? (NATIONAL_SET.has(l.slug) ? tr("منتخبات") : 'ESPN') : 'API-Football'}</span></b>
         <small>${needsKey ? tr("محتاج مفتاح API-Football (تحت)") : l.src === 'af' ? tr("امبارح والنهارده وبكرة بس") : tr("أي يوم")}</small></div>
         ${i > 0 ? `<button type="button" class="act" data-up aria-label="${tr("لفوق")}">↑</button>` : ''}<button type="button" class="act" data-rm>${tr("شيل")}</button>`;
       $('[data-rm]', row).onclick = () => { cfg.leagues = cfg.leagues.filter((x) => x !== l); saveCfg(); state.days.clear(); renderLeagues(); renderCatalog(); };
@@ -1276,6 +1281,8 @@
       b.onclick = () => { cfg.leagues.unshift({ ...DEFAULT_LEAGUES[0] }); saveCfg(); state.days.clear(); renderLeagues(); renderCatalog(); };
       box.appendChild(b);
     }
+    const nat = $('#catalog-nat');
+    nat.innerHTML = '';
     for (const [slug, name] of ESPN_CATALOG) {
       if (mine.has('es:' + slug)) continue;
       const b = document.createElement('button');
@@ -1283,9 +1290,20 @@
       b.className = 'cat';
       b.textContent = name;
       b.onclick = () => { cfg.leagues.push({ src: 'es', slug }); saveCfg(); state.days.clear(); renderLeagues(); renderCatalog(); toast(tr("اتضاف ") + name); };
-      box.appendChild(b);
+      (NATIONAL_SET.has(slug) ? nat : box).appendChild(b);
     }
+    const all = NATIONAL.every((x) => mine.has('es:' + x));
+    $('#nat-all').textContent = all ? tr("شيل كل بطولات المنتخبات") : tr("ضيف كل بطولات المنتخبات");
+    $('#nat-all').classList.toggle('primary', !all);
   }
+  $('#nat-all').onclick = () => {
+    const mine = myLeagueKeys();
+    const all = NATIONAL.every((x) => mine.has('es:' + x));
+    if (all) cfg.leagues = cfg.leagues.filter((l) => !(l.src === 'es' && NATIONAL_SET.has(l.slug)));
+    else for (const x of NATIONAL) if (!mine.has('es:' + x)) cfg.leagues.push({ src: 'es', slug: x });
+    saveCfg(); state.days.clear(); renderLeagues(); renderCatalog();
+    toast(all ? tr("اتشالت بطولات المنتخبات") : tr("اتضافت كل بطولات المنتخبات"));
+  };
 
   $('#league-search').addEventListener('input', debounce(async (e) => {
     const q = e.target.value.trim();
@@ -1499,7 +1517,26 @@
     const box = $('.tm-tbl', pane);
     await fillTable(l, box, { alive });
     const row = box.querySelector(`tr[data-row="${CSS.escape(team.key)}"]`);
-    if (row) { row.classList.add('me'); setTimeout(() => row.scrollIntoView({ block: 'center', behavior: 'smooth' }), 50); }
+    if (!row) return;
+    row.classList.add('me');
+    // بطولة فيها مجموعات (زي التصفيات): نعرض مجموعة الفريق بس، وزرار للباقي
+    const tables = [...box.querySelectorAll('table')];
+    if (tables.length > 1) {
+      const mineT = row.closest('table');
+      const hidden = [];
+      for (const tb of tables) {
+        if (tb === mineT) continue;
+        const ttl = tb.previousElementSibling?.classList.contains('group-title') ? tb.previousElementSibling : null;
+        for (const el of [tb, ttl]) if (el) { el.classList.add('hidden'); hidden.push(el); }
+      }
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'btn block';
+      btn.style.margin = '10px 0';
+      btn.textContent = `${tr("اعرض كل المجموعات")} (${tables.length})`;
+      btn.onclick = () => { hidden.forEach((el) => el.classList.remove('hidden')); btn.remove(); };
+      mineT.after(btn);
+    } else setTimeout(() => { try { row.scrollIntoView({ block: 'center' }); } catch { /* مفيش */ } }, 50);
   }
 
   // ---- اللاعبين ----

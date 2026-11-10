@@ -11,6 +11,32 @@
   const RTL = LANG === 'ar';
   const LOC = RTL ? 'ar-EG' : 'en-GB';
   const EN = {
+"اعرض كل المجموعات": "Show all groups",
+
+"تصفيات أمم أفريقيا": "AFCON Qualifiers",
+"دوري الأمم الأوروبية": "UEFA Nations League",
+"كأس آسيا": "AFC Asian Cup",
+"تصفيات كأس آسيا": "Asian Cup Qualifiers",
+"كأس الأمم الأوروبية": "UEFA Euro",
+"تصفيات كأس الأمم الأوروبية": "Euro Qualifiers",
+"كوبا أمريكا": "Copa Am\u00e9rica",
+"الكأس الذهبية": "Gold Cup",
+"تصفيات كأس العالم — أوروبا": "World Cup Qualifiers \u2014 Europe",
+"تصفيات كأس العالم — آسيا": "World Cup Qualifiers \u2014 Asia",
+"تصفيات كأس العالم — أمريكا الجنوبية": "World Cup Qualifiers \u2014 South America",
+"كأس العالم للشباب": "U-20 World Cup",
+"كأس العالم للناشئين": "U-17 World Cup",
+"الأولمبياد": "Olympics",
+"منتخبات": "National",
+"شيل كل بطولات المنتخبات": "Remove all national-team competitions",
+"ضيف كل بطولات المنتخبات": "Add all national-team competitions",
+"اتشالت بطولات المنتخبات": "National-team competitions removed",
+"اتضافت كل بطولات المنتخبات": "All national-team competitions added",
+"مباريات المنتخبات": "National-team matches",
+"كأس العالم وتصفياته، أمم أفريقيا وتصفياتها، الوديات الدولية، دوري الأمم الأوروبية، كأس آسيا وغيرها": "World Cup and qualifiers, AFCON and qualifiers, international friendlies, UEFA Nations League, Asian Cup and more",
+"أو اختار بطولة بطولة": "Or pick competitions one by one",
+"عايز منتخب معيّن؟ افتح أي ماتش ليه ودوس النجمة جنب اسمه، وماتشاته هتظهر دايمًا في": "Want a specific national team? Open any of its matches and tap the star next to its name; its matches will always show in",
+
 "آخر خطأ حصل في التطبيق": "Last error in the app",
 "لو فيه حاجة مش شغالة، صوّر الكارت ده وابعته": "If something isn't working, screenshot this card and send it",
 "مسح": "Clear",
