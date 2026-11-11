@@ -83,8 +83,7 @@ public class AdhanService extends Service implements AudioManager.OnAudioFocusCh
     private boolean play(int p) {
         mp = new MediaPlayer();
         try {
-            int res = 0;
-            if (p == PrayTimes.FAJR) res = getResources().getIdentifier("adhan_fajr", "raw", getPackageName());
+            int res = getResources().getIdentifier(Prefs.voiceFile(this, p), "raw", getPackageName());
             if (res == 0) res = getResources().getIdentifier("adhan", "raw", getPackageName());
             if (res != 0) {
                 AssetFileDescriptor afd = getResources().openRawResourceFd(res);

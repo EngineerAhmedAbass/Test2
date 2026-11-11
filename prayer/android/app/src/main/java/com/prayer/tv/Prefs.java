@@ -12,6 +12,10 @@ final class Prefs {
     static final int[] VOLUMES = {0, 30, 50, 70, 100};
     static final String[] VOLUME_NAMES = {"زي صوت التليفزيون", "30٪", "50٪", "70٪", "100٪"};
 
+    /** أصوات الأذان اللي جوه التطبيق (res/raw) */
+    static final String[] VOICE_NAMES = {"الشيخ عمر هشام العربي", "الشيخ محمد مروان قصاص (المدينة)"};
+    static final String[] VOICE_FILES = {"adhan", "adhan_qassas"};
+
     private static SharedPreferences sp(Context c) {
         return c.getSharedPreferences("prayer", Context.MODE_PRIVATE);
     }
@@ -55,6 +59,27 @@ final class Prefs {
     static int volume(Context c) { return sp(c).getInt("volume", 0); }
 
     static void setVolume(Context c, int v) { sp(c).edit().putInt("volume", v).commit(); }
+
+    static int voice(Context c) {
+        int v = sp(c).getInt("voice", 0);
+        return v >= 0 && v < VOICE_FILES.length ? v : 0;
+    }
+
+    static void setVoice(Context c, int v) { sp(c).edit().putInt("voice", v).commit(); }
+
+    /** -1 = زي باقي الصلوات */
+    static int fajrVoice(Context c) {
+        int v = sp(c).getInt("fajrVoice", -1);
+        return v >= -1 && v < VOICE_FILES.length ? v : -1;
+    }
+
+    static void setFajrVoice(Context c, int v) { sp(c).edit().putInt("fajrVoice", v).commit(); }
+
+    /** اسم ملف الأذان للصلاة دي */
+    static String voiceFile(Context c, int prayer) {
+        int v = prayer == PrayTimes.FAJR && fajrVoice(c) >= 0 ? fajrVoice(c) : voice(c);
+        return VOICE_FILES[v];
+    }
 
     static boolean showScreen(Context c) { return sp(c).getBoolean("screen", true); }
 

@@ -261,15 +261,39 @@ public class MainActivity extends Activity {
     }
 
     private void settingsDialog() {
+        int fv = Prefs.fajrVoice(this);
         String[] items = {
+                "🎙️ المؤذن: " + Prefs.VOICE_NAMES[Prefs.voice(this)],
+                "🌅 مؤذن الفجر: " + (fv < 0 ? "زي باقي الصلوات" : Prefs.VOICE_NAMES[fv]),
                 "طريقة الحساب: " + PrayTimes.METHOD_NAMES[Prefs.method(this)],
                 "العصر: " + (Prefs.hanafi(this) ? "الحنفي" : "الجمهور (شافعي/مالكي/حنبلي)"),
-                "صوت الأذان: " + volumeName(),
+                "مستوى صوت الأذان: " + volumeName(),
                 "شاشة الأذان: " + (Prefs.showScreen(this) ? "بتظهر" : "صوت بس"),
                 "تعديل التاريخ الهجري: " + Prefs.hijriAdjust(this) + " يوم",
         };
         dialog("الإعدادات").setItems(items, (d, w) -> {
-            switch (w) {
+            if (w == 0) {
+                dialog("اختار المؤذن (هيشتغل للتجربة)").setSingleChoiceItems(Prefs.VOICE_NAMES, Prefs.voice(this), (d2, m) -> {
+                    Prefs.setVoice(this, m);
+                    d2.dismiss();
+                    AdhanService.start(this, PrayTimes.DHUHR);
+                    handler.postDelayed(this::update, 300);
+                }).show();
+                return;
+            }
+            if (w == 1) {
+                String[] opts = new String[Prefs.VOICE_NAMES.length + 1];
+                opts[0] = "زي باقي الصلوات";
+                System.arraycopy(Prefs.VOICE_NAMES, 0, opts, 1, Prefs.VOICE_NAMES.length);
+                dialog("مؤذن الفجر (هيشتغل للتجربة)").setSingleChoiceItems(opts, Prefs.fajrVoice(this) + 1, (d2, m) -> {
+                    Prefs.setFajrVoice(this, m - 1);
+                    d2.dismiss();
+                    AdhanService.start(this, PrayTimes.FAJR);
+                    handler.postDelayed(this::update, 300);
+                }).show();
+                return;
+            }
+            switch (w - 2) {
                 case 0:
                     dialog("طريقة الحساب").setSingleChoiceItems(PrayTimes.METHOD_NAMES, Prefs.method(this), (d2, m) -> {
                         Prefs.setMethod(this, m);
@@ -289,7 +313,7 @@ public class MainActivity extends Activity {
                 case 2:
                     int cur = 0;
                     for (int i = 0; i < Prefs.VOLUMES.length; i++) if (Prefs.VOLUMES[i] == Prefs.volume(this)) cur = i;
-                    dialog("صوت الأذان").setSingleChoiceItems(Prefs.VOLUME_NAMES, cur, (d2, m) -> {
+                    dialog("مستوى صوت الأذان").setSingleChoiceItems(Prefs.VOLUME_NAMES, cur, (d2, m) -> {
                         Prefs.setVolume(this, Prefs.VOLUMES[m]);
                         d2.dismiss();
                     }).show();
