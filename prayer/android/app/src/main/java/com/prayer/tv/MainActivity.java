@@ -273,7 +273,7 @@ public class MainActivity extends Activity {
         };
         dialog("الإعدادات").setItems(items, (d, w) -> {
             if (w == 0) {
-                dialog("اختار المؤذن (هيشتغل للتجربة)").setSingleChoiceItems(Prefs.VOICE_NAMES, Prefs.voice(this), (d2, m) -> {
+                dialog("اختار المؤذن (هيشتغل للتجربة)").setSingleChoiceItems(java.util.Arrays.copyOf(Prefs.VOICE_NAMES, Prefs.MAIN_VOICES), Prefs.voice(this), (d2, m) -> {
                     Prefs.setVoice(this, m);
                     d2.dismiss();
                     AdhanService.start(this, PrayTimes.DHUHR);
