@@ -93,6 +93,10 @@ final class Prefs {
         return VOICE_FILES[v];
     }
 
+    static long lastUpdateCheck(Context c) { return sp(c).getLong("updCheck", 0); }
+
+    static void setLastUpdateCheck(Context c, long t) { sp(c).edit().putLong("updCheck", t).commit(); }
+
     /** ميعاد الأذان التجريبي (0 = مفيش) */
     static long testAt(Context c) { return sp(c).getLong("testAt", 0); }
 

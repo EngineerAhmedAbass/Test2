@@ -36,7 +36,7 @@ public class MainActivity extends Activity {
     private final TextView[] timeViews = new TextView[6];
     private final TextView[] nameViews = new TextView[6];
     private final TextView[] bells = new TextView[6];
-    private Button testBtn, laterBtn, overlayBtn;
+    private Button testBtn, laterBtn, overlayBtn, updateBtn;
     private long[] today;
     private int todayKey = -1;
     private int highlighted = -2;
@@ -70,6 +70,12 @@ public class MainActivity extends Activity {
         super.onResume();
         settingsChanged();
         handler.post(tick);
+        // نشوف لو فيه تحديث، مرة كل يوم
+        long now = System.currentTimeMillis();
+        if (now - Prefs.lastUpdateCheck(this) > 24 * 3600000L) {
+            Prefs.setLastUpdateCheck(this, now);
+            Updater.checkQuietly(this, latest -> update());
+        }
     }
 
     @Override
@@ -170,6 +176,8 @@ public class MainActivity extends Activity {
         btns.addView(laterBtn);
         overlayBtn = button("", v -> overlayDialog());
         btns.addView(overlayBtn);
+        updateBtn = button("تحديث البرنامج", v -> Updater.checkAndInstall(this));
+        btns.addView(updateBtn);
         HorizontalScrollView bs = new HorizontalScrollView(c);
         bs.setHorizontalScrollBarEnabled(false);
         bs.addView(btns);
@@ -271,6 +279,8 @@ public class MainActivity extends Activity {
         long testAt = Prefs.testAt(this);
         laterBtn.setText(testAt > now ? "الأذان التجريبي بعد " + Ui.duration(testAt - now).substring(2) + " (إلغاء)"
                 : "جرّب بعد دقيقة");
+        updateBtn.setText(Updater.latestKnown > Updater.currentVersion(this)
+                ? "تحديث متاح: نسخة " + Updater.latestKnown : "تحديث البرنامج");
         overlayBtn.setText(canOverlay() ? "شاشة الأذان فوق البرامج: مفعّلة" : "شاشة الأذان فوق البرامج: مش مفعّلة");
     }
 

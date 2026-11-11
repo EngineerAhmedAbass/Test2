@@ -36,7 +36,10 @@ jobs:
         run: gradle -p prayer/android assembleRelease --no-daemon --stacktrace
 
       - name: Rename APK
-        run: cp prayer/android/app/build/outputs/apk/release/app-release.apk Prayer-TV.apk
+        run: |
+          cp prayer/android/app/build/outputs/apk/release/app-release.apk Prayer-TV.apk
+          # زرار التحديث في البرنامج بيقرا رقم آخر نسخة من هنا
+          echo '{"versionCode": ${{ github.run_number }}, "versionName": "1.0.${{ github.run_number }}"}' > version.json
 
       - uses: actions/upload-artifact@v4
         with:
@@ -49,7 +52,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           gh release delete prayer-latest --yes --cleanup-tag || true
-          gh release create prayer-latest Prayer-TV.apk \
+          gh release create prayer-latest Prayer-TV.apk version.json \
             --target "${{ github.sha }}" \
             --latest=false \
             --title "مواقيت الصلاة للتليفزيون (نسخة ${{ github.run_number }})" \
