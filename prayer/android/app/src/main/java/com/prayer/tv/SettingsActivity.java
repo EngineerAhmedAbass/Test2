@@ -140,27 +140,44 @@ public class SettingsActivity extends Activity {
                     Prefs.setFajrVoice(this, i - 1);
                     AdhanService.start(this, PrayTimes.FAJR);
                 })));
-        rows.add(new Row("علو الأذان",
-                "بيعلّي صوت الأذان نفسه، فبيشتغل حتى على البوكس اللي صوته بيتحكم فيه من التليفزيون. "
-                        + "لما تختار هيشتغل الأذان عشان تسمع الفرق",
-                () -> Prefs.LOUD_NAMES[Prefs.loud(this)],
-                () -> choice(Prefs.LOUD_NAMES, Prefs.loud(this), i -> {
-                    Prefs.setLoud(this, i);
-                    AdhanService.start(this, PrayTimes.DHUHR);
-                })));
-        rows.add(new Row("صوت التليفزيون وقت الأذان",
-                "لو التليفزيون صوته واطي، البرنامج بيعلّيه الدرجات دي قبل الأذان ويرجّعه زي ما كان بعده. "
-                        + "محتاج HDMI-CEC يكون شغال على البوكس والتليفزيون",
-                () -> Prefs.TV_STEPS_NAMES[Prefs.tvSteps(this)],
-                () -> choice(Prefs.TV_STEPS_NAMES, Prefs.tvSteps(this), i -> {
-                    Prefs.setTvSteps(this, i);
-                    AdhanService.start(this, PrayTimes.DHUHR);
-                })));
-        rows.add(new Row("اختبار صوت التليفزيون",
-                "جرّب كل طريقة وبص على التليفزيون: اللي تعلّي الصوت دوس عليها \"استخدم دي\"",
-                () -> Prefs.tvMethod(this) < 0 ? "لسه ماتجربش"
-                        : "شغالة بـ " + TvVolume.METHOD_NAMES[Prefs.tvMethod(this)],
-                this::tvTestDetail));
+        android.media.AudioManager am = (android.media.AudioManager) getSystemService(AUDIO_SERVICE);
+        boolean fixed = am != null && am.isVolumeFixed();
+        if (!fixed && am != null) {
+            // الجهاز ليه صوت خاص بيه (زي MiTV Box): نختار رقم من 1 لحد الآخر
+            int max = am.getStreamMaxVolume(android.media.AudioManager.STREAM_MUSIC);
+            String[] levels = new String[max + 1];
+            levels[0] = "زي صوت الجهاز (ماتغيرش)";
+            for (int i = 1; i <= max; i++) levels[i] = i + " من " + max;
+            rows.add(new Row("صوت الأذان",
+                    "صوت الجهاز وقت الأذان، وبيرجع زي ما كان بعده. لما تختار هيشتغل الأذان عشان تسمعه",
+                    () -> levels[Prefs.adhanVolume(this, max)],
+                    () -> choice(levels, Prefs.adhanVolume(this, max), i -> {
+                        Prefs.setAdhanVolume(this, i);
+                        AdhanService.start(this, PrayTimes.DHUHR);
+                    })));
+        } else {
+            rows.add(new Row("علو الأذان",
+                    "بيعلّي صوت الأذان نفسه، فبيشتغل حتى على البوكس اللي صوته بيتحكم فيه من التليفزيون. "
+                            + "لما تختار هيشتغل الأذان عشان تسمع الفرق",
+                    () -> Prefs.LOUD_NAMES[Prefs.loud(this)],
+                    () -> choice(Prefs.LOUD_NAMES, Prefs.loud(this), i -> {
+                        Prefs.setLoud(this, i);
+                        AdhanService.start(this, PrayTimes.DHUHR);
+                    })));
+            rows.add(new Row("صوت التليفزيون وقت الأذان",
+                    "لو التليفزيون صوته واطي، البرنامج بيعلّيه الدرجات دي قبل الأذان ويرجّعه زي ما كان بعده. "
+                            + "محتاج HDMI-CEC يكون شغال على البوكس والتليفزيون",
+                    () -> Prefs.TV_STEPS_NAMES[Prefs.tvSteps(this)],
+                    () -> choice(Prefs.TV_STEPS_NAMES, Prefs.tvSteps(this), i -> {
+                        Prefs.setTvSteps(this, i);
+                        AdhanService.start(this, PrayTimes.DHUHR);
+                    })));
+            rows.add(new Row("اختبار صوت التليفزيون",
+                    "جرّب كل طريقة وبص على التليفزيون: اللي تعلّي الصوت دوس عليها \"استخدم دي\"",
+                    () -> Prefs.tvMethod(this) < 0 ? "لسه ماتجربش"
+                            : "شغالة بـ " + TvVolume.METHOD_NAMES[Prefs.tvMethod(this)],
+                    this::tvTestDetail));
+        }
         String[] screen = {"تظهر شاشة الأذان", "صوت بس"};
         rows.add(new Row("شاشة الأذان", null,
                 () -> screen[Prefs.showScreen(this) ? 0 : 1],

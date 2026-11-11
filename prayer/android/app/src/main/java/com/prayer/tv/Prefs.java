@@ -91,7 +91,19 @@ final class Prefs {
 
     static void setTvMethod(Context c, int v) { sp(c).edit().putInt("tvMethod", v).commit(); }
 
-    /** مستوى علو الأذان من 0 لـ 3 */
+    /**
+     * صوت الجهاز وقت الأذان (1..max)، و0 = زي صوت الجهاز.
+     * لو المستخدم لسه مااختارش: حوالي 60٪.
+     */
+    static int adhanVolume(Context c, int max) {
+        int v = sp(c).getInt("adhanVol", -1);
+        if (v < 0) v = Math.max(1, Math.round(max * 0.6f));
+        return Math.min(v, max);
+    }
+
+    static void setAdhanVolume(Context c, int v) { sp(c).edit().putInt("adhanVol", v).commit(); }
+
+    /** مستوى علو الأذان من 0 لـ 3 (للأجهزة اللي صوتها ثابت بس) */
     static int loud(Context c) {
         SharedPreferences p = sp(c);
         if (!p.contains("loud")) {

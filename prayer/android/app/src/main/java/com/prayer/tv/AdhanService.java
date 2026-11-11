@@ -119,29 +119,28 @@ public class AdhanService extends Service implements AudioManager.OnAudioFocusCh
     }
 
     /**
-     * على البوكسات اللي متوصلة HDMI (زي Mi Box) صوت الجهاز نفسه ثابت على الآخر،
-     * والتليفزيون هو اللي بيتحكم في العلو. فعشان الأذان يعلى فعلًا
-     * بنعلّي الصوت نفسه (LoudnessEnhancer)، وكمان بنعلّي صوت الجهاز لو ينفع.
+     * صوت الأذان:
+     * - لو صوت الجهاز بيتغير (زي MiTV Box): بنحطه على الرقم اللي المستخدم اختاره (1..15)
+     *   وبنرجّعه زي ما كان بعد الأذان.
+     * - لو صوت الجهاز ثابت (بوكس HDMI قديم): بنعلّي الصوت نفسه بـ LoudnessEnhancer.
      */
     private void applyVolume() {
-        // حتى في "عادي" بنتأكد إن صوت الجهاز مش صفر أو واطي جدًا
-        int level = Prefs.loud(this);
         AudioManager am = (AudioManager) getSystemService(AUDIO_SERVICE);
-        if (am != null) {
+        if (am == null) return;
+        boolean fixed = Build.VERSION.SDK_INT >= 21 && am.isVolumeFixed();
+        if (!fixed) {
+            int v = Prefs.adhanVolume(this, am.getStreamMaxVolume(AudioManager.STREAM_MUSIC));
+            if (v <= 0) return; // "زي صوت الجهاز"
             try {
-                boolean fixed = Build.VERSION.SDK_INT >= 21 && am.isVolumeFixed();
-                int max = am.getStreamMaxVolume(AudioManager.STREAM_MUSIC);
-                int cur = am.getStreamVolume(AudioManager.STREAM_MUSIC);
-                int target = Math.max(1, Math.round(max * Prefs.LOUD_STREAM_PCT[level] / 100f));
-                // بنعلّي بس، عمرنا ما نوطّي صوتك
-                if (!fixed && cur < target) {
-                    savedVolume = cur;
-                    am.setStreamVolume(AudioManager.STREAM_MUSIC, target, 0);
-                }
+                // أول مرة بس في الأذان ده: لو المستخدم بيجرب كذا مستوى ورا بعض نرجع للأصلي
+                if (savedVolume < 0) savedVolume = am.getStreamVolume(AudioManager.STREAM_MUSIC);
+                am.setStreamVolume(AudioManager.STREAM_MUSIC, v, 0);
             } catch (Exception e) {
                 savedVolume = -1;
             }
+            return;
         }
+        int level = Prefs.loud(this);
         if (level <= 0) return;
         try {
             booster = new LoudnessEnhancer(mp.getAudioSessionId());
