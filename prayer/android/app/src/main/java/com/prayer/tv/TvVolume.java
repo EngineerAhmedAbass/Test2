@@ -80,6 +80,11 @@ final class TvVolume {
     /** قبل الأذان: لو المستخدم اختار طريقة، نستخدمها؛ وإلا نجرب الأولى على البوكس بس */
     static synchronized void raise(Context c, int steps) {
         if (raised > 0 || steps <= 0) return;
+        // لو الجهاز ليه صوت خاص بيه بيتغير (زي MiTV Box)، البرنامج بيعلّيه للآخر في AdhanService
+        // ويرجّعه بالظبط بعدين. لو بعتنا درجات هنا كمان، الرجوع بعدها كان بيوطّي صوت الجهاز
+        // أقل من الأول (لحد ما يوصل صفر). فدي بس للأجهزة اللي صوتها ثابت.
+        AudioManager am = (AudioManager) c.getSystemService(Context.AUDIO_SERVICE);
+        if (am == null || Build.VERSION.SDK_INT < 21 || !am.isVolumeFixed()) return;
         int m = Prefs.tvMethod(c);
         if (m < 0) {
             if (!isHdmiBox(c)) return;

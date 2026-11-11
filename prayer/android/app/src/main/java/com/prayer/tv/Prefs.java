@@ -9,9 +9,9 @@ import java.util.TimeZone;
 /** الإعدادات + حساب مواعيد أي يوم بالإعدادات دي */
 final class Prefs {
     /** مستويات صوت الأذان (0 = زي صوت الجهاز) */
-    static final String[] LOUD_NAMES = {"زي صوت التليفزيون", "عالي", "أعلى", "أعلى حاجة"};
+    static final String[] LOUD_NAMES = {"عادي", "عالي", "أعلى", "أعلى حاجة"};
     /** صوت الجهاز وقت الأذان (٪) — بنعلّي بس، ومابيأثرش على البوكسات اللي صوتها ثابت */
-    static final int[] LOUD_STREAM_PCT = {0, 70, 100, 100};
+    static final int[] LOUD_STREAM_PCT = {50, 70, 100, 100};
     /** تعلية الصوت نفسه بالـ millibel (+6 = 600) — دي اللي بتشتغل على Mi Box */
     static final int[] LOUD_BOOST_MB = {0, 500, 900, 1400};
 

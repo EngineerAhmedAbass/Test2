@@ -124,8 +124,8 @@ public class AdhanService extends Service implements AudioManager.OnAudioFocusCh
      * بنعلّي الصوت نفسه (LoudnessEnhancer)، وكمان بنعلّي صوت الجهاز لو ينفع.
      */
     private void applyVolume() {
+        // حتى في "عادي" بنتأكد إن صوت الجهاز مش صفر أو واطي جدًا
         int level = Prefs.loud(this);
-        if (level <= 0) return;
         AudioManager am = (AudioManager) getSystemService(AUDIO_SERVICE);
         if (am != null) {
             try {
@@ -142,6 +142,7 @@ public class AdhanService extends Service implements AudioManager.OnAudioFocusCh
                 savedVolume = -1;
             }
         }
+        if (level <= 0) return;
         try {
             booster = new LoudnessEnhancer(mp.getAudioSessionId());
             booster.setTargetGain(Prefs.LOUD_BOOST_MB[level]);
