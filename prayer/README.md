@@ -32,7 +32,8 @@
 - جرّب الصوت من زرار **🔊 تجربة الأذان**.
 
 ## صوت الأذان
-وقت البناء على GitHub Actions بيتحمّل تسجيل أذان برخصة حرة من Wikimedia Commons.
-لو عايز صوت مؤذن معين: حط الملف في `prayer/android/app/src/main/res/raw/adhan.mp3`
+الأذان المستخدم: **الشيخ عمر هشام العربي** (`prayer/android/app/src/main/res/raw/adhan.mp3`).
+لو الملف ده اتشال، وقت البناء بيتحمّل تسجيل أذان برخصة حرة من Wikimedia Commons بداله.
+لو عايز تغيّر الصوت: حط الملف في `prayer/android/app/src/main/res/raw/adhan.mp3`
 (واختياري `adhan_fajr.mp3` لأذان الفجر) واعمل push، وهتطلع نسخة جديدة بالصوت ده.
 اسم الملف لازم يكون حروف إنجليزي صغيرة بس.
