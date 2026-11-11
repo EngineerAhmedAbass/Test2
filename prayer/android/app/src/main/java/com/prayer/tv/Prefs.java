@@ -14,15 +14,22 @@ final class Prefs {
 
     /** أصوات الأذان اللي جوه التطبيق (res/raw) */
     static final String[] VOICE_NAMES = {"الشيخ عمر هشام العربي", "الشيخ محمد مروان قصاص (المدينة)",
-            "الشيخ إسلام صبحي (أذان الفجر)"};
-    static final String[] VOICE_FILES = {"adhan", "adhan_qassas", "adhan_fajr_sobhi"};
+            "شيخ المؤذنين بالحرم المكي (الأذان المكي)", "الشيخ إسلام صبحي (أذان الفجر)"};
+    static final String[] VOICE_FILES = {"adhan", "adhan_qassas", "adhan_makkah", "adhan_fajr_sobhi"};
     /** مؤذن الفجر الافتراضي: إسلام صبحي (أذان فيه "الصلاة خير من النوم") */
-    private static final int DEFAULT_FAJR_VOICE = 2;
+    private static final int DEFAULT_FAJR_VOICE = 3;
     /** أول كام صوت ينفعوا لباقي الصلوات (أذان الفجر فيه "الصلاة خير من النوم") */
-    static final int MAIN_VOICES = 2;
+    static final int MAIN_VOICES = 3;
 
     private static SharedPreferences sp(Context c) {
-        return c.getSharedPreferences("prayer", Context.MODE_PRIVATE);
+        SharedPreferences sp = c.getSharedPreferences("prayer", Context.MODE_PRIVATE);
+        // نسخة 2 من ترتيب الأصوات: الأذان المكي اتضاف قبل أذان الفجر
+        if (sp.getInt("voicesVersion", 1) < 2) {
+            SharedPreferences.Editor e = sp.edit().putInt("voicesVersion", 2);
+            if (sp.getInt("fajrVoice", -2) == 2) e.putInt("fajrVoice", 3);
+            e.commit();
+        }
+        return sp;
     }
 
     static int cityIndex(Context c) {
