@@ -86,6 +86,15 @@ final class Prefs {
         return VOICE_FILES[v];
     }
 
+    /** ميعاد الأذان التجريبي (0 = مفيش) */
+    static long testAt(Context c) { return sp(c).getLong("testAt", 0); }
+
+    static void setTestAt(Context c, long t) { sp(c).edit().putLong("testAt", t).commit(); }
+
+    static boolean overlayAsked(Context c) { return sp(c).getBoolean("overlayAsked", false); }
+
+    static void setOverlayAsked(Context c) { sp(c).edit().putBoolean("overlayAsked", true).commit(); }
+
     static boolean showScreen(Context c) { return sp(c).getBoolean("screen", true); }
 
     static void setShowScreen(Context c, boolean v) { sp(c).edit().putBoolean("screen", v).commit(); }

@@ -3,6 +3,10 @@ package com.prayer.tv;
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.content.Context;
+import android.content.Intent;
+import android.net.Uri;
+import android.provider.Settings;
+import android.widget.Toast;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
@@ -31,7 +35,7 @@ public class MainActivity extends Activity {
     private final LinearLayout[] cards = new LinearLayout[6];
     private final TextView[] timeViews = new TextView[6];
     private final TextView[] bells = new TextView[6];
-    private Button testBtn;
+    private Button testBtn, laterBtn, overlayBtn;
     private long[] today;
     private int todayKey = -1;
     private int highlighted = -2;
@@ -52,6 +56,11 @@ public class MainActivity extends Activity {
         if (Build.VERSION.SDK_INT >= 33
                 && checkSelfPermission("android.permission.POST_NOTIFICATIONS") != 0) {
             requestPermissions(new String[]{"android.permission.POST_NOTIFICATIONS"}, 1);
+        }
+        // أول مرة: نشرح ليه محتاجين إذن الظهور فوق التطبيقات
+        if (!canOverlay() && !Prefs.overlayAsked(this)) {
+            Prefs.setOverlayAsked(this);
+            handler.postDelayed(this::overlayDialog, 800);
         }
     }
 
@@ -147,6 +156,10 @@ public class MainActivity extends Activity {
         btns.addView(button("⚙️ الإعدادات", v -> settingsDialog()));
         testBtn = button("🔊 تجربة الأذان", v -> testAdhan());
         btns.addView(testBtn);
+        laterBtn = button("⏱ جرّب بعد دقيقة", v -> testLater());
+        btns.addView(laterBtn);
+        overlayBtn = button("", v -> overlayDialog());
+        btns.addView(overlayBtn);
         HorizontalScrollView bs = new HorizontalScrollView(c);
         bs.setHorizontalScrollBarEnabled(false);
         bs.addView(btns);
@@ -232,6 +245,10 @@ public class MainActivity extends Activity {
             for (int i = 0; i < 6; i++) cards[i].setBackground(Ui.focusBg(this, i == hl ? Ui.NEXT : Ui.CARD));
         }
         testBtn.setText(AdhanService.playing >= 0 ? "⏹ إيقاف الأذان" : "🔊 تجربة الأذان");
+        long testAt = Prefs.testAt(this);
+        laterBtn.setText(testAt > now ? "⏱ الأذان التجريبي بعد " + Ui.duration(testAt - now).substring(2) + " (إلغاء)"
+                : "⏱ جرّب بعد دقيقة");
+        overlayBtn.setText(canOverlay() ? "✅ شاشة الأذان فوق البرامج" : "⚠️ شاشة الأذان فوق البرامج");
     }
 
     private void testAdhan() {
@@ -242,6 +259,59 @@ public class MainActivity extends Activity {
             AdhanService.start(this, n == null ? PrayTimes.DHUHR : (int) n[0]);
         }
         handler.postDelayed(this::update, 300);
+    }
+
+    /** أذان تجريبي بعد دقيقة: اقفل التطبيق وروح لأي برنامج وشوف هيشتغل ولا لأ */
+    private void testLater() {
+        if (Prefs.testAt(this) > System.currentTimeMillis()) {
+            AlarmReceiver.cancelTest(this);
+            Toast.makeText(this, "اتلغى الأذان التجريبي", Toast.LENGTH_SHORT).show();
+        } else {
+            AlarmReceiver.scheduleTest(this, System.currentTimeMillis() + 60000L);
+            Toast.makeText(this, "روح افتح يوتيوب أو أي برنامج تاني — الأذان هيشتغل بعد دقيقة", Toast.LENGTH_LONG).show();
+        }
+        update();
+    }
+
+    private boolean canOverlay() {
+        return Build.VERSION.SDK_INT < 23 || Settings.canDrawOverlays(this);
+    }
+
+    private void overlayDialog() {
+        if (canOverlay()) {
+            dialog("شاشة الأذان فوق البرامج")
+                    .setMessage("✅ مسموح. شاشة \"حان الآن موعد الأذان\" هتظهر حتى لو أنت في برنامج تاني.")
+                    .setPositiveButton("تمام", null).show();
+            return;
+        }
+        dialog("اسمح بظهور شاشة الأذان فوق البرامج")
+                .setMessage("عشان شاشة الأذان (وزرار الإيقاف) تظهر وأنت بتتفرج على برنامج تاني، "
+                        + "لازم تسمح للتطبيق بـ \"الظهور فوق التطبيقات الأخرى\".\n\n"
+                        + "الصوت هيشتغل في كل الأحوال حتى من غير الإذن ده.\n\n"
+                        + "دوس \"افتح الإعدادات\" وفعّل \"مواقيت الصلاة\".")
+                .setPositiveButton("افتح الإعدادات", (d, w) -> openOverlaySettings())
+                .setNegativeButton("بعدين", null)
+                .show();
+    }
+
+    private void openOverlaySettings() {
+        Intent[] tries = {
+                new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:" + getPackageName())),
+                new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION),
+                new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:" + getPackageName())),
+        };
+        for (Intent i : tries) {
+            try {
+                startActivity(i);
+                return;
+            } catch (Exception ignored) {
+            }
+        }
+        dialog("الجهاز مش فيه الإعداد ده")
+                .setMessage("بعض أجهزة التليفزيون مخبية الإعداد ده. تقدر تفعله من الكمبيوتر بأمر adb:\n\n"
+                        + "adb shell appops set " + getPackageName() + " SYSTEM_ALERT_WINDOW allow\n\n"
+                        + "ومن غيره الأذان هيشتغل بالصوت عادي.")
+                .setPositiveButton("تمام", null).show();
     }
 
     /* ------------------------------ القوائم ------------------------------ */
