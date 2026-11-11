@@ -156,6 +156,11 @@ public class SettingsActivity extends Activity {
                     Prefs.setTvSteps(this, i);
                     AdhanService.start(this, PrayTimes.DHUHR);
                 })));
+        rows.add(new Row("اختبار صوت التليفزيون",
+                "جرّب كل طريقة وبص على التليفزيون: اللي تعلّي الصوت دوس عليها \"استخدم دي\"",
+                () -> Prefs.tvMethod(this) < 0 ? "لسه ماتجربش"
+                        : "شغالة بـ " + TvVolume.METHOD_NAMES[Prefs.tvMethod(this)],
+                this::tvTestDetail));
         String[] screen = {"تظهر شاشة الأذان", "صوت بس"};
         rows.add(new Row("شاشة الأذان", null,
                 () -> screen[Prefs.showScreen(this) ? 0 : 1],
@@ -510,6 +515,31 @@ public class SettingsActivity extends Activity {
                 rebuildDetail(base);
             });
             addOption(reset);
+        }
+    }
+
+    private void tvTestDetail() {
+        paragraph(TvVolume.info(this));
+        for (int m = 0; m < TvVolume.METHOD_NAMES.length; m++) {
+            final int fm = m;
+            boolean chosen = Prefs.tvMethod(this) == m;
+            LinearLayout o = optionView(TvVolume.METHOD_NAMES[m] + (chosen ? "  (المختارة)" : ""),
+                    "دوس OK عشان تعلّي 3 درجات");
+            o.setOnClickListener(v -> {
+                TvVolume.test(this, fm, true, 3);
+                android.widget.Toast.makeText(this, "بعتنا 3 درجات بـ " + TvVolume.METHOD_NAMES[fm]
+                        + ". لو التليفزيون علي، دوس \"استخدم دي\" اللي تحتها", android.widget.Toast.LENGTH_LONG).show();
+            });
+            addOption(o);
+            LinearLayout use = optionView("استخدم " + TvVolume.METHOD_NAMES[m], null);
+            use.setOnClickListener(v -> {
+                Prefs.setTvMethod(this, fm);
+                // ونرجّع الـ 3 درجات اللي علّيناهم في التجربة
+                TvVolume.test(this, fm, false, 3);
+                if (Prefs.tvSteps(this) == 0) Prefs.setTvSteps(this, 2);
+                rebuildDetail(fm * 2 + 1);
+            });
+            addOption(use);
         }
     }
 

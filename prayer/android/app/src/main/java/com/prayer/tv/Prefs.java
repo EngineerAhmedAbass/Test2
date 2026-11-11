@@ -83,6 +83,14 @@ final class Prefs {
 
     static void setTvSteps(Context c, int v) { sp(c).edit().putInt("tvSteps", v).commit(); }
 
+    /** طريقة رفع صوت التليفزيون اللي اشتغلت مع المستخدم (-1 = لسه ماجربش) */
+    static int tvMethod(Context c) {
+        int v = sp(c).getInt("tvMethod", -1);
+        return v >= -1 && v < TvVolume.METHOD_NAMES.length ? v : -1;
+    }
+
+    static void setTvMethod(Context c, int v) { sp(c).edit().putInt("tvMethod", v).commit(); }
+
     /** مستوى علو الأذان من 0 لـ 3 */
     static int loud(Context c) {
         SharedPreferences p = sp(c);
