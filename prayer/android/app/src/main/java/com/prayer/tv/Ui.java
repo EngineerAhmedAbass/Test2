@@ -66,6 +66,11 @@ final class Ui {
 
     /** صورة الحرم كخلفية + تغميق عشان الكلام يبان، والمحتوى فوقهم */
     static View withHaramBackground(Context c, View content) {
+        return withHaramBackground(c, content, false);
+    }
+
+    /** dim = تغميق أكتر (لشاشة الإعدادات) */
+    static View withHaramBackground(Context c, View content, boolean dim) {
         FrameLayout f = new FrameLayout(c);
         f.setBackgroundColor(BG);
         ImageView img = new ImageView(c);
@@ -74,10 +79,63 @@ final class Ui {
         f.addView(img, new FrameLayout.LayoutParams(-1, -1));
         View shade = new View(c);
         shade.setBackground(new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,
-                new int[]{0xA6040A17, 0x4D040A17, 0x40040A17, 0xD9040A17}));
+                dim ? new int[]{0xE6040A17, 0xD9040A17, 0xEB040A17}
+                        : new int[]{0xA6040A17, 0x4D040A17, 0x40040A17, 0xD9040A17}));
         f.addView(shade, new FrameLayout.LayoutParams(-1, -1));
         f.addView(content, new FrameLayout.LayoutParams(-1, -1));
         return f;
+    }
+
+    private static GradientDrawable round(Context c, int fill, int stroke, float radius) {
+        GradientDrawable g = new GradientDrawable();
+        g.setColor(fill);
+        g.setCornerRadius(dp(c, radius));
+        if (stroke != 0) g.setStroke(dp(c, 2), stroke);
+        return g;
+    }
+
+    /** صف في الإعدادات: شفاف، ولما الريموت يقف عليه يبقى دهبي فاتح بإطار دهبي */
+    static Drawable rowBg(Context c) {
+        StateListDrawable s = new StateListDrawable();
+        s.addState(new int[]{android.R.attr.state_focused}, round(c, 0x33E2C275, GOLD, 16));
+        s.addState(new int[]{android.R.attr.state_pressed}, round(c, 0x33E2C275, GOLD, 16));
+        s.addState(new int[]{android.R.attr.state_activated}, round(c, 0x1FFFFFFF, 0, 16));
+        s.addState(new int[]{}, round(c, 0x00000000, 0, 16));
+        return s;
+    }
+
+    /** لوحة الاختيارات */
+    static Drawable panel(Context c) {
+        return round(c, 0x8C0A162E, 0x26FFFFFF, 24);
+    }
+
+    /** دايرة الاختيار: مليانة دهبي لو مختارة */
+    static Drawable radio(Context c, boolean on) {
+        GradientDrawable ring = new GradientDrawable();
+        ring.setShape(GradientDrawable.OVAL);
+        ring.setColor(0x00000000);
+        ring.setStroke(dp(c, 2), on ? GOLD : MUTED);
+        if (!on) return ring;
+        GradientDrawable dot = new GradientDrawable();
+        dot.setShape(GradientDrawable.OVAL);
+        dot.setColor(GOLD);
+        android.graphics.drawable.LayerDrawable l =
+                new android.graphics.drawable.LayerDrawable(new Drawable[]{ring, dot});
+        int in = dp(c, 5);
+        l.setLayerInset(1, in, in, in, in);
+        return l;
+    }
+
+    /** مفتاح تشغيل/إيقاف */
+    static Drawable switchTrack(Context c, boolean on) {
+        return round(c, on ? GOLD : 0x40FFFFFF, 0, 999);
+    }
+
+    static Drawable switchKnob(Context c, boolean on) {
+        GradientDrawable g = new GradientDrawable();
+        g.setShape(GradientDrawable.OVAL);
+        g.setColor(on ? NEXT_TEXT : TEXT);
+        return g;
     }
 
     /** خلفية مدورة شفافة دهبي (للعد التنازلي) */

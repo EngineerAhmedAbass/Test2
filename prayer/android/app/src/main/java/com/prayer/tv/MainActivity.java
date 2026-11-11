@@ -36,7 +36,7 @@ public class MainActivity extends Activity {
     private final TextView[] timeViews = new TextView[6];
     private final TextView[] nameViews = new TextView[6];
     private final TextView[] bells = new TextView[6];
-    private Button testBtn, laterBtn, overlayBtn, updateBtn;
+    private Button testBtn, updateBtn;
     private long[] today;
     private int todayKey = -1;
     private int highlighted = -2;
@@ -126,7 +126,7 @@ public class MainActivity extends Activity {
             card.setClickable(true);
             int cp = Ui.dp(c, wide ? 8 : 14);
             card.setPadding(cp, cp, cp, cp);
-            card.setOnClickListener(v -> prayerDialog(p));
+            card.setOnClickListener(v -> startActivity(SettingsActivity.forPrayer(this, p)));
 
             TextView name = Ui.text(c, PrayTimes.NAMES[i], wide ? 18 : 18, Ui.TEXT, false);
             nameViews[i] = name;
@@ -168,15 +168,12 @@ public class MainActivity extends Activity {
         LinearLayout btns = new LinearLayout(c);
         btns.setOrientation(LinearLayout.HORIZONTAL);
         btns.setGravity(Gravity.CENTER);
-        btns.addView(button("المدينة", v -> cityDialog()));
-        btns.addView(button("الإعدادات", v -> settingsDialog()));
+        btns.addView(button("الإعدادات", v -> startActivity(new Intent(this, SettingsActivity.class))));
         testBtn = button("تجربة الأذان", v -> testAdhan());
         btns.addView(testBtn);
-        laterBtn = button("جرّب بعد دقيقة", v -> testLater());
-        btns.addView(laterBtn);
-        overlayBtn = button("", v -> overlayDialog());
-        btns.addView(overlayBtn);
-        updateBtn = button("تحديث البرنامج", v -> Updater.checkAndInstall(this));
+        // بيظهر بس لما يكون فيه نسخة جديدة
+        updateBtn = button("", v -> Updater.checkAndInstall(this));
+        updateBtn.setVisibility(View.GONE);
         btns.addView(updateBtn);
         HorizontalScrollView bs = new HorizontalScrollView(c);
         bs.setHorizontalScrollBarEnabled(false);
@@ -276,12 +273,9 @@ public class MainActivity extends Activity {
             }
         }
         testBtn.setText(AdhanService.playing >= 0 ? "إيقاف الأذان" : "تجربة الأذان");
-        long testAt = Prefs.testAt(this);
-        laterBtn.setText(testAt > now ? "الأذان التجريبي بعد " + Ui.duration(testAt - now).substring(2) + " (إلغاء)"
-                : "جرّب بعد دقيقة");
-        updateBtn.setText(Updater.latestKnown > Updater.currentVersion(this)
-                ? "تحديث متاح: نسخة " + Updater.latestKnown : "تحديث البرنامج");
-        overlayBtn.setText(canOverlay() ? "شاشة الأذان فوق البرامج: مفعّلة" : "شاشة الأذان فوق البرامج: مش مفعّلة");
+        boolean upd = Updater.latestKnown > Updater.currentVersion(this);
+        updateBtn.setVisibility(upd ? View.VISIBLE : View.GONE);
+        if (upd) updateBtn.setText("تحديث متاح: نسخة " + Updater.latestKnown);
     }
 
     private void testAdhan() {
@@ -294,174 +288,19 @@ public class MainActivity extends Activity {
         handler.postDelayed(this::update, 300);
     }
 
-    /** أذان تجريبي بعد دقيقة: اقفل التطبيق وروح لأي برنامج وشوف هيشتغل ولا لأ */
-    private void testLater() {
-        if (Prefs.testAt(this) > System.currentTimeMillis()) {
-            AlarmReceiver.cancelTest(this);
-            Toast.makeText(this, "اتلغى الأذان التجريبي", Toast.LENGTH_SHORT).show();
-        } else {
-            AlarmReceiver.scheduleTest(this, System.currentTimeMillis() + 60000L);
-            Toast.makeText(this, "روح افتح يوتيوب أو أي برنامج تاني — الأذان هيشتغل بعد دقيقة", Toast.LENGTH_LONG).show();
-        }
-        update();
-    }
-
     private boolean canOverlay() {
         return Build.VERSION.SDK_INT < 23 || Settings.canDrawOverlays(this);
     }
 
+    /** أول مرة بس: بنشرح ليه محتاجين إذن الظهور فوق البرامج */
     private void overlayDialog() {
-        if (canOverlay()) {
-            dialog("شاشة الأذان فوق البرامج")
-                    .setMessage("مسموح. شاشة \"حان الآن موعد الأذان\" هتظهر حتى لو أنت في برنامج تاني.")
-                    .setPositiveButton("تمام", null).show();
-            return;
-        }
-        dialog("اسمح بظهور شاشة الأذان فوق البرامج")
+        new AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_Alert)
+                .setTitle("اسمح بظهور شاشة الأذان فوق البرامج")
                 .setMessage("عشان شاشة الأذان (وزرار الإيقاف) تظهر وأنت بتتفرج على برنامج تاني، "
                         + "لازم تسمح للتطبيق بـ \"الظهور فوق التطبيقات الأخرى\".\n\n"
-                        + "الصوت هيشتغل في كل الأحوال حتى من غير الإذن ده.\n\n"
-                        + "دوس \"افتح الإعدادات\" وفعّل \"مواقيت الصلاة\".")
-                .setPositiveButton("افتح الإعدادات", (d, w) -> openOverlaySettings())
+                        + "الصوت هيشتغل في كل الأحوال حتى من غير الإذن ده.")
+                .setPositiveButton("افتح الإعدادات", (d, w) -> SettingsActivity.openOverlaySettings(this))
                 .setNegativeButton("بعدين", null)
                 .show();
-    }
-
-    private void openOverlaySettings() {
-        Intent[] tries = {
-                new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:" + getPackageName())),
-                new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION),
-                new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:" + getPackageName())),
-        };
-        for (Intent i : tries) {
-            try {
-                startActivity(i);
-                return;
-            } catch (Exception ignored) {
-            }
-        }
-        dialog("الجهاز مش فيه الإعداد ده")
-                .setMessage("بعض أجهزة التليفزيون مخبية الإعداد ده. تقدر تفعله من الكمبيوتر بأمر adb:\n\n"
-                        + "adb shell appops set " + getPackageName() + " SYSTEM_ALERT_WINDOW allow\n\n"
-                        + "ومن غيره الأذان هيشتغل بالصوت عادي.")
-                .setPositiveButton("تمام", null).show();
-    }
-
-    /* ------------------------------ القوائم ------------------------------ */
-
-    private AlertDialog.Builder dialog(String title) {
-        return new AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_Alert).setTitle(title);
-    }
-
-    private void cityDialog() {
-        dialog("اختار مدينتك")
-                .setSingleChoiceItems(Cities.names(), Prefs.cityIndex(this), (d, w) -> {
-                    Prefs.setCity(this, w);
-                    d.dismiss();
-                    settingsChanged();
-                })
-                .show();
-    }
-
-    private void settingsDialog() {
-        int fv = Prefs.fajrVoice(this);
-        String[] items = {
-                "المؤذن: " + Prefs.VOICE_NAMES[Prefs.voice(this)],
-                "مؤذن الفجر: " + (fv < 0 ? "زي باقي الصلوات" : Prefs.VOICE_NAMES[fv]),
-                "طريقة الحساب: " + PrayTimes.METHOD_NAMES[Prefs.method(this)],
-                "العصر: " + (Prefs.hanafi(this) ? "الحنفي" : "الجمهور (شافعي/مالكي/حنبلي)"),
-                "مستوى صوت الأذان: " + volumeName(),
-                "شاشة الأذان: " + (Prefs.showScreen(this) ? "بتظهر" : "صوت بس"),
-                "تعديل التاريخ الهجري: " + Prefs.hijriAdjust(this) + " يوم",
-        };
-        dialog("الإعدادات").setItems(items, (d, w) -> {
-            if (w == 0) {
-                dialog("اختار المؤذن (هيشتغل للتجربة)").setSingleChoiceItems(java.util.Arrays.copyOf(Prefs.VOICE_NAMES, Prefs.MAIN_VOICES), Prefs.voice(this), (d2, m) -> {
-                    Prefs.setVoice(this, m);
-                    d2.dismiss();
-                    AdhanService.start(this, PrayTimes.DHUHR);
-                    handler.postDelayed(this::update, 300);
-                }).show();
-                return;
-            }
-            if (w == 1) {
-                String[] opts = new String[Prefs.VOICE_NAMES.length + 1];
-                opts[0] = "زي باقي الصلوات";
-                System.arraycopy(Prefs.VOICE_NAMES, 0, opts, 1, Prefs.VOICE_NAMES.length);
-                dialog("مؤذن الفجر (هيشتغل للتجربة)").setSingleChoiceItems(opts, Prefs.fajrVoice(this) + 1, (d2, m) -> {
-                    Prefs.setFajrVoice(this, m - 1);
-                    d2.dismiss();
-                    AdhanService.start(this, PrayTimes.FAJR);
-                    handler.postDelayed(this::update, 300);
-                }).show();
-                return;
-            }
-            switch (w - 2) {
-                case 0:
-                    dialog("طريقة الحساب").setSingleChoiceItems(PrayTimes.METHOD_NAMES, Prefs.method(this), (d2, m) -> {
-                        Prefs.setMethod(this, m);
-                        d2.dismiss();
-                        settingsChanged();
-                    }).show();
-                    break;
-                case 1:
-                    dialog("ميعاد العصر").setSingleChoiceItems(
-                            new String[]{"الجمهور (شافعي/مالكي/حنبلي)", "الحنفي"},
-                            Prefs.hanafi(this) ? 1 : 0, (d2, m) -> {
-                                Prefs.setHanafi(this, m == 1);
-                                d2.dismiss();
-                                settingsChanged();
-                            }).show();
-                    break;
-                case 2:
-                    int cur = 0;
-                    for (int i = 0; i < Prefs.VOLUMES.length; i++) if (Prefs.VOLUMES[i] == Prefs.volume(this)) cur = i;
-                    dialog("مستوى صوت الأذان").setSingleChoiceItems(Prefs.VOLUME_NAMES, cur, (d2, m) -> {
-                        Prefs.setVolume(this, Prefs.VOLUMES[m]);
-                        d2.dismiss();
-                    }).show();
-                    break;
-                case 3:
-                    Prefs.setShowScreen(this, !Prefs.showScreen(this));
-                    settingsDialog();
-                    break;
-                case 4:
-                    dialog("تعديل التاريخ الهجري").setSingleChoiceItems(
-                            new String[]{"-2", "-1", "0", "+1", "+2"},
-                            Prefs.hijriAdjust(this) + 2, (d2, m) -> {
-                                Prefs.setHijriAdjust(this, m - 2);
-                                d2.dismiss();
-                                settingsChanged();
-                            }).show();
-                    break;
-            }
-        }).show();
-    }
-
-    private String volumeName() {
-        for (int i = 0; i < Prefs.VOLUMES.length; i++) {
-            if (Prefs.VOLUMES[i] == Prefs.volume(this)) return Prefs.VOLUME_NAMES[i];
-        }
-        return Prefs.VOLUME_NAMES[0];
-    }
-
-    private void prayerDialog(int p) {
-        int off = Prefs.offset(this, p);
-        boolean sunrise = p == PrayTimes.SUNRISE;
-        String toggle = Prefs.enabled(this, p) ? "اقفل أذان " + PrayTimes.NAMES[p] : "شغّل أذان " + PrayTimes.NAMES[p];
-        String[] items = sunrise
-                ? new String[]{"أخّر دقيقة (+1)", "قدّم دقيقة (-1)", "رجّع الميعاد المحسوب"}
-                : new String[]{toggle, "أخّر دقيقة (+1)", "قدّم دقيقة (-1)", "رجّع الميعاد المحسوب"};
-        String title = PrayTimes.NAMES[p] + "  —  " + Ui.time(today[p], Prefs.zone(this), false)
-                + (off != 0 ? "  (تعديل " + (off > 0 ? "+" : "") + off + " دقيقة)" : "");
-        dialog(title).setItems(items, (d, w) -> {
-            int a = sunrise ? w + 1 : w;
-            if (a == 0) Prefs.setEnabled(this, p, !Prefs.enabled(this, p));
-            else if (a == 1) Prefs.setOffset(this, p, off + 1);
-            else if (a == 2) Prefs.setOffset(this, p, off - 1);
-            else Prefs.setOffset(this, p, 0);
-            settingsChanged();
-            if (a == 1 || a == 2) prayerDialog(p); // عشان تقدر تدوس كذا مرة ورا بعض
-        }).show();
     }
 }
