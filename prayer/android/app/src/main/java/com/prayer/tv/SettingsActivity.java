@@ -140,9 +140,14 @@ public class SettingsActivity extends Activity {
                     Prefs.setFajrVoice(this, i - 1);
                     AdhanService.start(this, PrayTimes.FAJR);
                 })));
-        rows.add(new Row("مستوى الصوت", "بيرجع الصوت زي ما كان بعد الأذان",
-                () -> Prefs.VOLUME_NAMES[volumeIndex()],
-                () -> choice(Prefs.VOLUME_NAMES, volumeIndex(), i -> Prefs.setVolume(this, Prefs.VOLUMES[i]))));
+        rows.add(new Row("علو الأذان",
+                "بيعلّي صوت الأذان نفسه، فبيشتغل حتى على البوكس اللي صوته بيتحكم فيه من التليفزيون. "
+                        + "لما تختار هيشتغل الأذان عشان تسمع الفرق",
+                () -> Prefs.LOUD_NAMES[Prefs.loud(this)],
+                () -> choice(Prefs.LOUD_NAMES, Prefs.loud(this), i -> {
+                    Prefs.setLoud(this, i);
+                    AdhanService.start(this, PrayTimes.DHUHR);
+                })));
         String[] screen = {"تظهر شاشة الأذان", "صوت بس"};
         rows.add(new Row("شاشة الأذان", null,
                 () -> screen[Prefs.showScreen(this) ? 0 : 1],
@@ -182,11 +187,6 @@ public class SettingsActivity extends Activity {
     /** عنوان قسم (مش صف) */
     private Row section(String title) {
         return new Row(title, null, null, null);
-    }
-
-    private int volumeIndex() {
-        for (int i = 0; i < Prefs.VOLUMES.length; i++) if (Prefs.VOLUMES[i] == Prefs.volume(this)) return i;
-        return 0;
     }
 
     private String prayerValue(int p) {

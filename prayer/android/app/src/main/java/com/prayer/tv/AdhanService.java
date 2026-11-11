@@ -14,6 +14,7 @@ import android.media.AudioFocusRequest;
 import android.media.AudioManager;
 import android.media.MediaPlayer;
 import android.media.RingtoneManager;
+import android.media.audiofx.LoudnessEnhancer;
 import android.net.Uri;
 import android.os.Build;
 import android.os.IBinder;
@@ -32,6 +33,7 @@ public class AdhanService extends Service implements AudioManager.OnAudioFocusCh
     private PowerManager.WakeLock wake;
     private AudioFocusRequest focusReq;
     private int savedVolume = -1;
+    private LoudnessEnhancer booster;
 
     static void start(Context c, int prayer) {
         Intent i = new Intent(c, AdhanService.class).putExtra("p", prayer);
@@ -115,17 +117,36 @@ public class AdhanService extends Service implements AudioManager.OnAudioFocusCh
         }
     }
 
+    /**
+     * على البوكسات اللي متوصلة HDMI (زي Mi Box) صوت الجهاز نفسه ثابت على الآخر،
+     * والتليفزيون هو اللي بيتحكم في العلو. فعشان الأذان يعلى فعلًا
+     * بنعلّي الصوت نفسه (LoudnessEnhancer)، وكمان بنعلّي صوت الجهاز لو ينفع.
+     */
     private void applyVolume() {
-        int pct = Prefs.volume(this);
-        if (pct <= 0) return;
+        int level = Prefs.loud(this);
+        if (level <= 0) return;
         AudioManager am = (AudioManager) getSystemService(AUDIO_SERVICE);
-        if (am == null) return;
+        if (am != null) {
+            try {
+                boolean fixed = Build.VERSION.SDK_INT >= 21 && am.isVolumeFixed();
+                int max = am.getStreamMaxVolume(AudioManager.STREAM_MUSIC);
+                int cur = am.getStreamVolume(AudioManager.STREAM_MUSIC);
+                int target = Math.max(1, Math.round(max * Prefs.LOUD_STREAM_PCT[level] / 100f));
+                // بنعلّي بس، عمرنا ما نوطّي صوتك
+                if (!fixed && cur < target) {
+                    savedVolume = cur;
+                    am.setStreamVolume(AudioManager.STREAM_MUSIC, target, 0);
+                }
+            } catch (Exception e) {
+                savedVolume = -1;
+            }
+        }
         try {
-            int max = am.getStreamMaxVolume(AudioManager.STREAM_MUSIC);
-            savedVolume = am.getStreamVolume(AudioManager.STREAM_MUSIC);
-            am.setStreamVolume(AudioManager.STREAM_MUSIC, Math.max(1, Math.round(max * pct / 100f)), 0);
+            booster = new LoudnessEnhancer(mp.getAudioSessionId());
+            booster.setTargetGain(Prefs.LOUD_BOOST_MB[level]);
+            booster.setEnabled(true);
         } catch (Exception e) {
-            savedVolume = -1;
+            booster = null;
         }
     }
 
@@ -193,6 +214,13 @@ public class AdhanService extends Service implements AudioManager.OnAudioFocusCh
     }
 
     private void releasePlayer() {
+        if (booster != null) {
+            try {
+                booster.release();
+            } catch (Exception ignored) {
+            }
+            booster = null;
+        }
         if (mp != null) {
             try {
                 mp.stop();

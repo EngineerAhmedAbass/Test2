@@ -9,8 +9,11 @@ import java.util.TimeZone;
 /** الإعدادات + حساب مواعيد أي يوم بالإعدادات دي */
 final class Prefs {
     /** مستويات صوت الأذان (0 = زي صوت الجهاز) */
-    static final int[] VOLUMES = {0, 30, 50, 70, 100};
-    static final String[] VOLUME_NAMES = {"زي صوت التليفزيون", "30٪", "50٪", "70٪", "100٪"};
+    static final String[] LOUD_NAMES = {"زي صوت التليفزيون", "عالي", "أعلى", "أعلى حاجة"};
+    /** صوت الجهاز وقت الأذان (٪) — بنعلّي بس، ومابيأثرش على البوكسات اللي صوتها ثابت */
+    static final int[] LOUD_STREAM_PCT = {0, 70, 100, 100};
+    /** تعلية الصوت نفسه بالـ millibel (+6 = 600) — دي اللي بتشتغل على Mi Box */
+    static final int[] LOUD_BOOST_MB = {0, 500, 900, 1400};
 
     /** أصوات الأذان اللي جوه التطبيق (res/raw) */
     static final String[] VOICE_NAMES = {"الشيخ عمر هشام العربي", "الشيخ محمد مروان قصاص (المدينة)",
@@ -68,9 +71,19 @@ final class Prefs {
 
     static void setOffset(Context c, int p, int v) { sp(c).edit().putInt("off" + p, v).commit(); }
 
-    static int volume(Context c) { return sp(c).getInt("volume", 0); }
+    /** مستوى علو الأذان من 0 لـ 3 */
+    static int loud(Context c) {
+        SharedPreferences p = sp(c);
+        if (!p.contains("loud")) {
+            // الإعداد القديم كان بالنسبة المئوية
+            int old = p.getInt("volume", 0);
+            return old >= 100 ? 2 : old >= 70 ? 1 : 0;
+        }
+        int v = p.getInt("loud", 0);
+        return v >= 0 && v < LOUD_NAMES.length ? v : 0;
+    }
 
-    static void setVolume(Context c, int v) { sp(c).edit().putInt("volume", v).commit(); }
+    static void setLoud(Context c, int v) { sp(c).edit().putInt("loud", v).commit(); }
 
     static int voice(Context c) {
         int v = sp(c).getInt("voice", 0);
