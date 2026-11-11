@@ -79,7 +79,7 @@ public class SettingsActivity extends Activity {
         buildRows();
         setContentView(Ui.withHaramBackground(this, build(), true));
         int p = getIntent().getIntExtra(EXTRA_PRAYER, -1);
-        Row first = p >= 0 && p < 6 ? prayerRows[p] : rows.get(0);
+        Row first = p >= 0 && p < 6 ? prayerRows[p] : firstSetting();
         if (wide) {
             showDetail(first);
             first.view.requestFocus();
@@ -171,6 +171,12 @@ public class SettingsActivity extends Activity {
                 () -> "نسخة " + Updater.currentVersion(this)
                         + (Updater.latestKnown > Updater.currentVersion(this) ? "  •  فيه نسخة جديدة" : ""),
                 this::updateDetail));
+    }
+
+    /** أول صف حقيقي (مش عنوان قسم) */
+    private Row firstSetting() {
+        for (Row r : rows) if (r.detail != null) return r;
+        throw new IllegalStateException("no settings rows");
     }
 
     /** عنوان قسم (مش صف) */
