@@ -9,3 +9,4 @@ scores/android/.gradle/
 scores/android/app/build/
 prayer/android/.gradle/
 prayer/android/app/build/
+__pycache__/
