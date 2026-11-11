@@ -42,8 +42,8 @@ jobs:
         uses: reactivecircus/android-emulator-runner@v2
         with:
           api-level: 30
-          arch: x86_64
-          target: google_apis
+          arch: x86
+          target: android-tv
           disable-animations: true
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim
           script: bash prayer/tools/ui_check.sh prayer/android/app/build/outputs/apk/release/app-release.apk

@@ -7,11 +7,9 @@ OUT=ui-shots
 PKG=com.prayer.tv
 mkdir -p "$OUT"
 
-# شاشة بمقاس التليفزيون (960x540dp)
-adb shell wm size 1920x1080
-adb shell wm density 320
-adb shell settings put system accelerometer_rotation 0
-adb shell settings put system user_rotation 1
+# محاكي Android TV: الشاشة أفقي 1920x1080 زي التليفزيون
+adb shell wm size
+adb shell wm density
 
 adb install -r "$APK"
 adb shell pm grant $PKG android.permission.POST_NOTIFICATIONS 2>/dev/null || true
