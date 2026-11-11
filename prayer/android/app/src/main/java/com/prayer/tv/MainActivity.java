@@ -34,6 +34,7 @@ public class MainActivity extends Activity {
     private TextView clock, dates, city, next;
     private final LinearLayout[] cards = new LinearLayout[6];
     private final TextView[] timeViews = new TextView[6];
+    private final TextView[] nameViews = new TextView[6];
     private final TextView[] bells = new TextView[6];
     private Button testBtn, laterBtn, overlayBtn;
     private long[] today;
@@ -89,18 +90,23 @@ public class MainActivity extends Activity {
         int pad = Ui.dp(c, wide ? 28 : 16);
         col.setPadding(pad, pad, pad, pad);
 
-        clock = Ui.text(c, "", wide ? 80 : 56, Ui.GOLD, true);
+        clock = Ui.text(c, "", wide ? 68 : 56, Ui.GOLD, true);
         col.addView(clock);
         dates = Ui.text(c, "", wide ? 22 : 16, Ui.TEXT, false);
         col.addView(dates);
         city = Ui.text(c, "", wide ? 18 : 15, Ui.MUTED, false);
         col.addView(city);
 
-        next = Ui.text(c, "", wide ? 28 : 20, Ui.TEXT, true);
+        next = Ui.text(c, "", wide ? 24 : 20, Ui.TEXT, true);
+        next.setBackground(Ui.pill(c));
+        int ph = Ui.dp(c, 22), pv = Ui.dp(c, 8);
+        next.setPadding(ph, pv, ph, pv);
         LinearLayout.LayoutParams nlp = wrap();
-        nlp.topMargin = Ui.dp(c, 18);
-        nlp.bottomMargin = Ui.dp(c, 18);
+        nlp.topMargin = Ui.dp(c, 12);
         col.addView(next, nlp);
+
+        // مساحة فاضية عشان الكعبة اللي في الصورة تبان
+        col.addView(new View(c), new LinearLayout.LayoutParams(1, 0, 1f));
 
         LinearLayout row = new LinearLayout(c);
         row.setOrientation(wide ? LinearLayout.HORIZONTAL : LinearLayout.VERTICAL);
@@ -117,6 +123,7 @@ public class MainActivity extends Activity {
             card.setOnClickListener(v -> prayerDialog(p));
 
             TextView name = Ui.text(c, PrayTimes.NAMES[i], wide ? 22 : 18, Ui.TEXT, false);
+            nameViews[i] = name;
             timeViews[i] = Ui.text(c, "", wide ? 30 : 22, Ui.TEXT, true);
             bells[i] = Ui.text(c, "", wide ? 16 : 16, Ui.MUTED, false);
             if (wide) {
@@ -146,7 +153,7 @@ public class MainActivity extends Activity {
         }
 
         col.addView(Ui.text(c, "اضغط على أي صلاة عشان تقفل أذانها أو تظبط ميعادها بالدقيقة",
-                14, Ui.MUTED, false), wrap());
+                13, Ui.MUTED, false), wrap());
 
         // أزرار الإعدادات
         LinearLayout btns = new LinearLayout(c);
@@ -164,15 +171,14 @@ public class MainActivity extends Activity {
         bs.setHorizontalScrollBarEnabled(false);
         bs.addView(btns);
         LinearLayout.LayoutParams blp = wrap();
-        blp.topMargin = Ui.dp(c, 18);
+        blp.topMargin = Ui.dp(c, 10);
         col.addView(bs, blp);
 
         ScrollView sv = new ScrollView(c);
         sv.setFillViewport(true);
-        sv.setBackgroundColor(Ui.BG);
         sv.setLayoutDirection(View.LAYOUT_DIRECTION_RTL);
         sv.addView(col);
-        return sv;
+        return Ui.withHaramBackground(c, sv);
     }
 
     private static LinearLayout.LayoutParams wrap() {
@@ -238,11 +244,23 @@ public class MainActivity extends Activity {
             next.setText("باقي على أذان " + PrayTimes.NAMES[nextP] + "   " + Ui.duration(n[1] - now));
             next.setTextColor(Ui.TEXT);
         }
-        // الكارت الأخضر = الصلاة الجاية (لو هي النهارده)
+        // الكارت الدهبي = الصلاة الجاية (لو هي النهارده)
         int hl = n != null && today != null && today[nextP] == n[1] ? nextP : -1;
         if (hl != highlighted || cards[0].getBackground() == null) {
             highlighted = hl;
-            for (int i = 0; i < 6; i++) cards[i].setBackground(Ui.focusBg(this, i == hl ? Ui.NEXT : Ui.CARD));
+            for (int i = 0; i < 6; i++) {
+                boolean on = i == hl;
+                cards[i].setBackground(Ui.focusBg(this, on ? Ui.NEXT : Ui.CARD));
+                int fg = on ? Ui.NEXT_TEXT : Ui.TEXT;
+                nameViews[i].setTextColor(fg);
+                timeViews[i].setTextColor(fg);
+                bells[i].setTextColor(on ? Ui.NEXT_TEXT : Ui.MUTED);
+                // الظل مش محتاجينه على الكارت الدهبي
+                float r = on ? 0 : 6;
+                nameViews[i].setShadowLayer(r, 0, 2, 0xAA000000);
+                timeViews[i].setShadowLayer(r, 0, 2, 0xAA000000);
+                bells[i].setShadowLayer(r, 0, 2, 0xAA000000);
+            }
         }
         testBtn.setText(AdhanService.playing >= 0 ? "⏹ إيقاف الأذان" : "🔊 تجربة الأذان");
         long testAt = Prefs.testAt(this);

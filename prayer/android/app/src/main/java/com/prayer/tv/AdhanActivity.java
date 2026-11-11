@@ -42,25 +42,24 @@ public class AdhanActivity extends Activity {
 
         LinearLayout root = new LinearLayout(this);
         root.setOrientation(LinearLayout.VERTICAL);
-        root.setGravity(Gravity.CENTER);
-        root.setBackgroundColor(Ui.BG);
+        root.setGravity(Gravity.CENTER_HORIZONTAL);
         root.setLayoutDirection(View.LAYOUT_DIRECTION_RTL);
         int pad = Ui.dp(this, 32);
         root.setPadding(pad, pad, pad, pad);
 
-        root.addView(Ui.text(this, "🕌", 72, Ui.GOLD, false));
         title = Ui.text(this, "", 44, Ui.GOLD, true);
         root.addView(title);
-        TextView sub = Ui.text(this, "", 22, Ui.MUTED, false);
+        TextView sub = Ui.text(this, "", 22, Ui.TEXT, false);
         sub.setTag("sub");
         root.addView(sub);
 
         Button stop = new Button(this);
         stop.setText("إيقاف الأذان");
         stop.setTextSize(24);
-        stop.setTextColor(Ui.TEXT);
+        stop.setTextColor(Ui.NEXT_TEXT);
         stop.setAllCaps(false);
-        stop.setBackground(Ui.focusBg(this, Ui.CARD));
+        stop.setTypeface(android.graphics.Typeface.DEFAULT_BOLD);
+        stop.setBackground(Ui.focusBg(this, Ui.GOLD));
         int h = Ui.dp(this, 18), v = Ui.dp(this, 12);
         stop.setPadding(h * 2, v, h * 2, v);
         stop.setOnClickListener(x -> {
@@ -69,9 +68,10 @@ public class AdhanActivity extends Activity {
         });
         LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT);
-        lp.topMargin = Ui.dp(this, 36);
+        // الكلام فوق والزرار تحت، والكعبة اللي في الصورة تبان في النص
+        root.addView(new View(this), new LinearLayout.LayoutParams(1, 0, 1f));
         root.addView(stop, lp);
-        setContentView(root);
+        setContentView(Ui.withHaramBackground(this, root));
         stop.requestFocus();
         current = new WeakReference<>(this);
         bind();

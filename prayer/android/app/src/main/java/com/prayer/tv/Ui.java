@@ -7,6 +7,9 @@ import android.graphics.drawable.Drawable;
 import android.graphics.drawable.GradientDrawable;
 import android.graphics.drawable.StateListDrawable;
 import android.view.Gravity;
+import android.view.View;
+import android.widget.FrameLayout;
+import android.widget.ImageView;
 import android.widget.TextView;
 
 import java.text.SimpleDateFormat;
@@ -16,12 +19,15 @@ import java.util.TimeZone;
 
 /** ألوان وأدوات صغيرة للواجهة */
 final class Ui {
-    static final int BG = 0xFF0B1220;
-    static final int CARD = 0xFF151F33;
-    static final int NEXT = 0xFF14532D;
-    static final int GOLD = 0xFFE8C66A;
-    static final int TEXT = 0xFFF1F5F9;
-    static final int MUTED = 0xFF94A3B8;
+    static final int BG = 0xFF060E1E;
+    /** كروت شفافة فوق صورة الحرم */
+    static final int CARD = 0xC70A162E;
+    static final int GOLD = 0xFFE2C275;
+    /** الصلاة الجاية: كارت دهبي وكلام كحلي */
+    static final int NEXT = GOLD;
+    static final int NEXT_TEXT = 0xFF0B1730;
+    static final int TEXT = 0xFFF3EEDF;
+    static final int MUTED = 0xFFC3CAD8;
 
     static int dp(Context c, float v) {
         return Math.round(v * c.getResources().getDisplayMetrics().density);
@@ -34,6 +40,8 @@ final class Ui {
         t.setTextColor(color);
         t.setGravity(Gravity.CENTER);
         if (bold) t.setTypeface(Typeface.DEFAULT_BOLD);
+        // ظل خفيف عشان الكلام يبان فوق الصورة
+        t.setShadowLayer(6, 0, 2, 0xAA000000);
         return t;
     }
 
@@ -48,10 +56,37 @@ final class Ui {
     /** خلفية بتظهر إطار دهبي لما الريموت يقف عليها */
     static Drawable focusBg(Context c, int fill) {
         StateListDrawable s = new StateListDrawable();
-        s.addState(new int[]{android.R.attr.state_focused}, rect(c, fill, GOLD));
-        s.addState(new int[]{android.R.attr.state_pressed}, rect(c, fill, GOLD));
+        // على الأزرار الدهبي الإطار أبيض عشان يبان
+        int ring = fill == GOLD ? Color.WHITE : GOLD;
+        s.addState(new int[]{android.R.attr.state_focused}, rect(c, fill, ring));
+        s.addState(new int[]{android.R.attr.state_pressed}, rect(c, fill, ring));
         s.addState(new int[]{}, rect(c, fill, Color.TRANSPARENT));
         return s;
+    }
+
+    /** صورة الحرم كخلفية + تغميق عشان الكلام يبان، والمحتوى فوقهم */
+    static View withHaramBackground(Context c, View content) {
+        FrameLayout f = new FrameLayout(c);
+        f.setBackgroundColor(BG);
+        ImageView img = new ImageView(c);
+        img.setScaleType(ImageView.ScaleType.CENTER_CROP);
+        img.setImageResource(R.drawable.bg_haram);
+        f.addView(img, new FrameLayout.LayoutParams(-1, -1));
+        View shade = new View(c);
+        shade.setBackground(new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,
+                new int[]{0xA6040A17, 0x4D040A17, 0x40040A17, 0xD9040A17}));
+        f.addView(shade, new FrameLayout.LayoutParams(-1, -1));
+        f.addView(content, new FrameLayout.LayoutParams(-1, -1));
+        return f;
+    }
+
+    /** خلفية مدورة شفافة دهبي (للعد التنازلي) */
+    static Drawable pill(Context c) {
+        GradientDrawable g = new GradientDrawable();
+        g.setColor(0x24E2C275);
+        g.setCornerRadius(dp(c, 999));
+        g.setStroke(dp(c, 1), 0x73E2C275);
+        return g;
     }
 
     /** "4:45 م" بأرقام عادية */

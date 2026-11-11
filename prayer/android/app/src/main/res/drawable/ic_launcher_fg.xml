@@ -1,8 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- الكعبة والهلال -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="108dp" android:height="108dp"
     android:viewportWidth="108" android:viewportHeight="108">
-    <path android:fillColor="#E8C66A" android:pathData="M34,76h40v-14c0,-11 -9,-20 -20,-20s-20,9 -20,20z" />
-    <path android:fillColor="#E8C66A" android:pathData="M53,42h2v-8h-2z" />
-    <path android:fillColor="#E8C66A" android:pathData="M58,28a6,6 0 1,1 -6,-6a4.5,4.5 0 1,0 6,6z" />
+    <path android:fillColor="#050505" android:pathData="M33,47 L64,47 L64,80 L33,80 Z" />
+    <path android:fillColor="#1E1E1E" android:pathData="M64,47 L75,43 L75,76 L64,80 Z" />
+    <path android:fillColor="#2E2E2E" android:pathData="M33,47 L44,43 L75,43 L64,47 Z" />
+    <path android:fillColor="#E2C275" android:pathData="M33,52 L64,52 L64,56 L33,56 Z" />
+    <path android:fillColor="#B99A55" android:pathData="M64,52 L75,48 L75,52 L64,56 Z" />
+    <path android:fillColor="#E2C275" android:pathData="M55,61 L60,61 L60,75 L55,75 Z" />
+    <path android:fillColor="#E2C275" android:pathData="M61,31 a6,6 0 1,1 -6,-6 a4.5,4.5 0 1,0 6,6 z" />
 </vector>
