@@ -1,0 +1,46 @@
+plugins {
+    id 'com.android.application'
+}
+
+android {
+    namespace 'com.prayer.tv'
+    compileSdk 34
+
+    defaultConfig {
+        applicationId 'com.prayer.tv'
+        minSdk 21
+        targetSdk 34
+        versionCode((System.getenv('GITHUB_RUN_NUMBER') ?: '1').toInteger())
+        versionName "1.0.${System.getenv('GITHUB_RUN_NUMBER') ?: '0'}"
+    }
+
+    signingConfigs {
+        // مفتاح ثابت عشان كل نسخة جديدة تتسطب فوق القديمة من غير ما تمسح إعداداتك
+        shared {
+            storeFile file('prayer.keystore')
+            storePassword 'prayertimes'
+            keyAlias 'prayer'
+            keyPassword 'prayertimes'
+        }
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            signingConfig signingConfigs.shared
+        }
+        debug {
+            signingConfig signingConfigs.shared
+        }
+    }
+
+    lint {
+        checkReleaseBuilds false
+        abortOnError false
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
+    }
+}

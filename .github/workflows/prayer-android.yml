@@ -1,0 +1,56 @@
+name: Prayer TV APK
+
+on:
+  push:
+    branches: ['main', 'ccr-239bb624-zdnjjm']
+    paths: ['prayer/**', '.github/workflows/prayer-android.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: prayer-apk
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.9'
+
+      # لو مفيش ملف أذان في res/raw بنجيب تسجيل برخصة حرة من Wikimedia Commons
+      - name: Get adhan audio
+        run: python3 prayer/tools/fetch_adhan.py prayer/android/app/src/main/res/raw || true
+
+      - name: Build APK
+        run: gradle -p prayer/android assembleRelease --no-daemon --stacktrace
+
+      - name: Rename APK
+        run: cp prayer/android/app/build/outputs/apk/release/app-release.apk Prayer-TV.apk
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Prayer-TV-apk
+          path: Prayer-TV.apk
+
+      # رابط ثابت لآخر نسخة: releases/download/prayer-latest/Prayer-TV.apk
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release delete prayer-latest --yes --cleanup-tag || true
+          gh release create prayer-latest Prayer-TV.apk \
+            --target "${{ github.sha }}" \
+            --latest=false \
+            --title "مواقيت الصلاة للتليفزيون (نسخة ${{ github.run_number }})" \
+            --notes "نزّل Prayer-TV.apk وسطّبه على التليفزيون (Android TV) أو الموبايل. افتحه مرة واختار مدينتك وهو هيأذن لوحده في كل صلاة."

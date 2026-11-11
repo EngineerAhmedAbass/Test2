@@ -29,6 +29,12 @@
 - أي تعديل على `public/` أو `android/` بيعمل نسخة APK جديدة تلقائيًا (GitHub Actions).
 - أزرار CH+ / CH- في ريموت التليفزيون بتقلّب القنوات.
 
+## 🕌 تطبيق مواقيت الصلاة للتليفزيون
+
+بيأذن لوحده في ميعاد كل صلاة — التفاصيل في [`prayer/README.md`](prayer/README.md).
+
+**https://github.com/EngineerAhmedAbass/Test2/releases/download/prayer-latest/Prayer-TV.apk**
+
 ## التشغيل على الكمبيوتر
 
 1. سطّب [Node.js](https://nodejs.org) (إصدار 18 أو أحدث).
