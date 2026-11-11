@@ -29,8 +29,9 @@ jobs:
         with:
           gradle-version: '8.9'
 
+      # رقم نسخة كبير عشان رسالة "فيه تحديث" ماتظهرش في الاختبار
       - name: Build APK
-        run: gradle -p prayer/android assembleRelease --no-daemon
+        run: GITHUB_RUN_NUMBER=99999 gradle -p prayer/android assembleRelease --no-daemon
 
       - name: Enable KVM
         run: |

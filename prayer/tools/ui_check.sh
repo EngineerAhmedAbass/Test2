@@ -48,27 +48,35 @@ fail=0
 adb shell am start -n $PKG/.MainActivity
 shot 01-main 8; alive "launch" || fail=1
 
-tap_text "الإعدادات" && shot 02-settings 3; alive "open settings" || fail=1
-# نتحرك في القايمة بالريموت
-for i in 1 2 3 4 5; do key KEYCODE_DPAD_DOWN; done
-shot 03-settings-down 1; alive "move in settings" || fail=1
+# الشاشة الرئيسية بالريموت: تحت = صف الأزرار، يمين على الآخر = الإعدادات
+key KEYCODE_DPAD_DOWN; key KEYCODE_DPAD_DOWN; key KEYCODE_DPAD_DOWN
+for i in 1 2 3 4 5; do key KEYCODE_DPAD_RIGHT; done
+shot 02-main-focus-settings 1
 key KEYCODE_DPAD_CENTER
-shot 04-settings-options 1; alive "open options" || fail=1
+shot 03-settings 3; alive "open settings" || fail=1
+for i in 1 2 3 4; do key KEYCODE_DPAD_DOWN; done
+shot 04-settings-voice 1; alive "move in settings" || fail=1
+key KEYCODE_DPAD_CENTER
+shot 05-settings-voice-options 1; alive "open options" || fail=1
 key KEYCODE_BACK
+key KEYCODE_DPAD_DOWN; key KEYCODE_DPAD_DOWN
+shot 06-settings-loudness 1; alive "loudness row" || fail=1
+for i in $(seq 1 6); do key KEYCODE_DPAD_DOWN; done
+shot 07-settings-prayer 1; alive "prayer rows" || fail=1
+key KEYCODE_DPAD_CENTER
+shot 08-prayer-options 1; alive "prayer options" || fail=1
 for i in $(seq 1 12); do key KEYCODE_DPAD_DOWN; done
-shot 05-settings-prayers 1; alive "prayer rows" || fail=1
+shot 09-settings-general 1; alive "general rows" || fail=1
+key KEYCODE_BACK
+key KEYCODE_BACK
+shot 10-back-main 2; alive "back to main" || fail=1
+
+# الأذان وشاشته: من الإعدادات خطوة شمال = تجربة الأذان
+key KEYCODE_DPAD_DOWN; key KEYCODE_DPAD_DOWN; key KEYCODE_DPAD_DOWN
+for i in 1 2 3 4 5; do key KEYCODE_DPAD_RIGHT; done
+key KEYCODE_DPAD_LEFT
 key KEYCODE_DPAD_CENTER
-shot 06-prayer-options 1; alive "prayer options" || fail=1
-key KEYCODE_BACK
-key KEYCODE_BACK
-shot 07-back-main 2; alive "back to main" || fail=1
-
-# الضغط على كارت صلاة بيفتح صفحتها
-tap_text "العصر" && shot 08-prayer-from-card 3; alive "card" || fail=1
-key KEYCODE_BACK
-
-# الأذان وشاشته
-tap_text "تجربة الأذان" && shot 09-adhan 4; alive "adhan" || fail=1
+shot 11-adhan 4; alive "adhan" || fail=1
 key KEYCODE_BACK
 
 adb logcat -d > "$OUT/logcat.txt"
