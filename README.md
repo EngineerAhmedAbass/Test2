@@ -1,3 +1,10 @@
+> **التطبيقات اتنقلت لريبوهات منفصلة:**
+> - 📺 مشغل IPTV: https://github.com/EngineerAhmedAbass/iptv-player
+> - ⚽ GOAL: https://github.com/EngineerAhmedAbass/goal-scores
+> - 🕌 مواقيت الصلاة: https://github.com/EngineerAhmedAbass/prayer-times-tv
+>
+> الريبو ده متساب زي ما هو عشان الروابط القديمة تفضل شغالة.
+
 # 🎬 مشغل IPTV
 
 برنامج بسيط تشغّل من عليه حساب الـ IPTV بتاعك من المتصفح — قنوات، أفلام، ومسلسلات.

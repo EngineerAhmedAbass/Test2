@@ -30,7 +30,7 @@ import java.net.URL;
  */
 final class Updater {
     private static final String BASE =
-            "https://github.com/EngineerAhmedAbass/Test2/releases/download/prayer-latest/";
+            "https://github.com/EngineerAhmedAbass/prayer-times-tv/releases/latest/download/";
     static final String VERSION_URL = BASE + "version.json";
     static final String APK_URL = BASE + "Prayer-TV.apk";
 
