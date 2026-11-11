@@ -87,19 +87,19 @@ public class MainActivity extends Activity {
         LinearLayout col = new LinearLayout(c);
         col.setOrientation(LinearLayout.VERTICAL);
         col.setGravity(Gravity.CENTER_HORIZONTAL);
-        int pad = Ui.dp(c, wide ? 28 : 16);
-        col.setPadding(pad, pad, pad, pad);
+        int pad = Ui.dp(c, wide ? 24 : 16);
+        col.setPadding(pad, pad, pad, Ui.dp(c, 12));
 
-        clock = Ui.text(c, "", wide ? 68 : 56, Ui.GOLD, true);
+        clock = Ui.text(c, "", wide ? 62 : 56, Ui.GOLD, true);
         col.addView(clock);
-        dates = Ui.text(c, "", wide ? 22 : 16, Ui.TEXT, false);
+        dates = Ui.text(c, "", wide ? 19 : 16, Ui.TEXT, false);
         col.addView(dates);
-        city = Ui.text(c, "", wide ? 18 : 15, Ui.MUTED, false);
+        city = Ui.text(c, "", wide ? 15 : 15, Ui.MUTED, false);
         col.addView(city);
 
-        next = Ui.text(c, "", wide ? 24 : 20, Ui.TEXT, true);
+        next = Ui.text(c, "", wide ? 21 : 20, Ui.TEXT, true);
         next.setBackground(Ui.pill(c));
-        int ph = Ui.dp(c, 22), pv = Ui.dp(c, 8);
+        int ph = Ui.dp(c, 22), pv = Ui.dp(c, 6);
         next.setPadding(ph, pv, ph, pv);
         LinearLayout.LayoutParams nlp = wrap();
         nlp.topMargin = Ui.dp(c, 12);
@@ -118,14 +118,14 @@ public class MainActivity extends Activity {
             card.setGravity(Gravity.CENTER);
             card.setFocusable(true);
             card.setClickable(true);
-            int cp = Ui.dp(c, 14);
+            int cp = Ui.dp(c, wide ? 8 : 14);
             card.setPadding(cp, cp, cp, cp);
             card.setOnClickListener(v -> prayerDialog(p));
 
-            TextView name = Ui.text(c, PrayTimes.NAMES[i], wide ? 22 : 18, Ui.TEXT, false);
+            TextView name = Ui.text(c, PrayTimes.NAMES[i], wide ? 18 : 18, Ui.TEXT, false);
             nameViews[i] = name;
-            timeViews[i] = Ui.text(c, "", wide ? 30 : 22, Ui.TEXT, true);
-            bells[i] = Ui.text(c, "", wide ? 16 : 16, Ui.MUTED, false);
+            timeViews[i] = Ui.text(c, "", wide ? 25 : 22, Ui.TEXT, true);
+            bells[i] = Ui.text(c, "", wide ? 13 : 16, Ui.MUTED, false);
             if (wide) {
                 card.addView(name);
                 card.addView(timeViews[i]);
@@ -136,9 +136,9 @@ public class MainActivity extends Activity {
                 card.addView(bells[i], new LinearLayout.LayoutParams(Ui.dp(c, 40), -2));
             }
             LinearLayout.LayoutParams lp = wide
-                    ? new LinearLayout.LayoutParams(Ui.dp(c, 150), -2)
+                    ? new LinearLayout.LayoutParams(Ui.dp(c, 132), -2)
                     : new LinearLayout.LayoutParams(-1, -2);
-            int m = Ui.dp(c, 5);
+            int m = Ui.dp(c, wide ? 4 : 5);
             lp.setMargins(m, m, m, m);
             cards[i] = card;
             row.addView(card, lp);
@@ -152,18 +152,21 @@ public class MainActivity extends Activity {
             col.addView(row, new LinearLayout.LayoutParams(-1, -2));
         }
 
-        col.addView(Ui.text(c, "اضغط على أي صلاة عشان تقفل أذانها أو تظبط ميعادها بالدقيقة",
-                13, Ui.MUTED, false), wrap());
+        // على التليفزيون الشرح ده بيظهر في الإعدادات بدل ما ياخد مكان من الصورة
+        if (!wide) {
+            col.addView(Ui.text(c, "اضغط على أي صلاة عشان تقفل أذانها أو تظبط ميعادها بالدقيقة",
+                    13, Ui.MUTED, false), wrap());
+        }
 
         // أزرار الإعدادات
         LinearLayout btns = new LinearLayout(c);
         btns.setOrientation(LinearLayout.HORIZONTAL);
         btns.setGravity(Gravity.CENTER);
-        btns.addView(button("📍 المدينة", v -> cityDialog()));
-        btns.addView(button("⚙️ الإعدادات", v -> settingsDialog()));
-        testBtn = button("🔊 تجربة الأذان", v -> testAdhan());
+        btns.addView(button("المدينة", v -> cityDialog()));
+        btns.addView(button("الإعدادات", v -> settingsDialog()));
+        testBtn = button("تجربة الأذان", v -> testAdhan());
         btns.addView(testBtn);
-        laterBtn = button("⏱ جرّب بعد دقيقة", v -> testLater());
+        laterBtn = button("جرّب بعد دقيقة", v -> testLater());
         btns.addView(laterBtn);
         overlayBtn = button("", v -> overlayDialog());
         btns.addView(overlayBtn);
@@ -171,7 +174,7 @@ public class MainActivity extends Activity {
         bs.setHorizontalScrollBarEnabled(false);
         bs.addView(btns);
         LinearLayout.LayoutParams blp = wrap();
-        blp.topMargin = Ui.dp(c, 10);
+        blp.topMargin = Ui.dp(c, 8);
         col.addView(bs, blp);
 
         ScrollView sv = new ScrollView(c);
@@ -189,10 +192,12 @@ public class MainActivity extends Activity {
         Button b = new Button(this);
         b.setText(label);
         b.setAllCaps(false);
-        b.setTextSize(18);
+        b.setTextSize(15);
+        b.setMinHeight(0);
+        b.setMinimumHeight(0);
         b.setTextColor(Ui.TEXT);
         b.setBackground(Ui.focusBg(this, Ui.CARD));
-        int h = Ui.dp(this, 18), v = Ui.dp(this, 10);
+        int h = Ui.dp(this, 16), v = Ui.dp(this, 8);
         b.setPadding(h, v, h, v);
         b.setOnClickListener(l);
         LinearLayout.LayoutParams lp = wrap();
@@ -224,11 +229,11 @@ public class MainActivity extends Activity {
             int[] h = PrayTimes.hijri(y, m, d, Prefs.hijriAdjust(this));
             dates.setText(DAYS[cal.get(Calendar.DAY_OF_WEEK) - 1] + "  " + d + " " + MONTHS[m - 1] + " " + y
                     + "   •   " + h[2] + " " + PrayTimes.HIJRI_MONTHS[(h[1] + 11) % 12] + " " + h[0] + " هـ");
-            city.setText("📍 " + Prefs.city(this).name + "  —  " + PrayTimes.METHOD_NAMES[Prefs.method(this)]);
+            city.setText(Prefs.city(this).name + "  —  " + PrayTimes.METHOD_NAMES[Prefs.method(this)]);
             for (int i = 0; i < 6; i++) {
                 timeViews[i].setText(Ui.time(today[i], tz, false));
                 int off = Prefs.offset(this, i);
-                String bell = i == PrayTimes.SUNRISE ? "" : (Prefs.enabled(this, i) ? "🔔" : "🔕");
+                String bell = i == PrayTimes.SUNRISE ? "" : (Prefs.enabled(this, i) ? "" : "بدون أذان");
                 if (off != 0) bell += (bell.isEmpty() ? "" : " ") + (off > 0 ? "+" : "") + off + "د";
                 bells[i].setText(bell);
             }
@@ -238,7 +243,7 @@ public class MainActivity extends Activity {
         long[] n = Prefs.next(this, now, false);
         int nextP = n == null ? -1 : (int) n[0];
         if (AdhanService.playing >= 0) {
-            next.setText("🕌 حان الآن موعد أذان " + PrayTimes.NAMES[AdhanService.playing]);
+            next.setText("حان الآن موعد أذان " + PrayTimes.NAMES[AdhanService.playing]);
             next.setTextColor(Ui.GOLD);
         } else if (n != null) {
             next.setText("باقي على أذان " + PrayTimes.NAMES[nextP] + "   " + Ui.duration(n[1] - now));
@@ -262,11 +267,11 @@ public class MainActivity extends Activity {
                 bells[i].setShadowLayer(r, 0, 2, 0xAA000000);
             }
         }
-        testBtn.setText(AdhanService.playing >= 0 ? "⏹ إيقاف الأذان" : "🔊 تجربة الأذان");
+        testBtn.setText(AdhanService.playing >= 0 ? "إيقاف الأذان" : "تجربة الأذان");
         long testAt = Prefs.testAt(this);
-        laterBtn.setText(testAt > now ? "⏱ الأذان التجريبي بعد " + Ui.duration(testAt - now).substring(2) + " (إلغاء)"
-                : "⏱ جرّب بعد دقيقة");
-        overlayBtn.setText(canOverlay() ? "✅ شاشة الأذان فوق البرامج" : "⚠️ شاشة الأذان فوق البرامج");
+        laterBtn.setText(testAt > now ? "الأذان التجريبي بعد " + Ui.duration(testAt - now).substring(2) + " (إلغاء)"
+                : "جرّب بعد دقيقة");
+        overlayBtn.setText(canOverlay() ? "شاشة الأذان فوق البرامج: مفعّلة" : "شاشة الأذان فوق البرامج: مش مفعّلة");
     }
 
     private void testAdhan() {
@@ -298,7 +303,7 @@ public class MainActivity extends Activity {
     private void overlayDialog() {
         if (canOverlay()) {
             dialog("شاشة الأذان فوق البرامج")
-                    .setMessage("✅ مسموح. شاشة \"حان الآن موعد الأذان\" هتظهر حتى لو أنت في برنامج تاني.")
+                    .setMessage("مسموح. شاشة \"حان الآن موعد الأذان\" هتظهر حتى لو أنت في برنامج تاني.")
                     .setPositiveButton("تمام", null).show();
             return;
         }
@@ -351,8 +356,8 @@ public class MainActivity extends Activity {
     private void settingsDialog() {
         int fv = Prefs.fajrVoice(this);
         String[] items = {
-                "🎙️ المؤذن: " + Prefs.VOICE_NAMES[Prefs.voice(this)],
-                "🌅 مؤذن الفجر: " + (fv < 0 ? "زي باقي الصلوات" : Prefs.VOICE_NAMES[fv]),
+                "المؤذن: " + Prefs.VOICE_NAMES[Prefs.voice(this)],
+                "مؤذن الفجر: " + (fv < 0 ? "زي باقي الصلوات" : Prefs.VOICE_NAMES[fv]),
                 "طريقة الحساب: " + PrayTimes.METHOD_NAMES[Prefs.method(this)],
                 "العصر: " + (Prefs.hanafi(this) ? "الحنفي" : "الجمهور (شافعي/مالكي/حنبلي)"),
                 "مستوى صوت الأذان: " + volumeName(),
@@ -433,7 +438,7 @@ public class MainActivity extends Activity {
     private void prayerDialog(int p) {
         int off = Prefs.offset(this, p);
         boolean sunrise = p == PrayTimes.SUNRISE;
-        String toggle = Prefs.enabled(this, p) ? "🔕 اقفل أذان " + PrayTimes.NAMES[p] : "🔔 شغّل أذان " + PrayTimes.NAMES[p];
+        String toggle = Prefs.enabled(this, p) ? "اقفل أذان " + PrayTimes.NAMES[p] : "شغّل أذان " + PrayTimes.NAMES[p];
         String[] items = sunrise
                 ? new String[]{"أخّر دقيقة (+1)", "قدّم دقيقة (-1)", "رجّع الميعاد المحسوب"}
                 : new String[]{toggle, "أخّر دقيقة (+1)", "قدّم دقيقة (-1)", "رجّع الميعاد المحسوب"};
