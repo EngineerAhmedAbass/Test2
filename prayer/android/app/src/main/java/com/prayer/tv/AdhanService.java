@@ -110,6 +110,7 @@ public class AdhanService extends Service implements AudioManager.OnAudioFocusCh
             mp.prepare();
             requestFocus();
             applyVolume();
+            TvVolume.raise(this, Prefs.TV_STEPS[Prefs.tvSteps(this)]);
             mp.start();
             return true;
         } catch (Exception e) {
@@ -235,6 +236,7 @@ public class AdhanService extends Service implements AudioManager.OnAudioFocusCh
     public void onDestroy() {
         releasePlayer();
         playing = -1;
+        TvVolume.restore(this);
         AudioManager am = (AudioManager) getSystemService(AUDIO_SERVICE);
         if (am != null) {
             if (savedVolume >= 0) {

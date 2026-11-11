@@ -71,6 +71,18 @@ final class Prefs {
 
     static void setOffset(Context c, int p, int v) { sp(c).edit().putInt("off" + p, v).commit(); }
 
+    /** كام درجة نرفع صوت التليفزيون نفسه وقت الأذان (عن طريق HDMI-CEC) */
+    static final int[] TV_STEPS = {0, 5, 10, 15, 20};
+    static final String[] TV_STEPS_NAMES = {"ماتغيرش صوت التليفزيون", "علّي 5 درجات", "علّي 10 درجات",
+            "علّي 15 درجة", "علّي 20 درجة"};
+
+    static int tvSteps(Context c) {
+        int v = sp(c).getInt("tvSteps", 0);
+        return v >= 0 && v < TV_STEPS.length ? v : 0;
+    }
+
+    static void setTvSteps(Context c, int v) { sp(c).edit().putInt("tvSteps", v).commit(); }
+
     /** مستوى علو الأذان من 0 لـ 3 */
     static int loud(Context c) {
         SharedPreferences p = sp(c);

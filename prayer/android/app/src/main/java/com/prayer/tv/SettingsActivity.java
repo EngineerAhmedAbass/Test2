@@ -148,6 +148,14 @@ public class SettingsActivity extends Activity {
                     Prefs.setLoud(this, i);
                     AdhanService.start(this, PrayTimes.DHUHR);
                 })));
+        rows.add(new Row("صوت التليفزيون وقت الأذان",
+                "لو التليفزيون صوته واطي، البرنامج بيعلّيه الدرجات دي قبل الأذان ويرجّعه زي ما كان بعده. "
+                        + "محتاج HDMI-CEC يكون شغال على البوكس والتليفزيون",
+                () -> Prefs.TV_STEPS_NAMES[Prefs.tvSteps(this)],
+                () -> choice(Prefs.TV_STEPS_NAMES, Prefs.tvSteps(this), i -> {
+                    Prefs.setTvSteps(this, i);
+                    AdhanService.start(this, PrayTimes.DHUHR);
+                })));
         String[] screen = {"تظهر شاشة الأذان", "صوت بس"};
         rows.add(new Row("شاشة الأذان", null,
                 () -> screen[Prefs.showScreen(this) ? 0 : 1],
