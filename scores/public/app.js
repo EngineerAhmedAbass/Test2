@@ -832,7 +832,7 @@
       color: r.uniform?.color || r.team?.color || '', alt: r.uniform?.alternateColor || r.team?.alternateColor || '',
       club: r.team?.color || '', clubAlt: r.team?.alternateColor || '',
       xi: (r.roster || []).filter((p) => p.starter).map((p) => ({
-        no: p.jersey, name: p.athlete?.displayName, short: p.athlete?.lastName || p.athlete?.shortName, pos: p.position?.abbreviation || '', out: !!p.subbedOut, id: p.athlete?.id,
+        no: p.jersey, name: p.athlete?.displayName, short: p.athlete?.lastName || p.athlete?.shortName, pos: p.position?.abbreviation || '', out: !!p.subbedOut, id: p.athlete?.id, fp: +p.formationPlace || 0,
       })),
       subs: (r.roster || []).filter((p) => !p.starter).map((p) => ({ no: p.jersey, name: p.athlete?.displayName, in: !!p.subbedIn, id: p.athlete?.id })),
       tid: r.team?.id, slug,
@@ -976,15 +976,23 @@
     if (/-R$/.test(p)) return 1.25;
     return 1;
   }
-  // بيرجّع خطوط من الحارس للهجوم، وكل خط مترتب من الشمال لليمين
+  // ترقيم أماكن اللاعبين في الخطة (formationPlace بتاع Opta اللي ESPN بتبعته):
+  // لكل خطة: خطوط من الدفاع للهجوم، وكل خط من الشمال لليمين (الحارس دايمًا 1)
+  const FORMATION_PLACES = {"4-4-2":[[3,6,5,2],[11,8,4,7],[9,10]],"4-1-2-1-2":[[3,6,5,2],[4],[11,7],[8],[9,10]],"4-3-3":[[3,6,5,2],[8,4,7],[11,9,10]],"4-5-1":[[3,6,5,2],[11,8,10,4,7],[9]],"4-4-1-1":[[3,6,5,2],[11,8,4,7],[10],[9]],"4-1-4-1":[[3,6,5,2],[4],[11,10,8,7],[9]],"4-2-3-1":[[3,6,5,2],[4,8],[11,10,7],[9]],"4-3-2-1":[[3,6,5,2],[7,4,8],[11,10],[9]],"5-3-2":[[3,4,5,6,2],[11,8,7],[9,10]],"5-4-1":[[3,4,5,6,2],[11,10,8,7],[9]],"3-5-2":[[4,5,6],[3,8,11,7,2],[9,10]],"3-4-3":[[4,5,6],[3,8,7,2],[11,9,10]],"3-1-3-1-2":[[4,5,6],[7],[3,8,2],[9],[11,10]],"4-2-2-2":[[3,6,5,2],[8,4],[11,7],[9,10]],"3-5-1-1":[[4,6,5],[3,8,11,7,2],[10],[9]],"3-4-2-1":[[4,5,6],[3,8,7,2],[11,10],[9]],"3-4-1-2":[[4,5,6],[3,8,7,2],[9],[11,10]],"3-1-4-2":[[6,4,5],[8],[3,11,7,2],[10,9]],"3-1-2-1-3":[[4,5,6],[8],[3,2],[10],[11,7,9]],"4-1-3-2":[[3,6,5,2],[4],[11,8,7],[10,9]],"4-2-4":[[3,6,5,2],[8,4],[11,10,9,7]],"4-3-1-2":[[3,6,5,2],[11,4,7],[8],[10,9]],"3-2-4-1":[[4,5,6],[3,2],[11,8,7,10],[9]],"3-3-3-1":[[4,5,6],[3,8,2],[11,7,10],[9]]};
   function lineupLines(t) {
     const xi = t.xi.slice(0, 11);
+    const fpLines = FORMATION_PLACES[String(t.formation || '').trim()];
+    if (fpLines && xi.length === 11) { // أدق طريقة: المكان الرسمي لكل لاعب في الخطة (حتى لو المراكز ناقصة زي منتخب مصر)
+      const byFp = new Map(xi.map((p) => [p.fp, p]));
+      if (byFp.size === 11 && byFp.has(1) && fpLines.every((l) => l.every((n) => byFp.has(n)))) return [[byFp.get(1)], ...fpLines.map((l) => l.map((n) => byFp.get(n)))];
+    }
     if (xi.length && xi.every((p) => /^\d+:\d+$/.test(p.grid || ''))) { // API-Football: row:col
       const rows = new Map();
       for (const p of xi) { const [r, c] = p.grid.split(':').map(Number); if (!rows.has(r)) rows.set(r, []); rows.get(r).push({ ...p, c }); }
       return [...rows.keys()].sort((a, b) => a - b).map((r) => rows.get(r).sort((a, b) => a.c - b.c));
     }
-    const gkIdx = xi.findIndex((p) => depth(p.pos) === 0);
+    let gkIdx = xi.findIndex((p) => p.fp === 1);
+    if (gkIdx < 0) gkIdx = xi.findIndex((p) => depth(p.pos) === 0);
     const gk = gkIdx >= 0 ? xi[gkIdx] : xi[0];
     const rest = xi.filter((p) => p !== gk).map((p, i) => ({ ...p, d: depth(p.pos), i })).sort((a, b) => a.d - b.d || a.i - b.i);
     const counts = String(t.formation || '').split('-').map(Number).filter((n) => n > 0);
