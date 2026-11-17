@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp" android:height="108dp"
+    android:viewportWidth="108" android:viewportHeight="108">
+    <!-- هلال -->
+    <path android:fillColor="#D4AF37"
+        android:pathData="M60,30a24,24 0 1,0 0,48a20,20 0 1,1 0,-48z" />
+    <!-- موجات صوت -->
+    <path android:strokeColor="#D4AF37" android:strokeWidth="3.5" android:strokeLineCap="round"
+        android:pathData="M64,46q6,8 0,16M71,41q11,13 0,26" />
+</vector>
