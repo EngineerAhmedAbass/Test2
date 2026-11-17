@@ -2,12 +2,15 @@ package com.tv.quran;
 
 import android.app.Activity;
 import android.content.ComponentName;
+import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.res.ColorStateList;
 import android.graphics.Typeface;
+import android.net.Uri;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
+import android.provider.Settings;
 import android.util.TypedValue;
 import android.view.Gravity;
 import android.view.KeyEvent;
@@ -19,7 +22,6 @@ import android.widget.TextView;
 
 import androidx.media3.common.C;
 import androidx.media3.common.MediaItem;
-import androidx.media3.common.MediaMetadata;
 import androidx.media3.common.Player;
 import androidx.media3.session.MediaController;
 import androidx.media3.session.SessionToken;
@@ -49,7 +51,7 @@ public class MainActivity extends Activity {
     private int current;          // القارئ اللي شغّال
     private int pending = -1;     // القارئ اللي بيتقلّب عليه بالريموت (لسه متشغّلش)
 
-    private TextView reciterView, statusView, posView, durView;
+    private TextView reciterView, statusView, posView, durView, autoView;
     private ProgressBar bar;
 
     private final Runnable tick = new Runnable() {
@@ -74,6 +76,7 @@ public class MainActivity extends Activity {
         super.onCreate(state);
         prefs = getSharedPreferences("player", MODE_PRIVATE);
         buildUi();
+        WatchService.start(this); // عشان يفتح لوحده بعد كده مع التليفزيون
 
         // القارئ المحفوظ من آخر مرة
         String saved = prefs.getString("server", null);
@@ -142,6 +145,7 @@ public class MainActivity extends Activity {
             updateStatus();
         }, handler::post);
         handler.post(tick);
+        updateAutoHint();
     }
 
     @Override
@@ -158,14 +162,7 @@ public class MainActivity extends Activity {
         prefs.edit().putString("server", r.server).putString("name", r.name)
                 .putString("moshaf", r.moshaf).putLong("pos", positionMs).apply();
         if (controller == null) return;
-        MediaItem item = new MediaItem.Builder()
-                .setMediaId(r.baqarahUrl())
-                .setUri(r.baqarahUrl())
-                .setMediaMetadata(new MediaMetadata.Builder()
-                        .setTitle("سورة البقرة")
-                        .setArtist(r.label())
-                        .build())
-                .build();
+        MediaItem item = PlaybackService.baqarah(r);
         controller.setMediaItem(item, Math.max(0, positionMs));
         controller.setRepeatMode(Player.REPEAT_MODE_ONE);
         controller.prepare();
@@ -186,6 +183,9 @@ public class MainActivity extends Activity {
             case KeyEvent.KEYCODE_DPAD_CENTER:
             case KeyEvent.KEYCODE_ENTER:
             case KeyEvent.KEYCODE_NUMPAD_ENTER:
+                // ضغطة عادية = إيقاف/تشغيل (في onKeyUp)، ضغطة طويلة = إعدادات الفتح التلقائي
+                event.startTracking();
+                return true;
             case KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE:
                 if (event.getRepeatCount() == 0) togglePlay();
                 return true;
@@ -215,6 +215,52 @@ public class MainActivity extends Activity {
                 return true;
         }
         return super.onKeyDown(keyCode, event);
+    }
+
+    @Override
+    public boolean onKeyUp(int keyCode, KeyEvent event) {
+        if (keyCode == KeyEvent.KEYCODE_DPAD_CENTER || keyCode == KeyEvent.KEYCODE_ENTER
+                || keyCode == KeyEvent.KEYCODE_NUMPAD_ENTER) {
+            if (event.isTracking() && !event.isCanceled()) togglePlay();
+            return true;
+        }
+        return super.onKeyUp(keyCode, event);
+    }
+
+    @Override
+    public boolean onKeyLongPress(int keyCode, KeyEvent event) {
+        if (keyCode == KeyEvent.KEYCODE_DPAD_CENTER || keyCode == KeyEvent.KEYCODE_ENTER
+                || keyCode == KeyEvent.KEYCODE_NUMPAD_ENTER) {
+            openOverlaySettings();
+            return true;
+        }
+        return super.onKeyLongPress(keyCode, event);
+    }
+
+    /** "الظهور فوق التطبيقات": من غيرها أندرويد 10+ مش بيسيب البرنامج يفتح شاشته لوحده. */
+    private void openOverlaySettings() {
+        if (AutoStart.canOpenScreen(this)) {
+            autoView.setText("✓ الفتح التلقائي شغّال (من 8 الصبح لـ 1 الضهر)");
+            return;
+        }
+        String[] tries = {"package:" + getPackageName(), null};
+        for (String uri : tries) {
+            try {
+                Intent i = new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION);
+                if (uri != null) i.setData(Uri.parse(uri));
+                startActivity(i);
+                return;
+            } catch (Exception ignored) {
+            }
+        }
+        autoView.setText("التليفزيون ده مفيهوش الإعداد ده. من الكمبيوتر:  adb shell appops set "
+                + getPackageName() + " SYSTEM_ALERT_WINDOW allow");
+    }
+
+    private void updateAutoHint() {
+        autoView.setText(AutoStart.canOpenScreen(this)
+                ? "✓ بيفتح لوحده مع التليفزيون من 8 الصبح لـ 1 الضهر"
+                : "عشان يفتح لوحده مع التليفزيون: دوس على OK ضغطة طويلة واسمح بـ \"الظهور فوق التطبيقات\"");
     }
 
     /** رجوع = يقفل الصوت ويخرج. (زرار Home بيسيب الصوت شغّال.) */
@@ -360,6 +406,10 @@ public class MainActivity extends Activity {
         hint.setText("OK: إيقاف / تشغيل     ◀ ▶: ترجيع / تقديم 30 ثانية     ▲ ▼: تغيير القارئ     رجوع: خروج");
         hint.setPadding(0, dp(36), 0, 0);
         root.addView(hint);
+
+        autoView = text(15, MUTED, false);
+        autoView.setPadding(0, dp(10), 0, 0);
+        root.addView(autoView);
 
         setContentView(root);
     }

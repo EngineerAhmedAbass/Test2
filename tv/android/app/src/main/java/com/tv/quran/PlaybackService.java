@@ -28,7 +28,8 @@ import java.util.List;
 /** بيشغّل الصوت حتى لو التليفزيون دخل على شاشة التوقف أو فتحت تطبيق تاني. */
 public class PlaybackService extends MediaSessionService {
 
-    private static final int MAX_RETRIES = 5;
+    static final String ACTION_AUTOPLAY = "com.tv.quran.AUTOPLAY";
+    private static final int MAX_RETRIES = 12; // ~دقيقتين (النت بياخد وقت لما التليفزيون يفتح)
 
     private MediaSession session;
     private ExoPlayer player;
@@ -70,7 +71,7 @@ public class PlaybackService extends MediaSessionService {
                     if (player.getMediaItemCount() == 0) return;
                     player.prepare();
                     player.play();
-                }, 3000L * retries);
+                }, Math.min(15000L, 3000L * retries));
             }
         });
 
@@ -94,6 +95,39 @@ public class PlaybackService extends MediaSessionService {
                     }
                 })
                 .build();
+    }
+
+    /** عنصر سورة البقرة لقارئ معيّن (الرابط في mediaId عشان يوصل سليم للخدمة). */
+    static MediaItem baqarah(Reciters.Reciter r) {
+        return new MediaItem.Builder()
+                .setMediaId(r.baqarahUrl())
+                .setUri(r.baqarahUrl())
+                .setMediaMetadata(new androidx.media3.common.MediaMetadata.Builder()
+                        .setTitle("سورة البقرة")
+                        .setArtist(r.label())
+                        .build())
+                .build();
+    }
+
+    /** القارئ المحفوظ من آخر مرة (أو الافتراضي). */
+    static Reciters.Reciter savedReciter(android.content.SharedPreferences prefs) {
+        String server = prefs.getString("server", null);
+        if (server == null) return Reciters.builtin().get(0);
+        return new Reciters.Reciter(prefs.getString("name", ""), prefs.getString("moshaf", ""), server);
+    }
+
+    @Override
+    public int onStartCommand(@Nullable Intent intent, int flags, int startId) {
+        int r = super.onStartCommand(intent, flags, startId);
+        if (intent != null && ACTION_AUTOPLAY.equals(intent.getAction()) && !player.getPlayWhenReady()) {
+            android.content.SharedPreferences prefs = getSharedPreferences("player", MODE_PRIVATE);
+            if (player.getMediaItemCount() == 0) {
+                player.setMediaItem(baqarah(savedReciter(prefs)), Math.max(0, prefs.getLong("pos", 0)));
+            }
+            player.prepare();
+            player.play();
+        }
+        return r;
     }
 
     @Nullable
