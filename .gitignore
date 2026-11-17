@@ -7,5 +7,5 @@ android/local.properties
 *.apk
 scores/android/.gradle/
 scores/android/app/build/
-car/android/.gradle/
-car/android/app/build/
+tv/android/.gradle/
+tv/android/app/build/

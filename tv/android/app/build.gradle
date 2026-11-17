@@ -3,11 +3,11 @@ plugins {
 }
 
 android {
-    namespace 'com.car.quran'
+    namespace 'com.tv.quran'
     compileSdk 34
 
     defaultConfig {
-        applicationId 'com.car.quran'
+        applicationId 'com.tv.quran'
         minSdk 21
         targetSdk 34
         versionCode((System.getenv('GITHUB_RUN_NUMBER') ?: '1').toInteger())
@@ -17,7 +17,7 @@ android {
     signingConfigs {
         // مفتاح ثابت عشان كل نسخة جديدة تتسطب فوق القديمة من غير ما تمسحها
         shared {
-            storeFile file('car.keystore')
+            storeFile file('tv.keystore')
             storePassword 'carquran'
             keyAlias 'car'
             keyPassword 'carquran'
@@ -43,7 +43,6 @@ android {
 dependencies {
     def media3 = '1.4.1'
     implementation "androidx.media3:media3-exoplayer:$media3"
-    implementation "androidx.media3:media3-exoplayer-hls:$media3"
     implementation "androidx.media3:media3-session:$media3"
     implementation "androidx.annotation:annotation:1.8.2"
 }
