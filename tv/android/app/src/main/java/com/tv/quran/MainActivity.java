@@ -6,18 +6,23 @@ import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.res.ColorStateList;
 import android.graphics.Typeface;
+import android.graphics.drawable.GradientDrawable;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.provider.Settings;
+import android.text.TextUtils;
 import android.util.TypedValue;
 import android.view.Gravity;
 import android.view.KeyEvent;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.animation.DecelerateInterpolator;
+import android.widget.FrameLayout;
 import android.widget.LinearLayout;
 import android.widget.ProgressBar;
+import android.widget.ScrollView;
 import android.widget.TextView;
 
 import androidx.media3.common.C;
@@ -49,7 +54,6 @@ public class MainActivity extends Activity {
 
     private List<Reciters.Reciter> reciters = Reciters.builtin();
     private int current;          // القارئ اللي شغّال
-    private int pending = -1;     // القارئ اللي بيتقلّب عليه بالريموت (لسه متشغّلش)
 
     private TextView reciterView, statusView, posView, durView, autoView;
     private ProgressBar bar;
@@ -60,15 +64,6 @@ public class MainActivity extends Activity {
             updateProgress();
             handler.postDelayed(this, 500);
         }
-    };
-
-    private final Runnable applyPending = () -> {
-        if (pending >= 0 && pending != current) {
-            current = pending;
-            play(reciters.get(current), 0);
-        }
-        pending = -1;
-        showReciter();
     };
 
     @Override
@@ -112,8 +107,8 @@ public class MainActivity extends Activity {
         }
         reciters = list;
         current = idx;
-        pending = -1;
         showReciter();
+        if (pickerOpen) fillRows();
     }
 
     @Override
@@ -179,6 +174,8 @@ public class MainActivity extends Activity {
 
     @Override
     public boolean onKeyDown(int keyCode, KeyEvent event) {
+        // القايمة مفتوحة: الأسهم وOK بتتحرك جوّاها عادي
+        if (pickerOpen) return super.onKeyDown(keyCode, event);
         switch (keyCode) {
             case KeyEvent.KEYCODE_DPAD_CENTER:
             case KeyEvent.KEYCODE_ENTER:
@@ -204,14 +201,11 @@ public class MainActivity extends Activity {
                 seekBy(-SEEK_MS);
                 return true;
             case KeyEvent.KEYCODE_DPAD_UP:
-            case KeyEvent.KEYCODE_CHANNEL_UP:
-            case KeyEvent.KEYCODE_MEDIA_NEXT:
-                stepReciter(1);
-                return true;
             case KeyEvent.KEYCODE_DPAD_DOWN:
+            case KeyEvent.KEYCODE_CHANNEL_UP:
             case KeyEvent.KEYCODE_CHANNEL_DOWN:
-            case KeyEvent.KEYCODE_MEDIA_PREVIOUS:
-                stepReciter(-1);
+            case KeyEvent.KEYCODE_MENU:
+                if (event.getRepeatCount() == 0) openPicker();
                 return true;
         }
         return super.onKeyDown(keyCode, event);
@@ -219,6 +213,7 @@ public class MainActivity extends Activity {
 
     @Override
     public boolean onKeyUp(int keyCode, KeyEvent event) {
+        if (pickerOpen) return super.onKeyUp(keyCode, event);
         if (keyCode == KeyEvent.KEYCODE_DPAD_CENTER || keyCode == KeyEvent.KEYCODE_ENTER
                 || keyCode == KeyEvent.KEYCODE_NUMPAD_ENTER) {
             if (event.isTracking() && !event.isCanceled()) togglePlay();
@@ -229,6 +224,7 @@ public class MainActivity extends Activity {
 
     @Override
     public boolean onKeyLongPress(int keyCode, KeyEvent event) {
+        if (pickerOpen) return super.onKeyLongPress(keyCode, event);
         if (keyCode == KeyEvent.KEYCODE_DPAD_CENTER || keyCode == KeyEvent.KEYCODE_ENTER
                 || keyCode == KeyEvent.KEYCODE_NUMPAD_ENTER) {
             openOverlaySettings();
@@ -266,6 +262,10 @@ public class MainActivity extends Activity {
     /** رجوع = يقفل الصوت ويخرج. (زرار Home بيسيب الصوت شغّال.) */
     @Override
     public void onBackPressed() {
+        if (pickerOpen) {
+            closePicker();
+            return;
+        }
         savePosition();
         if (controller != null) controller.stop();
         super.onBackPressed();
@@ -294,24 +294,181 @@ public class MainActivity extends Activity {
         updateProgress();
     }
 
-    private void stepReciter(int dir) {
-        int n = reciters.size();
-        if (n == 0) return;
-        int from = pending >= 0 ? pending : current;
-        pending = ((from + dir) % n + n) % n;
-        showReciter();
-        // بنستنى ثانية عشان لو بتقلّب بسرعة ميحمّلش كل قارئ
-        handler.removeCallbacks(applyPending);
-        handler.postDelayed(applyPending, 1200);
-    }
-
     // ───────────────────────── الشاشة ─────────────────────────
 
     private void showReciter() {
-        int i = pending >= 0 ? pending : current;
-        Reciters.Reciter r = reciters.get(Math.min(i, reciters.size() - 1));
-        reciterView.setText(r.label());
-        reciterView.setTextColor(pending >= 0 ? GOLD : TEXT);
+        Reciters.Reciter r = reciters.get(Math.min(current, reciters.size() - 1));
+        reciterView.setText(r.label() + "   ▾");
+    }
+
+    // ───────────────────────── قايمة القرّاء ─────────────────────────
+
+    private static final int PANEL_W = 470;
+
+    private View scrim;
+    private LinearLayout panel, rows;
+    private ScrollView scroll;
+    private boolean pickerOpen;
+
+    private void buildPicker(FrameLayout host) {
+        scrim = new View(this);
+        scrim.setBackgroundColor(0xB3000000);
+        scrim.setVisibility(View.GONE);
+        host.addView(scrim, new FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+
+        panel = new LinearLayout(this);
+        panel.setOrientation(LinearLayout.VERTICAL);
+        panel.setLayoutDirection(View.LAYOUT_DIRECTION_RTL);
+        panel.setPadding(dp(28), dp(32), dp(28), dp(16));
+        GradientDrawable pbg = new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,
+                new int[]{0xFF14251F, 0xFF0D1814});
+        float r = dp(28);
+        pbg.setCornerRadii(new float[]{r, r, 0, 0, 0, 0, r, r}); // الناحية اللي جوه الشاشة بس
+        panel.setBackground(pbg);
+        panel.setElevation(dp(24));
+
+        TextView head = text(30, TEXT, true);
+        head.setGravity(Gravity.START);
+        head.setText("اختار القارئ");
+        panel.addView(head);
+        TextView sub = text(15, MUTED, false);
+        sub.setGravity(Gravity.START);
+        sub.setText("▲ ▼ للتنقل   •   OK للاختيار   •   رجوع للإلغاء");
+        sub.setPadding(0, dp(4), 0, dp(18));
+        panel.addView(sub);
+
+        scroll = new ScrollView(this);
+        scroll.setVerticalScrollBarEnabled(false);
+        scroll.setClipToPadding(false);
+        scroll.setPadding(dp(6), dp(6), dp(6), dp(24));
+        rows = new LinearLayout(this);
+        rows.setOrientation(LinearLayout.VERTICAL);
+        scroll.addView(rows);
+        panel.addView(scroll, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, 0, 1));
+
+        panel.setVisibility(View.GONE);
+        panel.setDescendantFocusability(ViewGroup.FOCUS_BLOCK_DESCENDANTS);
+        host.addView(panel, new FrameLayout.LayoutParams(dp(PANEL_W),
+                ViewGroup.LayoutParams.MATCH_PARENT, Gravity.RIGHT));
+    }
+
+    private void fillRows() {
+        rows.removeAllViews();
+        for (int i = 0; i < reciters.size(); i++) rows.addView(reciterRow(i, reciters.get(i), i == current));
+    }
+
+    private View reciterRow(final int index, Reciters.Reciter r, boolean playing) {
+        LinearLayout row = new LinearLayout(this);
+        row.setGravity(Gravity.CENTER_VERTICAL);
+        row.setPadding(dp(14), dp(12), dp(14), dp(12));
+        row.setFocusable(true);
+        row.setClickable(true);
+
+        final GradientDrawable normal = new GradientDrawable();
+        normal.setCornerRadius(dp(18));
+        normal.setColor(playing ? 0xFF182B24 : 0x00000000);
+        final GradientDrawable focused = new GradientDrawable();
+        focused.setCornerRadius(dp(18));
+        focused.setColor(0xFF223A30);
+        focused.setStroke(dp(2), GOLD);
+        row.setBackground(normal);
+
+        // دايرة فيها أول حرف من اسم القارئ
+        TextView avatar = text(22, playing ? BG : GOLD, true);
+        String name = r.name.trim();
+        avatar.setText(name.isEmpty() ? "؟" : name.substring(0, 1));
+        GradientDrawable circle = new GradientDrawable();
+        circle.setShape(GradientDrawable.OVAL);
+        circle.setColor(playing ? GOLD : 0xFF1F3329);
+        avatar.setBackground(circle);
+        row.addView(avatar, new LinearLayout.LayoutParams(dp(52), dp(52)));
+
+        LinearLayout texts = new LinearLayout(this);
+        texts.setOrientation(LinearLayout.VERTICAL);
+        texts.setPadding(dp(16), 0, dp(10), 0);
+        TextView t1 = text(21, TEXT, true);
+        t1.setGravity(Gravity.START);
+        t1.setSingleLine(true);
+        t1.setEllipsize(TextUtils.TruncateAt.END);
+        t1.setText(name);
+        texts.addView(t1);
+        if (r.moshaf != null && !r.moshaf.isEmpty()) {
+            TextView t2 = text(15, MUTED, false);
+            t2.setGravity(Gravity.START);
+            t2.setText(r.moshaf);
+            texts.addView(t2);
+        }
+        row.addView(texts, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
+
+        if (playing) {
+            TextView badge = text(13, GOLD, true);
+            badge.setText("يُتلى الآن");
+            badge.setPadding(dp(10), dp(4), dp(10), dp(4));
+            GradientDrawable pill = new GradientDrawable();
+            pill.setCornerRadius(dp(20));
+            pill.setStroke(dp(1), GOLD);
+            badge.setBackground(pill);
+            row.addView(badge);
+        }
+
+        row.setOnFocusChangeListener((v, has) -> {
+            v.setBackground(has ? focused : normal);
+            v.animate().scaleX(has ? 1.03f : 1f).scaleY(has ? 1.03f : 1f).setDuration(140).start();
+        });
+        row.setOnClickListener(v -> chooseReciter(index));
+
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        lp.bottomMargin = dp(8);
+        row.setLayoutParams(lp);
+        return row;
+    }
+
+    private void openPicker() {
+        if (pickerOpen) return;
+        pickerOpen = true;
+        fillRows();
+        panel.setDescendantFocusability(ViewGroup.FOCUS_AFTER_DESCENDANTS);
+        scrim.animate().cancel();
+        panel.animate().cancel();
+        scrim.setAlpha(0f);
+        scrim.setVisibility(View.VISIBLE);
+        scrim.animate().alpha(1f).setDuration(220).start();
+        panel.setVisibility(View.VISIBLE);
+        panel.setTranslationX(dp(PANEL_W));
+        panel.animate().translationX(0).setDuration(260)
+                .setInterpolator(new DecelerateInterpolator(2f)).start();
+
+        final View cur = rows.getChildAt(Math.min(current, rows.getChildCount() - 1));
+        if (cur != null) {
+            cur.requestFocus();
+            scroll.post(() -> scroll.scrollTo(0, Math.max(0, cur.getTop() - dp(140))));
+        }
+    }
+
+    private void closePicker() {
+        if (!pickerOpen) return;
+        pickerOpen = false;
+        panel.setDescendantFocusability(ViewGroup.FOCUS_BLOCK_DESCENDANTS);
+        scrim.animate().alpha(0f).setDuration(200)
+                .withEndAction(() -> scrim.setVisibility(View.GONE)).start();
+        panel.animate().translationX(dp(PANEL_W)).setDuration(200)
+                .setInterpolator(new DecelerateInterpolator())
+                .withEndAction(() -> panel.setVisibility(View.GONE)).start();
+    }
+
+    private void chooseReciter(int index) {
+        if (!pickerOpen) return;
+        if (index != current) {
+            current = index;
+            play(reciters.get(current), 0);
+        } else if (controller != null && !controller.getPlayWhenReady()) {
+            togglePlay();
+        }
+        showReciter();
+        closePicker();
     }
 
     private void updateStatus() {
@@ -361,10 +518,11 @@ public class MainActivity extends Activity {
     }
 
     private void buildUi() {
+        FrameLayout host = new FrameLayout(this);
+        host.setBackgroundColor(BG);
         LinearLayout root = new LinearLayout(this);
         root.setOrientation(LinearLayout.VERTICAL);
         root.setGravity(Gravity.CENTER);
-        root.setBackgroundColor(BG);
         root.setPadding(dp(48), dp(27), dp(48), dp(27)); // هامش أمان لشاشات التليفزيون
 
         TextView basmala = text(22, MUTED, false);
@@ -376,8 +534,18 @@ public class MainActivity extends Activity {
         title.setPadding(0, dp(8), 0, dp(4));
         root.addView(title);
 
-        reciterView = text(28, TEXT, false);
-        root.addView(reciterView);
+        // اسم القارئ في "كبسولة" — بتفتح القايمة بـ ▲ أو ▼
+        reciterView = text(24, TEXT, false);
+        reciterView.setPadding(dp(26), dp(10), dp(26), dp(10));
+        GradientDrawable chip = new GradientDrawable();
+        chip.setCornerRadius(dp(30));
+        chip.setColor(0xFF13231D);
+        chip.setStroke(dp(1), 0xFF2E4A3E);
+        reciterView.setBackground(chip);
+        LinearLayout.LayoutParams cp = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        cp.topMargin = dp(10);
+        root.addView(reciterView, cp);
 
         statusView = text(20, MUTED, false);
         statusView.setPadding(0, dp(16), 0, dp(20));
@@ -403,7 +571,7 @@ public class MainActivity extends Activity {
         root.addView(times, new LinearLayout.LayoutParams(dp(560), ViewGroup.LayoutParams.WRAP_CONTENT));
 
         TextView hint = text(16, MUTED, false);
-        hint.setText("OK: إيقاف / تشغيل     ◀ ▶: ترجيع / تقديم 30 ثانية     ▲ ▼: تغيير القارئ     رجوع: خروج");
+        hint.setText("OK: إيقاف / تشغيل     ◀ ▶: ترجيع / تقديم 30 ثانية     ▲ ▼: اختيار القارئ     رجوع: خروج");
         hint.setPadding(0, dp(36), 0, 0);
         root.addView(hint);
 
@@ -411,6 +579,9 @@ public class MainActivity extends Activity {
         autoView.setPadding(0, dp(10), 0, 0);
         root.addView(autoView);
 
-        setContentView(root);
+        host.addView(root, new FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+        buildPicker(host);
+        setContentView(host);
     }
 }
