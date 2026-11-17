@@ -134,12 +134,19 @@ public class MainActivity extends Activity {
                 @Override
                 public void onEvents(Player player, Player.Events events) {
                     updateStatus();
+                    // السورة خلصت ← البرنامج يقفل
+                    if (events.contains(Player.EVENT_PLAYBACK_STATE_CHANGED)
+                            && player.getPlaybackState() == Player.STATE_ENDED) {
+                        finish();
+                    }
                 }
             });
+            // كل ما يفتح يبدأ البقرة من أولها (إلا لو كانت شغّالة أصلاً في الخلفية)
             if (controller.getMediaItemCount() == 0) {
-                play(reciters.get(current), prefs.getLong("pos", 0));
-            } else if (!controller.getPlayWhenReady()) {
-                controller.play();
+                play(reciters.get(current), 0);
+            } else if (!controller.getPlayWhenReady()
+                    || controller.getPlaybackState() == Player.STATE_ENDED) {
+                restartFromBeginning();
             }
             updateStatus();
         }, handler::post);
@@ -160,18 +167,26 @@ public class MainActivity extends Activity {
 
     private void play(Reciters.Reciter r, long positionMs) {
         prefs.edit().putString("server", r.server).putString("name", r.name)
-                .putString("moshaf", r.moshaf).putLong("pos", positionMs).apply();
+                .putString("moshaf", r.moshaf).apply();
         if (controller == null) return;
         controller.setMediaItem(PlaybackService.baqarah(r), Math.max(0, positionMs));
-        controller.setRepeatMode(Player.REPEAT_MODE_ONE);
+        controller.setRepeatMode(Player.REPEAT_MODE_OFF);
         controller.prepare();
         controller.play();
     }
 
-    private void savePosition() {
-        if (controller != null && controller.getMediaItemCount() > 0) {
-            prefs.edit().putLong("pos", controller.getCurrentPosition()).apply();
+    private void restartFromBeginning() {
+        controller.setRepeatMode(Player.REPEAT_MODE_OFF);
+        controller.seekTo(0);
+        if (controller.getPlaybackState() == Player.STATE_IDLE
+                || controller.getPlaybackState() == Player.STATE_ENDED) {
+            controller.prepare();
         }
+        controller.play();
+    }
+
+    private void savePosition() {
+        // مبقيناش نكمّل من مكان قديم: كل مرة بتبدأ من أول السورة
     }
 
     // ───────────────────────── الريموت ─────────────────────────
@@ -226,7 +241,11 @@ public class MainActivity extends Activity {
             controller.pause();
         } else {
             if (controller.getMediaItemCount() == 0) {
-                play(reciters.get(current), prefs.getLong("pos", 0));
+                play(reciters.get(current), 0);
+                return;
+            }
+            if (controller.getPlaybackState() == Player.STATE_ENDED) {
+                restartFromBeginning();
                 return;
             }
             if (controller.getPlaybackState() == Player.STATE_IDLE) controller.prepare();

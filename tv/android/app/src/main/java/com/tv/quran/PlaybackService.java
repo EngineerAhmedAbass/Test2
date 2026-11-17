@@ -54,12 +54,24 @@ public class PlaybackService extends MediaSessionService {
                         .build(), /* handleAudioFocus= */ true)
                 .setWakeMode(C.WAKE_MODE_NETWORK)
                 .build();
-        // البقرة تتعاد تاني لوحدها لما تخلص
-        player.setRepeatMode(Player.REPEAT_MODE_ONE);
+        // مفيش إعادة: لما السورة تخلص الخدمة بتقفل والبرنامج كمان
+        player.setRepeatMode(Player.REPEAT_MODE_OFF);
         player.addListener(new Player.Listener() {
             @Override
             public void onIsPlayingChanged(boolean isPlaying) {
                 if (isPlaying) retries = 0;
+            }
+
+            @Override
+            public void onPlaybackStateChanged(int state) {
+                if (state == Player.STATE_ENDED) {
+                    // نسيب الشاشة تلحق تقفل الأول، وبعدين نقفل الخدمة
+                    main.postDelayed(() -> {
+                        if (player.getPlaybackState() != Player.STATE_ENDED) return;
+                        player.clearMediaItems();
+                        stopSelf();
+                    }, 1500);
+                }
             }
 
             @Override
@@ -122,8 +134,11 @@ public class PlaybackService extends MediaSessionService {
         if (intent != null && ACTION_AUTOPLAY.equals(intent.getAction()) && !player.getPlayWhenReady()) {
             android.content.SharedPreferences prefs = getSharedPreferences("player", MODE_PRIVATE);
             if (player.getMediaItemCount() == 0) {
-                player.setMediaItem(baqarah(savedReciter(prefs)), Math.max(0, prefs.getLong("pos", 0)));
+                player.setMediaItem(baqarah(savedReciter(prefs)), 0);
+            } else {
+                player.seekTo(0);
             }
+            player.setRepeatMode(Player.REPEAT_MODE_OFF);
             player.prepare();
             player.play();
         }
