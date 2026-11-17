@@ -32,7 +32,10 @@ jobs:
         run: gradle -p tv/android assembleRelease --no-daemon --stacktrace
 
       - name: Rename APK
-        run: cp tv/android/app/build/outputs/apk/release/app-release.apk Quran-TV.apk
+        run: |
+          cp tv/android/app/build/outputs/apk/release/app-release.apk Quran-TV.apk
+          # البرنامج بيقرا الملف ده عشان يعرف إن في نسخة جديدة
+          echo '{"versionCode": ${{ github.run_number }}}' > version.json
 
       - uses: actions/upload-artifact@v4
         with:
@@ -45,7 +48,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           gh release delete tv-latest --yes --cleanup-tag || true
-          gh release create tv-latest Quran-TV.apk \
+          gh release create tv-latest Quran-TV.apk version.json \
             --target "${{ github.sha }}" \
             --latest=false \
             --title "سورة البقرة للتليفزيون (نسخة ${{ github.run_number }})" \

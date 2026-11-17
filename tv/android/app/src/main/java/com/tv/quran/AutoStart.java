@@ -20,6 +20,25 @@ public final class AutoStart {
     private AutoStart() {
     }
 
+    static final long TEST_MS = 10 * 60 * 1000; // وضع التجربة: 10 دقايق
+
+    /** وضع التجربة: الفتح التلقائي يشتغل في أي وقت لمدة 10 دقايق. */
+    static void startTest(Context c) {
+        prefs(c).edit().putLong("test_until", System.currentTimeMillis() + TEST_MS).apply();
+    }
+
+    static boolean testActive(Context c) {
+        return System.currentTimeMillis() < prefs(c).getLong("test_until", 0);
+    }
+
+    private static android.content.SharedPreferences prefs(Context c) {
+        return c.getSharedPreferences("player", Context.MODE_PRIVATE);
+    }
+
+    static boolean inWindow(Context c) {
+        return testActive(c) || inWindow();
+    }
+
     static boolean inWindow() {
         int h = Calendar.getInstance().get(Calendar.HOUR_OF_DAY);
         return h >= FROM_HOUR && h < TO_HOUR;
@@ -31,7 +50,7 @@ public final class AutoStart {
     }
 
     static void maybeLaunch(Context c) {
-        if (!inWindow()) return;
+        if (!inWindow(c)) return;
         try {
             c.startActivity(new Intent(c, MainActivity.class)
                     .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_REORDER_TO_FRONT));
