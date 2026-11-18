@@ -183,10 +183,10 @@ public class PlaybackService extends MediaSessionService {
     public int onStartCommand(@Nullable Intent intent, int flags, int startId) {
         int r = super.onStartCommand(intent, flags, startId);
         if (intent != null && ACTION_AUTOPLAY.equals(intent.getAction()) && !player.getPlayWhenReady()) {
-            Reciters.Reciter r = savedReciter(prefs);
-            long start = resumePosition(this, prefs, r.server);
+            Reciters.Reciter rec = savedReciter(prefs);
+            long start = resumePosition(this, prefs, rec.server);
             if (player.getMediaItemCount() == 0) {
-                player.setMediaItem(baqarah(r), start);
+                player.setMediaItem(baqarah(rec), start);
             } else {
                 player.seekTo(start);
             }
