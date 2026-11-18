@@ -18,6 +18,7 @@ import android.view.Gravity;
 import android.view.KeyEvent;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.WindowManager;
 import android.view.animation.DecelerateInterpolator;
 import android.widget.FrameLayout;
 import android.widget.ImageView;
@@ -324,6 +325,13 @@ public class MainActivity extends Activity {
         else s = "يُتلى الآن";
         statusView.setText(s);
         playIcon.setImageResource(playing ? R.drawable.ic_pause : R.drawable.ic_play);
+
+        // طول ما السورة شغّالة: الشاشة تفضل صاحية (مفيش شاشة توقف ولا قفل للتليفزيون)
+        int st = controller.getPlaybackState();
+        boolean active = playing && st != Player.STATE_ENDED
+                && (st != Player.STATE_IDLE || controller.getPlayerError() != null);
+        if (active) getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+        else getWindow().clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
         updateProgress();
     }
 
