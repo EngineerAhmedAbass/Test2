@@ -142,12 +142,19 @@ public class MainActivity extends Activity {
                     }
                 }
             });
-            // كل ما يفتح يبدأ البقرة من أولها (إلا لو كانت شغّالة أصلاً في الخلفية)
+            // من 8 لـ 1: يكمّل من المكان اللي وقف عنده النهارده. غير كده: من أول السورة.
             if (controller.getMediaItemCount() == 0) {
-                play(reciters.get(current), 0);
-            } else if (!controller.getPlayWhenReady()
-                    || controller.getPlaybackState() == Player.STATE_ENDED) {
+                Reciters.Reciter r = reciters.get(current);
+                play(r, PlaybackService.resumePosition(this, prefs, r.server));
+            } else if (controller.getPlaybackState() == Player.STATE_ENDED) {
                 restartFromBeginning();
+            } else if (!controller.getPlayWhenReady()) {
+                if (PlaybackService.resumePosition(this, prefs, reciters.get(current).server) > 0) {
+                    if (controller.getPlaybackState() == Player.STATE_IDLE) controller.prepare();
+                    controller.play();
+                } else {
+                    restartFromBeginning();
+                }
             }
             updateStatus();
         }, handler::post);
@@ -187,7 +194,10 @@ public class MainActivity extends Activity {
     }
 
     private void savePosition() {
-        // مبقيناش نكمّل من مكان قديم: كل مرة بتبدأ من أول السورة
+        if (controller == null || controller.getMediaItemCount() == 0) return;
+        int st = controller.getPlaybackState();
+        if (st == Player.STATE_ENDED || st == Player.STATE_IDLE) return;
+        PlaybackService.saveProgress(prefs, reciters.get(current).server, controller.getCurrentPosition());
     }
 
     // ───────────────────────── الريموت ─────────────────────────
@@ -242,7 +252,8 @@ public class MainActivity extends Activity {
             controller.pause();
         } else {
             if (controller.getMediaItemCount() == 0) {
-                play(reciters.get(current), 0);
+                Reciters.Reciter r = reciters.get(current);
+                play(r, PlaybackService.resumePosition(this, prefs, r.server));
                 return;
             }
             if (controller.getPlaybackState() == Player.STATE_ENDED) {

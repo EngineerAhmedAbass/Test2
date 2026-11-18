@@ -35,10 +35,53 @@ public class PlaybackService extends MediaSessionService {
     private ExoPlayer player;
     private final Handler main = new Handler(Looper.getMainLooper());
     private int retries;
+    private android.content.SharedPreferences prefs;
+
+    /** كل 10 ثواني بنحفظ وصلنا لفين، عشان لو التليفزيون اتقفل فجأة نكمّل من نفس المكان. */
+    private final Runnable saver = new Runnable() {
+        @Override
+        public void run() {
+            saveNow();
+            main.postDelayed(this, 10_000);
+        }
+    };
+
+    private void saveNow() {
+        int st = player.getPlaybackState();
+        if (player.getMediaItemCount() == 0 || st == Player.STATE_IDLE || st == Player.STATE_ENDED) return;
+        String server = prefs.getString("server", null);
+        if (server != null) saveProgress(prefs, server, player.getCurrentPosition());
+    }
+
+    // ───────── التكملة من نفس المكان (في نفس اليوم ومن 8 لـ 1 بس) ─────────
+
+    static int today() {
+        java.util.Calendar c = java.util.Calendar.getInstance();
+        return c.get(java.util.Calendar.YEAR) * 10000 + (c.get(java.util.Calendar.MONTH) + 1) * 100
+                + c.get(java.util.Calendar.DAY_OF_MONTH);
+    }
+
+    static void saveProgress(android.content.SharedPreferences p, String server, long pos) {
+        p.edit().putLong("pos", Math.max(0, pos)).putInt("pos_day", today())
+                .putString("pos_server", server).apply();
+    }
+
+    /** منين نبدأ: من المكان اللي وقفنا عنده النهارده لو إحنا في الفترة، وإلا من الأول. */
+    static long resumePosition(android.content.Context c, android.content.SharedPreferences p, String server) {
+        if (!AutoStart.inWindow(c)) return 0;
+        if (p.getInt("pos_day", 0) != today() || !server.equals(p.getString("pos_server", ""))) return 0;
+        return Math.max(0, p.getLong("pos", 0));
+    }
+
+    /** السورة خلصت النهارده؟ (يبقى مفيش فتح تلقائي تاني لحد بكرة) */
+    static boolean doneToday(android.content.SharedPreferences p) {
+        return p.getInt("done_day", 0) == today();
+    }
 
     @Override
     public void onCreate() {
         super.onCreate();
+        prefs = getSharedPreferences("player", MODE_PRIVATE);
         DefaultHttpDataSource.Factory http = new DefaultHttpDataSource.Factory()
                 .setUserAgent(Reciters.UA)
                 .setAllowCrossProtocolRedirects(true)
@@ -59,12 +102,20 @@ public class PlaybackService extends MediaSessionService {
         player.addListener(new Player.Listener() {
             @Override
             public void onIsPlayingChanged(boolean isPlaying) {
-                if (isPlaying) retries = 0;
+                main.removeCallbacks(saver);
+                if (isPlaying) {
+                    retries = 0;
+                    main.postDelayed(saver, 10_000);
+                } else {
+                    saveNow();
+                }
             }
 
             @Override
             public void onPlaybackStateChanged(int state) {
                 if (state == Player.STATE_ENDED) {
+                    // خلاص النهارده: المرة الجاية تبدأ من الأول، ومفيش فتح تلقائي لحد بكرة
+                    prefs.edit().putInt("done_day", today()).putLong("pos", 0).apply();
                     // نسيب الشاشة تلحق تقفل الأول، وبعدين نقفل الخدمة
                     main.postDelayed(() -> {
                         if (player.getPlaybackState() != Player.STATE_ENDED) return;
@@ -132,11 +183,12 @@ public class PlaybackService extends MediaSessionService {
     public int onStartCommand(@Nullable Intent intent, int flags, int startId) {
         int r = super.onStartCommand(intent, flags, startId);
         if (intent != null && ACTION_AUTOPLAY.equals(intent.getAction()) && !player.getPlayWhenReady()) {
-            android.content.SharedPreferences prefs = getSharedPreferences("player", MODE_PRIVATE);
+            Reciters.Reciter r = savedReciter(prefs);
+            long start = resumePosition(this, prefs, r.server);
             if (player.getMediaItemCount() == 0) {
-                player.setMediaItem(baqarah(savedReciter(prefs)), 0);
+                player.setMediaItem(baqarah(r), start);
             } else {
-                player.seekTo(0);
+                player.seekTo(start);
             }
             player.setRepeatMode(Player.REPEAT_MODE_OFF);
             player.prepare();
@@ -158,6 +210,7 @@ public class PlaybackService extends MediaSessionService {
 
     @Override
     public void onDestroy() {
+        saveNow();
         main.removeCallbacksAndMessages(null);
         if (session != null) {
             player.release();

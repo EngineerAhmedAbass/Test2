@@ -51,6 +51,8 @@ public final class AutoStart {
 
     static void maybeLaunch(Context c) {
         if (!inWindow(c)) return;
+        // السورة خلصت النهارده ← مفيش فتح تلقائي لحد بكرة (إلا في وضع التجربة)
+        if (!testActive(c) && PlaybackService.doneToday(prefs(c))) return;
         try {
             c.startActivity(new Intent(c, MainActivity.class)
                     .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_REORDER_TO_FRONT));
