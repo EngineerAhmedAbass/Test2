@@ -1,0 +1,52 @@
+name: TV Remote APK
+
+on:
+  push:
+    branches: ['main', 'ccr-7a8c4711-9jm88c']
+    paths: ['remote/**', '.github/workflows/remote-android.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: remote-apk
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.9'
+
+      - name: Build APK
+        run: gradle -p remote/android assembleRelease --no-daemon --stacktrace
+
+      - name: Rename APK
+        run: cp remote/android/app/build/outputs/apk/release/app-release.apk TV-Remote.apk
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: TV-Remote-apk
+          path: TV-Remote.apk
+
+      # رابط ثابت لآخر نسخة: releases/download/remote-latest/TV-Remote.apk
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release delete remote-latest --yes --cleanup-tag || true
+          gh release create remote-latest TV-Remote.apk \
+            --target "${{ github.sha }}" \
+            --latest=false \
+            --title "ريموت TV (نسخة ${{ github.run_number }})" \
+            --notes "نزّل TV-Remote.apk وسطّبه على الموبايل، وخلي الموبايل والتليفزيون على نفس الواي فاي."

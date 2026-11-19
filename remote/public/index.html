@@ -1,0 +1,237 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#0b0d12">
+<title>ريموت TV</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <symbol id="i-power" viewBox="0 0 24 24"><path d="M12 3v9M6.3 6.3a8 8 0 1 0 11.4 0" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></symbol>
+    <symbol id="i-home" viewBox="0 0 24 24"><path d="M4 11 12 4l8 7v8a1 1 0 0 1-1 1h-4v-6H9v6H5a1 1 0 0 1-1-1z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></symbol>
+    <symbol id="i-back" viewBox="0 0 24 24"><path d="M9 14 4 9l5-5M4 9h10.5a5.5 5.5 0 0 1 0 11H11" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="i-menu" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
+    <symbol id="i-arrow" viewBox="0 0 24 24"><path d="m7 14 5-5 5 5" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="i-mute" viewBox="0 0 24 24"><path d="M4 9h4l5-4v14l-5-4H4zM16 9l5 6M21 9l-5 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="i-play" viewBox="0 0 24 24"><path d="M5 5v14l8-7zM15 5h2v14h-2zM19 5h2v14h-2z" fill="currentColor"/></symbol>
+    <symbol id="i-rew" viewBox="0 0 24 24"><path d="M11 6 3 12l8 6zM21 6l-8 6 8 6z" fill="currentColor"/></symbol>
+    <symbol id="i-ff" viewBox="0 0 24 24"><path d="m13 6 8 6-8 6zM3 6l8 6-8 6z" fill="currentColor"/></symbol>
+    <symbol id="i-prev" viewBox="0 0 24 24"><path d="M6 5h2v14H6zM19 5 9 12l10 7z" fill="currentColor"/></symbol>
+    <symbol id="i-next" viewBox="0 0 24 24"><path d="M16 5h2v14h-2zM5 5l10 7-10 7z" fill="currentColor"/></symbol>
+    <symbol id="i-kbd" viewBox="0 0 24 24"><rect x="2.5" y="6" width="19" height="12" rx="2" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M6 10h1M9 10h1M12 10h1M15 10h1M18 10h0M7 14h10" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></symbol>
+    <symbol id="i-num" viewBox="0 0 24 24"><g fill="currentColor"><circle cx="6" cy="6" r="1.8"/><circle cx="12" cy="6" r="1.8"/><circle cx="18" cy="6" r="1.8"/><circle cx="6" cy="12" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="18" cy="12" r="1.8"/><circle cx="6" cy="18" r="1.8"/><circle cx="12" cy="18" r="1.8"/><circle cx="18" cy="18" r="1.8"/></g></symbol>
+    <symbol id="i-apps" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3.5" y="3.5" width="7" height="7" rx="2"/><rect x="13.5" y="3.5" width="7" height="7" rx="2"/><rect x="3.5" y="13.5" width="7" height="7" rx="2"/><rect x="13.5" y="13.5" width="7" height="7" rx="2"/></g></symbol>
+    <symbol id="i-pad" viewBox="0 0 24 24"><rect x="3.5" y="3.5" width="17" height="17" rx="4" fill="none" stroke="currentColor" stroke-width="1.8"/><circle cx="12" cy="12" r="2.2" fill="currentColor"/></symbol>
+    <symbol id="i-dpad" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5" fill="none" stroke="currentColor" stroke-width="1.8"/><circle cx="12" cy="12" r="3" fill="none" stroke="currentColor" stroke-width="1.8"/></symbol>
+    <symbol id="i-tv" viewBox="0 0 24 24"><rect x="2.5" y="4.5" width="19" height="12.5" rx="2" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M8 20.5h8" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></symbol>
+    <symbol id="i-gear" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3.2" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M12 2.8v2.6M12 18.6v2.6M2.8 12h2.6M18.6 12h2.6M5.5 5.5l1.8 1.8M16.7 16.7l1.8 1.8M5.5 18.5l1.8-1.8M16.7 7.3l1.8-1.8" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></symbol>
+    <symbol id="i-x" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
+    <symbol id="i-del" viewBox="0 0 24 24"><path d="M21 5H9l-6 7 6 7h12z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="m11 9 6 6M17 9l-6 6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></symbol>
+    <symbol id="i-enter" viewBox="0 0 24 24"><path d="M20 5v6a3 3 0 0 1-3 3H5m0 0 4-4m-4 4 4 4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5" fill="none" stroke="currentColor" stroke-width="2"/><path d="m16 16 4.5 4.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
+  </defs>
+</svg>
+
+<!-- ===================== شاشة الأجهزة ===================== -->
+<section id="devices" class="view active">
+  <header class="dev-head">
+    <div class="logo"><svg><use href="#i-tv"/></svg></div>
+    <div>
+      <h1>ريموت التليفزيون</h1>
+      <p class="sub">لأجهزة شاومي Mi Box و Mi TV Stick وأي Android TV / Google TV</p>
+    </div>
+  </header>
+
+  <div class="card" id="savedCard" hidden>
+    <h2>أجهزتك</h2>
+    <ul class="list" id="savedList"></ul>
+  </div>
+
+  <div class="card">
+    <div class="row-between">
+      <h2>التليفزيونات اللي على الواي فاي</h2>
+      <span class="spinner" id="scanSpin" hidden></span>
+    </div>
+    <ul class="list" id="foundList"></ul>
+    <p class="muted" id="foundEmpty">اضغط "دوّر" عشان نلاقي التليفزيون.</p>
+    <button class="btn primary wide" id="scanBtn"><svg><use href="#i-search"/></svg> دوّر على التليفزيون</button>
+  </div>
+
+  <div class="card">
+    <h2>أو اكتب IP التليفزيون</h2>
+    <form class="ip-row" id="ipForm" autocomplete="off">
+      <input id="ipInput" inputmode="decimal" placeholder="192.168.1.20" dir="ltr" spellcheck="false">
+      <button class="btn primary" type="submit">اتصال</button>
+    </form>
+    <p class="muted small">تلاقيه في التليفزيون: الإعدادات ← الشبكة والإنترنت ← اسم الواي فاي ← عنوان IP.</p>
+  </div>
+
+  <details class="card help">
+    <summary>إزاي يشتغل؟</summary>
+    <ol>
+      <li>الموبايل والتليفزيون لازم يكونوا على <b>نفس الواي فاي</b>.</li>
+      <li>اختار التليفزيون من اللستة.</li>
+      <li>أول مرة بس: هيظهر <b>كود من 6 حروف</b> على شاشة التليفزيون، اكتبه هنا.</li>
+      <li>خلاص! بعد كده البرنامج بيوصل لوحده.</li>
+    </ol>
+    <p class="muted small">زراير الصوت في الموبايل بتعلّي وتوطّي صوت التليفزيون.</p>
+    <p class="muted small">لو مفيش كود ظهر: في التليفزيون افتح الإعدادات ← التطبيقات ← تطبيقات النظام ← <span dir="ltr">Android TV Remote Service</span> واعمله تحديث أو امسح بياناته.</p>
+  </details>
+</section>
+
+<!-- ===================== شاشة الريموت ===================== -->
+<section id="remote" class="view">
+  <header class="top">
+    <button class="tv-name" id="tvNameBtn" aria-label="تغيير الجهاز">
+      <span class="dot" id="dot"></span>
+      <span class="names"><b id="tvName">التليفزيون</b><small id="tvState">بيوصل…</small></span>
+    </button>
+    <button class="round settings" id="settingsBtn" aria-label="إعدادات"><svg><use href="#i-gear"/></svg></button>
+    <button class="round power" data-key="26" aria-label="تشغيل/إطفاء"><svg><use href="#i-power"/></svg></button>
+  </header>
+
+  <div class="nowbar">
+    <span id="appName"></span>
+    <div class="vol" id="volWrap" hidden><span class="vol-fill" id="volFill"></span><small id="volText"></small></div>
+  </div>
+
+  <div class="nav-area">
+    <div class="dpad" id="dpad">
+      <button class="arrow up" data-key="19" data-repeat aria-label="فوق"><svg><use href="#i-arrow"/></svg></button>
+      <button class="arrow right" data-key="22" data-repeat aria-label="يمين"><svg><use href="#i-arrow"/></svg></button>
+      <button class="arrow down" data-key="20" data-repeat aria-label="تحت"><svg><use href="#i-arrow"/></svg></button>
+      <button class="arrow left" data-key="21" data-repeat aria-label="شمال"><svg><use href="#i-arrow"/></svg></button>
+      <button class="ok" data-key="23" data-long aria-label="OK">OK</button>
+    </div>
+    <div class="touchpad" id="touchpad" hidden>
+      <span class="hint">اسحب للتنقل • دوسة = OK</span>
+      <span class="ripple" id="ripple"></span>
+    </div>
+    <button class="mode-toggle" id="modeToggle" aria-label="تبديل لوحة اللمس"><svg><use href="#i-pad"/></svg></button>
+  </div>
+
+  <div class="sys-row">
+    <button class="pill" data-key="4" data-long><svg><use href="#i-back"/></svg><span>رجوع</span></button>
+    <button class="pill" data-key="3"><svg><use href="#i-home"/></svg><span>الرئيسية</span></button>
+    <button class="pill" data-key="82"><svg><use href="#i-menu"/></svg><span>القائمة</span></button>
+  </div>
+
+  <div class="rockers">
+    <div class="rocker">
+      <button data-key="24" data-repeat aria-label="علّي الصوت">+</button>
+      <span>صوت</span>
+      <button data-key="25" data-repeat aria-label="وطّي الصوت">−</button>
+    </div>
+    <div class="mid">
+      <button class="round big" data-key="164" aria-label="كتم"><svg><use href="#i-mute"/></svg></button>
+      <button class="round big" data-key="85" aria-label="تشغيل/إيقاف"><svg><use href="#i-play"/></svg></button>
+    </div>
+    <div class="rocker">
+      <button data-key="166" data-repeat aria-label="القناة الجاية">+</button>
+      <span>قناة</span>
+      <button data-key="167" data-repeat aria-label="القناة اللي فاتت">−</button>
+    </div>
+  </div>
+
+  <div class="media-row" dir="ltr">
+    <button data-key="89" data-repeat aria-label="ترجيع"><svg><use href="#i-rew"/></svg></button>
+    <button data-key="88" aria-label="اللي فات"><svg><use href="#i-prev"/></svg></button>
+    <button data-key="87" aria-label="اللي جاي"><svg><use href="#i-next"/></svg></button>
+    <button data-key="90" data-repeat aria-label="تقديم"><svg><use href="#i-ff"/></svg></button>
+  </div>
+
+  <nav class="tabs">
+    <button data-sheet="kbdSheet"><svg><use href="#i-kbd"/></svg><span>كيبورد</span></button>
+    <button data-sheet="numSheet"><svg><use href="#i-num"/></svg><span>أرقام</span></button>
+    <button data-sheet="appsSheet"><svg><use href="#i-apps"/></svg><span>تطبيقات</span></button>
+  </nav>
+</section>
+
+<!-- ===================== النوافذ ===================== -->
+<div class="scrim" id="scrim"></div>
+
+<div class="sheet" id="pairSheet" role="dialog" aria-modal="true">
+  <div class="grab"></div>
+  <h2>اكتب الكود اللي ظاهر على التليفزيون</h2>
+  <p class="muted" id="pairMsg">بنطلب الكود من التليفزيون…</p>
+  <div class="code-boxes" id="codeBoxes" dir="ltr"></div>
+  <div class="hexpad" id="hexpad" dir="ltr"></div>
+  <p class="err" id="pairErr"></p>
+  <div class="sheet-actions">
+    <button class="btn ghost" id="pairCancel">إلغاء</button>
+    <button class="btn ghost" id="pairRetry">كود جديد</button>
+  </div>
+</div>
+
+<div class="sheet" id="kbdSheet" role="dialog" aria-modal="true">
+  <div class="grab"></div>
+  <h2>اكتب في التليفزيون</h2>
+  <p class="muted small">اختار خانة البحث في التليفزيون الأول، وبعدين اكتب هنا.</p>
+  <form class="kbd-form" id="kbdForm" autocomplete="off">
+    <input id="kbdInput" placeholder="اكتب هنا…" enterkeyhint="send">
+    <button class="btn primary" type="submit">ابعت</button>
+  </form>
+  <div class="kbd-keys">
+    <button class="btn ghost" data-key="62">مسافة</button>
+    <button class="btn ghost" data-key="67" data-repeat><svg><use href="#i-del"/></svg> مسح</button>
+    <button class="btn ghost" data-key="66"><svg><use href="#i-enter"/></svg> Enter</button>
+  </div>
+  <label class="check"><input type="checkbox" id="liveType"> كتابة مباشرة (كل حرف يتبعت على طول)</label>
+</div>
+
+<div class="sheet" id="numSheet" role="dialog" aria-modal="true">
+  <div class="grab"></div>
+  <h2>أرقام</h2>
+  <div class="numpad" dir="ltr">
+    <button data-key="8">1</button><button data-key="9">2</button><button data-key="10">3</button>
+    <button data-key="11">4</button><button data-key="12">5</button><button data-key="13">6</button>
+    <button data-key="14">7</button><button data-key="15">8</button><button data-key="16">9</button>
+    <button data-key="67" data-repeat aria-label="مسح"><svg><use href="#i-del"/></svg></button><button data-key="7">0</button><button data-key="66" aria-label="Enter"><svg><use href="#i-enter"/></svg></button>
+  </div>
+  <div class="color-row">
+    <button data-key="183" class="c-red" aria-label="أحمر"></button>
+    <button data-key="184" class="c-green" aria-label="أخضر"></button>
+    <button data-key="185" class="c-yellow" aria-label="أصفر"></button>
+    <button data-key="186" class="c-blue" aria-label="أزرق"></button>
+  </div>
+</div>
+
+<div class="sheet" id="appsSheet" role="dialog" aria-modal="true">
+  <div class="grab"></div>
+  <h2>افتح تطبيق</h2>
+  <div class="apps" id="appsGrid"></div>
+  <details class="add-app">
+    <summary>+ ضيف تطبيق</summary>
+    <form id="addAppForm" autocomplete="off">
+      <input id="appLabel" placeholder="الاسم (مثلًا: شاهد)">
+      <input id="appLink" placeholder="اسم الباكدج أو رابط (com.example.app)" dir="ltr" spellcheck="false">
+      <button class="btn primary wide" type="submit">إضافة</button>
+    </form>
+    <p class="muted small">اسم الباكدج تلاقيه في رابط التطبيق على Google Play بعد <span dir="ltr">id=</span></p>
+  </details>
+  <div class="sys-row">
+    <button class="pill" data-key="176"><svg><use href="#i-gear"/></svg><span>إعدادات التليفزيون</span></button>
+    <button class="pill" data-key="84"><svg><use href="#i-search"/></svg><span>بحث</span></button>
+  </div>
+</div>
+
+<div class="sheet" id="settingsSheet" role="dialog" aria-modal="true">
+  <div class="grab"></div>
+  <h2>إعدادات</h2>
+  <label class="check"><input type="checkbox" id="vibrateChk"> اهتزاز مع كل زرار</label>
+  <div class="sheet-actions col">
+    <button class="btn ghost wide" id="switchTv"><svg><use href="#i-tv"/></svg> تغيير التليفزيون</button>
+    <button class="btn ghost wide" id="repairBtn">اعمل اقتران من جديد</button>
+  </div>
+  <p class="muted small" id="tvInfo" dir="auto"></p>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="app.js"></script>
+</body>
+</html>

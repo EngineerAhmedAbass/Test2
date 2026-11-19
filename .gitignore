@@ -7,3 +7,5 @@ android/local.properties
 *.apk
 scores/android/.gradle/
 scores/android/app/build/
+remote/android/.gradle/
+remote/android/app/build/
