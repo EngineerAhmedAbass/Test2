@@ -38,6 +38,9 @@ if (!window.TV) {
     key(c) { console.log('key', c); }, keyDir(c, d) { console.log('key', c, d); },
     text(t) { console.log('text', t); }, launch(l) { console.log('launch', l); },
     vibrate() {}, setVibrate() {}, getVibrate: () => true, resetIdentity() {},
+    setBars() {}, appVersion: () => '1.0.1',
+    checkUpdate(manual) { fire(manual || location.hash === '#update' ? { type: 'update', current: '1.0.1', latest: '1.0.2' } : { type: 'noUpdate', manual: '' }, 900); },
+    startUpdate() { let p = 0; const t = setInterval(() => { p += 20; window.onTv({ type: 'updateProgress', pct: String(p) }); if (p >= 100) clearInterval(t); }, 300); },
   };
 }
 
@@ -95,6 +98,28 @@ window.onTv = (e) => {
       break;
     case 'error': toast(e.msg); break;
     case 'resume': break;
+    case 'update':
+      state.update = e;
+      $('#updText').textContent = 'النسخة ' + e.latest + ' متاحة — عندك ' + e.current + '.';
+      $('#updErr').textContent = '';
+      $('#updProg').hidden = true;
+      $('#updNow').disabled = false;
+      $('#updNow').textContent = 'حدّث دلوقتي';
+      if (state.sheet !== 'pairSheet') openSheet('updateSheet');
+      break;
+    case 'noUpdate':
+      if (e.manual) toast('عندك آخر نسخة ✔');
+      break;
+    case 'updateProgress':
+      $('#updProg').hidden = false;
+      $('#updBar').style.width = (+e.pct || 0) + '%';
+      $('#updNow').textContent = +e.pct >= 100 ? 'بيفتح التثبيت…' : 'بينزل… ' + (+e.pct || 0) + '%';
+      break;
+    case 'updateError':
+      $('#updErr').textContent = e.msg;
+      $('#updNow').disabled = false;
+      $('#updNow').textContent = 'جرّب تاني';
+      break;
   }
 };
 
@@ -451,7 +476,14 @@ function openSheet(id) {
   state.sheet = id;
   $('#' + id).classList.add('show');
   $('#scrim').classList.add('show');
-  if (id === 'settingsSheet') $('#vibrateChk').checked = !!TV.getVibrate();
+  if (id === 'settingsSheet') {
+    $('#vibrateChk').checked = !!TV.getVibrate();
+    $('#tvActions').hidden = !state.host;
+    $('#tvInfo').hidden = !state.host;
+    let v = ''; try { v = TV.appVersion(); } catch (_) {}
+    $('#verText').textContent = v ? 'نسخة التطبيق ' + v : '';
+    renderThemes();
+  }
 }
 function closeSheet(silent) {
   if (state.sheet === 'pairSheet' && !silent) TV.pairCancel();
@@ -487,8 +519,58 @@ function toast(msg) {
   toastT = setTimeout(() => t.classList.remove('show'), 2200);
 }
 
+/* ------------------------------------------------------------ التصميمات */
+const THEMES = [
+  { id: 'midnight', name: 'ليلي برتقالي', bg: '#0b0d12', panel: '#1c2230', accent: '#ff6a1f', bar: '#0b0d12' },
+  { id: 'glass', name: 'زجاج', bg: 'linear-gradient(150deg,#6d3cff,#0b1530 60%,#00b3ff)', panel: 'rgba(255,255,255,.22)', accent: '#5ee7ff', bar: '#1d0f45' },
+  { id: 'light', name: 'فاتح', bg: '#e6eaf1', panel: '#f4f6fa', accent: '#3d6bff', bar: '#e6eaf1', light: true },
+  { id: 'neon', name: 'نيون', bg: '#04050a', panel: '#0a0d16', accent: '#00f0ff', ring: '#ff2bd6', bar: '#04050a' },
+  { id: 'material', name: 'Material', bg: '#15131b', panel: '#2a2636', accent: '#cfb4ff', bar: '#15131b' },
+];
+function currentTheme() {
+  return document.documentElement.getAttribute('data-theme') || 'midnight';
+}
+function applyTheme(id) {
+  const t = THEMES.find(x => x.id === id) || THEMES[0];
+  if (t.id === 'midnight') document.documentElement.removeAttribute('data-theme');
+  else document.documentElement.setAttribute('data-theme', t.id);
+  try { localStorage.setItem('theme', t.id); } catch (_) {}
+  try { TV.setBars(t.bar, !!t.light); } catch (_) {}
+}
+function renderThemes() {
+  const grid = $('#themeGrid');
+  grid.innerHTML = '';
+  THEMES.forEach(t => {
+    const b = document.createElement('button');
+    b.className = 'theme' + (currentTheme() === t.id ? ' sel' : '');
+    b.innerHTML = '<span class="pv"><b><i></i></b><s></s></span><span></span>';
+    $('.pv', b).style.background = t.bg;
+    $('.pv b', b).style.background = t.panel;
+    if (t.ring) $('.pv b', b).style.boxShadow = '0 0 0 2px ' + t.ring;
+    $('.pv i', b).style.background = t.accent;
+    $('.pv s', b).style.background = t.panel;
+    b.lastChild.textContent = t.name;
+    b.onclick = () => { buzz(); applyTheme(t.id); renderThemes(); };
+    grid.appendChild(b);
+  });
+}
+$('#devSettingsBtn').onclick = () => openSheet('settingsSheet');
+applyTheme(currentTheme());
+
+/* -------------------------------------------------------------- التحديث */
+$('#updLater').onclick = () => closeSheet();
+$('#updNow').onclick = () => {
+  $('#updNow').disabled = true;
+  $('#updErr').textContent = '';
+  $('#updNow').textContent = 'بيبدأ التحميل…';
+  TV.startUpdate();
+};
+$('#checkUpdBtn').onclick = () => { toast('بنشوف لو فيه تحديث…'); TV.checkUpdate(true); };
+
 /* --------------------------------------------------------------- البداية */
 renderSaved();
 if (!savedDevices().length) scan();
 // Java ممكن يكون خلص تجهيز قبل ما الصفحة تحمل
 try { if (TV.isReady()) window.onTv({ type: 'ready' }); } catch (_) {}
+// كل ما التطبيق يتفتح بيشوف لو فيه نسخة أحدث
+setTimeout(() => { try { TV.checkUpdate(false); } catch (_) {} }, 1200);

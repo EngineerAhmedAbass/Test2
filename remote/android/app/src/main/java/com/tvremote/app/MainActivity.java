@@ -2,7 +2,14 @@ package com.tvremote.app;
 
 import android.annotation.SuppressLint;
 import android.app.Activity;
+import android.app.DownloadManager;
 import android.content.Context;
+import android.content.Intent;
+import android.database.Cursor;
+import android.net.Uri;
+import android.os.Environment;
+import android.provider.Settings;
+import android.view.View;
 import android.content.SharedPreferences;
 import android.graphics.Color;
 import android.net.nsd.NsdManager;
@@ -20,7 +27,12 @@ import android.webkit.WebViewClient;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
+import java.io.ByteArrayOutputStream;
+import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
+import java.net.HttpURLConnection;
+import java.net.URL;
 import java.net.Inet4Address;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
@@ -42,6 +54,14 @@ import java.util.concurrent.TimeUnit;
 public class MainActivity extends Activity implements TvClient.Listener {
 
     private static final String SERVICE = "_androidtvremote2._tcp.";
+    // آخر نسخة بتترفع هنا من GitHub Actions (remote-android.yml)
+    private static final String RELEASE = "https://github.com/EngineerAhmedAbass/Test2/releases/download/remote-latest/";
+
+    private volatile String updateApk;
+    private volatile int updateCode;
+    private volatile boolean downloading;
+    private Uri pendingInstall;
+    private long lastCheck;
 
     private WebView web;
     private SharedPreferences prefs;
@@ -108,6 +128,40 @@ public class MainActivity extends Activity implements TvClient.Listener {
         @JavascriptInterface
         public String lastHost() {
             return prefs.getString("last", "");
+        }
+
+        @JavascriptInterface
+        public String appVersion() {
+            return versionName() + " (" + versionCode() + ")";
+        }
+
+        @JavascriptInterface
+        public void checkUpdate(boolean manual) {
+            MainActivity.this.checkUpdate(manual);
+        }
+
+        @JavascriptInterface
+        public void startUpdate() {
+            MainActivity.this.startUpdate();
+        }
+
+        @JavascriptInterface
+        public void setBars(final String hex, final boolean light) {
+            runOnUiThread(new Runnable() {
+                public void run() {
+                    try {
+                        int c = Color.parseColor(hex);
+                        getWindow().setStatusBarColor(c);
+                        getWindow().setNavigationBarColor(c);
+                        web.setBackgroundColor(c);
+                        View d = getWindow().getDecorView();
+                        int f = d.getSystemUiVisibility();
+                        int lightFlags = View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR
+                                | (Build.VERSION.SDK_INT >= 26 ? View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR : 0);
+                        d.setSystemUiVisibility(light ? (f | lightFlags) : (f & ~lightFlags));
+                    } catch (Exception ignored) { }
+                }
+            });
         }
 
         @JavascriptInterface
@@ -507,6 +561,140 @@ public class MainActivity extends Activity implements TvClient.Listener {
         try { Thread.sleep(ms); } catch (InterruptedException ignored) { }
     }
 
+    // ---------------------------------------------------------------- Update
+
+    private int versionCode() {
+        try {
+            return getPackageManager().getPackageInfo(getPackageName(), 0).versionCode;
+        } catch (Exception e) {
+            return 0;
+        }
+    }
+
+    private String versionName() {
+        try {
+            return getPackageManager().getPackageInfo(getPackageName(), 0).versionName;
+        } catch (Exception e) {
+            return "?";
+        }
+    }
+
+    /** بيقرا version.json من آخر release على GitHub ويقارنه بالنسخة المتسطبة. */
+    private void checkUpdate(final boolean manual) {
+        if (!manual && System.currentTimeMillis() - lastCheck < 60 * 1000) return;
+        lastCheck = System.currentTimeMillis();
+        worker.execute(new Runnable() {
+            public void run() {
+                try {
+                    JSONObject v = new JSONObject(httpGet(RELEASE + "version.json?t=" + System.currentTimeMillis()));
+                    int latest = v.getInt("versionCode");
+                    int current = versionCode();
+                    if (latest > current) {
+                        updateCode = latest;
+                        updateApk = v.optString("apk", RELEASE + "TV-Remote.apk");
+                        emit(obj("type", "update", "current", versionName(), "latest", v.optString("versionName", String.valueOf(latest))));
+                    } else {
+                        emit(obj("type", "noUpdate", "manual", manual ? "1" : ""));
+                    }
+                } catch (Exception e) {
+                    if (manual) emit(obj("type", "error", "msg", "معرفناش نشوف التحديثات — اتأكد من النت"));
+                }
+            }
+        });
+    }
+
+    private static String httpGet(String url) throws IOException {
+        HttpURLConnection c = (HttpURLConnection) new URL(url).openConnection();
+        c.setConnectTimeout(8000);
+        c.setReadTimeout(8000);
+        c.setInstanceFollowRedirects(true);
+        c.setUseCaches(false);
+        try {
+            if (c.getResponseCode() != 200) throw new IOException("HTTP " + c.getResponseCode());
+            InputStream in = c.getInputStream();
+            ByteArrayOutputStream out = new ByteArrayOutputStream();
+            byte[] buf = new byte[4096];
+            int n;
+            while ((n = in.read(buf)) > 0) out.write(buf, 0, n);
+            return out.toString("UTF-8");
+        } finally {
+            c.disconnect();
+        }
+    }
+
+    /** بينزّل الـ APK الجديد ويفتح شاشة التثبيت. */
+    private void startUpdate() {
+        final String apk = updateApk;
+        if (apk == null || downloading) return;
+        downloading = true;
+        worker.execute(new Runnable() {
+            public void run() {
+                try {
+                    DownloadManager dm = (DownloadManager) getSystemService(Context.DOWNLOAD_SERVICE);
+                    File dir = getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS);
+                    if (dir != null) {
+                        File[] old = dir.listFiles();
+                        if (old != null) for (File f : old) if (f.getName().endsWith(".apk")) f.delete();
+                    }
+                    String name = "TV-Remote-" + updateCode + ".apk";
+                    DownloadManager.Request r = new DownloadManager.Request(Uri.parse(apk))
+                            .setTitle("ريموت TV — تحديث")
+                            .setMimeType("application/vnd.android.package-archive")
+                            .setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE)
+                            .setDestinationInExternalFilesDir(MainActivity.this, Environment.DIRECTORY_DOWNLOADS, name);
+                    long id = dm.enqueue(r);
+                    while (true) {
+                        sleep(400);
+                        Cursor cur = dm.query(new DownloadManager.Query().setFilterById(id));
+                        if (cur == null || !cur.moveToFirst()) throw new IOException("التحميل اتلغى");
+                        int status = cur.getInt(cur.getColumnIndexOrThrow(DownloadManager.COLUMN_STATUS));
+                        long done = cur.getLong(cur.getColumnIndexOrThrow(DownloadManager.COLUMN_BYTES_DOWNLOADED_SO_FAR));
+                        long total = cur.getLong(cur.getColumnIndexOrThrow(DownloadManager.COLUMN_TOTAL_SIZE_BYTES));
+                        cur.close();
+                        if (status == DownloadManager.STATUS_SUCCESSFUL) break;
+                        if (status == DownloadManager.STATUS_FAILED) throw new IOException("التحميل فشل");
+                        if (total > 0) emit(obj("type", "updateProgress", "pct", String.valueOf(done * 99 / total)));
+                    }
+                    emit(obj("type", "updateProgress", "pct", "100"));
+                    final Uri uri = dm.getUriForDownloadedFile(id);
+                    runOnUiThread(new Runnable() { public void run() { install(uri); } });
+                } catch (Exception e) {
+                    emit(obj("type", "updateError", "msg", msg(e) + " — هنفتحلك صفحة التحميل"));
+                    sleep(1500);
+                    runOnUiThread(new Runnable() {
+                        public void run() {
+                            try { startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(apk))); } catch (Exception ignored) { }
+                        }
+                    });
+                } finally {
+                    downloading = false;
+                }
+            }
+        });
+    }
+
+    private void install(Uri uri) {
+        if (uri == null) return;
+        if (Build.VERSION.SDK_INT >= 26 && !getPackageManager().canRequestPackageInstalls()) {
+            // أول مرة: لازم تسمح للتطبيق إنه يسطّب تحديثاته
+            pendingInstall = uri;
+            emit(obj("type", "error", "msg", "فعّل \"السماح من المصدر ده\" وارجع للتطبيق"));
+            try {
+                startActivity(new Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES, Uri.parse("package:" + getPackageName())));
+            } catch (Exception ignored) { }
+            return;
+        }
+        pendingInstall = null;
+        try {
+            Intent i = new Intent(Intent.ACTION_VIEW);
+            i.setDataAndType(uri, "application/vnd.android.package-archive");
+            i.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_ACTIVITY_NEW_TASK);
+            startActivity(i);
+        } catch (Exception e) {
+            emit(obj("type", "updateError", "msg", "معرفناش نفتح التثبيت: " + msg(e)));
+        }
+    }
+
     // زراير الصوت في الموبايل بتتحكم في صوت التليفزيون
     @Override
     public boolean dispatchKeyEvent(KeyEvent event) {
@@ -536,6 +724,11 @@ public class MainActivity extends Activity implements TvClient.Listener {
         super.onResume();
         resumed = true;
         emit(obj("type", "resume"));
+        if (pendingInstall != null && (Build.VERSION.SDK_INT < 26 || getPackageManager().canRequestPackageInstalls())) {
+            install(pendingInstall);
+        } else if (lastCheck != 0) {
+            checkUpdate(false); // لما ترجع للتطبيق (بحد أقصى مرة في الدقيقة)
+        }
     }
 
     @Override

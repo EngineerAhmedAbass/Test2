@@ -34,6 +34,12 @@ jobs:
       - name: Rename APK
         run: cp remote/android/app/build/outputs/apk/release/app-release.apk TV-Remote.apk
 
+      # التطبيق بيقرا الملف ده كل ما يتفتح عشان يعرف لو فيه نسخة أحدث
+      - name: Version info
+        run: |
+          echo '{"versionCode": ${{ github.run_number }}, "versionName": "1.0.${{ github.run_number }}", "apk": "https://github.com/${{ github.repository }}/releases/download/remote-latest/TV-Remote.apk"}' > version.json
+          cat version.json
+
       - uses: actions/upload-artifact@v4
         with:
           name: TV-Remote-apk
@@ -45,7 +51,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           gh release delete remote-latest --yes --cleanup-tag || true
-          gh release create remote-latest TV-Remote.apk \
+          gh release create remote-latest TV-Remote.apk version.json \
             --target "${{ github.sha }}" \
             --latest=false \
             --title "ريموت TV (نسخة ${{ github.run_number }})" \
