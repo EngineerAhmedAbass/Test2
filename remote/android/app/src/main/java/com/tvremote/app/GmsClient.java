@@ -358,6 +358,8 @@ public class GmsClient implements Remote {
 
     public interface Found {
         void onFound(String ip, Info info);
+        /** للسجل: كل اللي بيحصل في الاستماع. */
+        void onNote(String line);
     }
 
     /** بيسمع إعلانات الريسيفرات على UDP 25860 لمدة معينة. */
@@ -369,6 +371,8 @@ public class GmsClient implements Remote {
             s.setBroadcast(true);
             s.bind(new InetSocketAddress(BROADCAST_PORT));
             s.setSoTimeout(1000);
+            cb.onNote("listening on UDP " + BROADCAST_PORT);
+            int packets = 0;
             long end = System.currentTimeMillis() + durationMs;
             byte[] buf = new byte[2048];
             while (System.currentTimeMillis() < end) {
@@ -379,9 +383,15 @@ public class GmsClient implements Remote {
                     continue;
                 }
                 Info i = parseInfo(p.getData(), p.getLength());
+                if (packets++ < 5) {
+                    cb.onNote("UDP from " + p.getAddress().getHostAddress() + " len=" + p.getLength()
+                            + (i == null ? " (not a receiver)" : " → " + i.model + " platform=" + i.platform));
+                }
                 if (i != null) cb.onFound(p.getAddress().getHostAddress(), i);
             }
-        } catch (IOException ignored) {
+            cb.onNote("UDP listen done, packets=" + packets);
+        } catch (IOException e) {
+            cb.onNote("UDP listen failed: " + e);
         } finally {
             if (s != null) s.close();
         }

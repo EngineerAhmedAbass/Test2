@@ -12,6 +12,7 @@ public class RcvTest {
                 if (found[0] == null) System.out.println("found " + ip + " " + i.model + " platform=" + i.platform + " json=" + i.json);
                 found[0] = ip;
             }
+            public void onNote(String line) { System.out.println("note: " + line); }
         });
         if (found[0] == null) throw new AssertionError("not discovered");
 

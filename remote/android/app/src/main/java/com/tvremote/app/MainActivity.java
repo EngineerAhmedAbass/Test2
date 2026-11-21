@@ -432,6 +432,7 @@ public class MainActivity extends Activity implements TvClient.Listener, LgClien
                 if (k.isEmpty()) {
                     emit(obj("type", "status", "state", "connecting", "host", h, "name", name));
                     k = probe(h);
+                    onLgLog("probe " + h + ": " + (k.isEmpty() ? "no TV/receiver ports open (6466, 3000/3001, 20000)" : k));
                 }
                 if (gen != connectGen) return;
                 if (k.isEmpty()) {
@@ -668,6 +669,19 @@ public class MainActivity extends Activity implements TvClient.Listener, LgClien
 
     private void startDiscovery() {
         found.clear();
+        InetAddress me = null;
+        try {
+            for (NetworkInterface ni : Collections.list(NetworkInterface.getNetworkInterfaces())) {
+                if (!ni.isUp() || ni.isLoopback()) continue;
+                for (InetAddress a : Collections.list(ni.getInetAddresses())) {
+                    if (a instanceof Inet4Address && a.isSiteLocalAddress()) {
+                        me = a;
+                        onLgLog("search: phone " + ni.getName() + " " + a.getHostAddress());
+                    }
+                }
+            }
+        } catch (Exception ignored) { }
+        if (me == null) onLgLog("search: phone has no Wi-Fi address!");
         stopDiscovery();
         try {
             WifiManager wifi = (WifiManager) getApplicationContext().getSystemService(Context.WIFI_SERVICE);
@@ -716,6 +730,10 @@ public class MainActivity extends Activity implements TvClient.Listener, LgClien
                     public void onFound(String ip, GmsClient.Info info) {
                         foundTv(ip, info.model.isEmpty() ? "ريسيفر" : info.model, "rcv");
                     }
+
+                    public void onNote(String line) {
+                        onLgLog("search: " + line);
+                    }
                 });
             }
         });
@@ -723,6 +741,7 @@ public class MainActivity extends Activity implements TvClient.Listener, LgClien
             public void run() {
                 sleep(9000);
                 stopDiscovery();
+                onLgLog("search: done, found " + found.size());
                 emit(obj("type", "scanDone"));
             }
         });
@@ -765,6 +784,7 @@ public class MainActivity extends Activity implements TvClient.Listener, LgClien
     private void foundTv(String ip, String name, String k) {
         if (ip == null || ip.contains(":")) return; // IPv4 بس
         boolean isNew = found.add(ip + "|" + name);
+        if (isNew) onLgLog("search: found " + k + " " + ip + " " + name);
         if (isNew) emit(obj("type", "found", "host", ip, "name", name, "kind", k));
     }
 
