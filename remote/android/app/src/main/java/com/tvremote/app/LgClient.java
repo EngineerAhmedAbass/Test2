@@ -137,14 +137,24 @@ public class LgClient implements Remote {
         String model = "";
         try {
             ws.setTimeout(10000);
-            JSONObject hello = call(ws, msg("hello", "hello", null, new JSONObject()));
-            if (hello != null) model = hello.optJSONObject("payload") == null ? "" : hello.optJSONObject("payload").optString("deviceType", "");
-            JSONObject sys = call(ws, msg("request", "sys0", "ssap://system/getSystemInfo", new JSONObject()));
-            if (sys != null && sys.optJSONObject("payload") != null) {
-                String m = sys.optJSONObject("payload").optString("modelName", "");
-                if (!m.isEmpty()) model = m;
-            }
+            log("tls+websocket: " + (System.currentTimeMillis() - t0) + " ms");
+            // بنبعت كله مرة واحدة من غير ما نستنى رد: بعض التليفزيونات مابتردش على hello/systemInfo
+            // قبل التسجيل، وكنا بنستنى 10 ثواني على الفاضي
+            send(ws, msg("hello", "hello", null, new JSONObject()));
+            send(ws, msg("request", "sys0", "ssap://system/getSystemInfo", new JSONObject()));
             register(ws);
+            log("registered: " + (System.currentTimeMillis() - t0) + " ms");
+            boolean gotHello = false, gotSys = false;
+            for (JSONObject e : early) {
+                String eid = e.optString("id");
+                if ("hello".equals(eid)) gotHello = true;
+                if ("sys0".equals(eid)) {
+                    gotSys = true;
+                    JSONObject p = e.optJSONObject("payload");
+                    if (p != null && !p.optString("modelName", "").isEmpty()) model = p.optString("modelName");
+                }
+            }
+            log("replies before register: hello=" + gotHello + " systemInfo=" + gotSys);
 
             send(ws, msg("subscribe", "sub_apps", "ssap://com.webos.applicationManager/listLaunchPoints", new JSONObject()));
             send(ws, msg("subscribe", "sub_inputs", "ssap://tv/getExternalInputList", new JSONObject()));
@@ -155,13 +165,17 @@ public class LgClient implements Remote {
             connected = true;
             listener.onConnected("LG", model.isEmpty() ? "webOS TV" : model);
             log("connected in " + (System.currentTimeMillis() - t0) + " ms");
+            final long t0Final = t0;
 
             // الحاجات اللي مش لازمة عشان نقول "متوصل" بتتعمل في الخلفية
             final Ws mainWs = ws;
+            final boolean needModel = model.isEmpty();
             Thread setup = new Thread(new Runnable() {
                 public void run() {
                     if (main != mainWs) return;
                     openInput(); // socket الزراير (أول زرار بيستناه لو لسه بيفتح)
+                    log("buttons ready: " + (System.currentTimeMillis() - t0Final) + " ms");
+                    if (needModel) fetchModel();
                     fetchMac();
                 }
             }, "lg-setup");
@@ -355,6 +369,15 @@ public class LgClient implements Remote {
         Ws ws = main;
         if (ws == null || !connected) throw new IOException("مش متوصل");
         send(ws, msg("request", null, uri, payload == null ? new JSONObject() : payload));
+    }
+
+    /** اسم الموديل لو ماجاش قبل التسجيل. */
+    private void fetchModel() {
+        try {
+            JSONObject r = requestWait("ssap://system/getSystemInfo", null, 3000);
+            String m = r == null || r.optJSONObject("payload") == null ? "" : r.optJSONObject("payload").optString("modelName", "");
+            if (!m.isEmpty() && connected) listener.onConnected("LG", m);
+        } catch (IOException ignored) { }
     }
 
     /** عنوان MAC عشان نشغّل التليفزيون وهو مقفول. بنحفظ الاتنين (واي فاي وكابل). */

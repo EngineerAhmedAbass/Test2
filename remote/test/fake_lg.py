@@ -21,9 +21,11 @@ NO_WSS = "--no-wss" in sys.argv
 REJECT_SIGNED = "--reject-signed" in sys.argv
 NEW_FW = "--new-fw" in sys.argv          # زي webOS 23: مفيش ws:3000 بس socketPath بيقول ws://:3000
 NO_POINTER = "--no-pointer" in sys.argv
+SILENT = "--silent-prereg" in sys.argv  # زي تليفزيون المستخدم: مابيردش على hello/systemInfo قبل التسجيل
 LATENCY = 0.15 if "--slow" in sys.argv else 0  # تليفزيون بطيء في الرد  # التليفزيون رافض يدي socket الزراير
 LOG = open(os.path.join(WORK, "lg.log"), "a", buffering=1)
 KEY = "client-key-123"
+ws_registered = {}
 state = {"scheme": "wss" if not NO_WSS else "ws"}
 
 
@@ -57,6 +59,9 @@ async def main_socket(ws):
             await asyncio.sleep(LATENCY)
         m = json.loads(raw)
         t, mid, uri, payload = m.get("type"), m.get("id"), m.get("uri", ""), m.get("payload", {})
+        if SILENT and not ws_registered.get(id(ws)) and (t == "hello" or uri.endswith("getSystemInfo")):
+            log("IGNORED before register", t, uri)
+            continue
         if t == "hello":
             await ws.send(json.dumps({"type": "hello", "id": mid, "payload": {"deviceType": "tv", "deviceOS": "webOS"}}))
         elif t == "register":
@@ -66,6 +71,7 @@ async def main_socket(ws):
             if signed and REJECT_SIGNED:
                 await ws.send(json.dumps({"type": "error", "id": mid, "error": "500 Application error"}))
                 continue
+            ws_registered[id(ws)] = True
             if payload.get("client-key") == KEY:
                 await ws.send(json.dumps({"type": "registered", "id": mid, "payload": {"client-key": KEY}}))
             else:
