@@ -67,6 +67,7 @@ if (!window.TV) {
     diagnostics: () => 'app 1.0.x • lg • 192.168.1.31\n16:20:01  main: wss:3001 OK\n16:20:01  buttons socket OK', share() {},
     switchInput(id) { console.log('input', id); }, rawKey(k) { console.log('raw', k); },
     pointer(dx, dy) { console.log('pointer', dx, dy); }, click() { console.log('click'); }, scroll() {}, kind: () => state.kind,
+    getNotif: () => true, setNotif() {},
     vibrate() {}, setVibrate() {}, getVibrate: () => true, resetIdentity() {},
     setBars() {}, appVersion: () => '1.0.1',
     checkUpdate(manual) { fire(manual || location.hash === '#update' ? { type: 'update', current: '1.0.1', latest: '1.0.2' } : { type: 'noUpdate', manual: '' }, 900); },
@@ -674,6 +675,7 @@ function openSheet(id) {
   if (id === 'inputSheet') renderInputs();
   if (id === 'settingsSheet') {
     $('#vibrateChk').checked = !!TV.getVibrate();
+    try { $('#notifChk').checked = !!TV.getNotif(); } catch (_) {}
     $('#tvActions').hidden = !state.host;
     $('#tvInfo').hidden = !state.host;
     let v = ''; try { v = TV.appVersion(); } catch (_) {}
@@ -709,6 +711,7 @@ $('#macForm').onsubmit = (ev) => {
 };
 $('#diagShare').onclick = () => { try { TV.share(TV.diagnostics()); } catch (_) {} };
 $('#diagBox').ontoggle = () => { try { $('#diagText').textContent = TV.diagnostics(); } catch (_) {} };
+$('#notifChk').onchange = (e) => { try { TV.setNotif(e.target.checked); } catch (_) {} };
 $('#vibrateChk').onchange = (e) => TV.setVibrate(e.target.checked);
 
 // زرار الرجوع في الموبايل

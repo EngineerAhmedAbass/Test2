@@ -68,6 +68,14 @@ public class MainActivity extends Activity implements TvClient.Listener, LgClien
     private final ExecutorService sender = Executors.newSingleThreadExecutor();
     private final ExecutorService worker = Executors.newCachedThreadPool();
 
+    // للإشعار (RemoteService)
+    static volatile MainActivity live;
+    static volatile long lastUse;
+    static volatile String nName = "";
+    static volatile String nState = "";
+    static volatile int nVolume = -1;
+    static volatile boolean nMuted;
+
     private TvClient tv;                 // Android TV / Google TV (شاومي)
     private volatile Remote remote;      // التليفزيون اللي متوصلين بيه دلوقتي (TvClient أو LgClient)
     private volatile String kind = "";   // "atv" أو "lg" أو "rcv" (ريسيفر دش)
@@ -89,6 +97,7 @@ public class MainActivity extends Activity implements TvClient.Listener, LgClien
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         prefs = getSharedPreferences("remote", MODE_PRIVATE);
+        live = this;
         LgClient.signedRejected = prefs.getBoolean("lgUnsigned", false);
 
         web = new WebView(this);
@@ -262,12 +271,18 @@ public class MainActivity extends Activity implements TvClient.Listener, LgClien
 
         @JavascriptInterface
         public void keyDir(final int code, final int dir) {
-            Remote r = remote;
-            if (code == 26 && "lg".equals(kind) && (r == null || !r.isConnected())) {
-                wakeLg(); // LG مقفول: نشغله بالواي فاي
-                return;
-            }
-            send(new IoTask() { public void run(Remote c) throws IOException { c.sendKey(code, dir); } });
+            keyDirect(code, dir);
+        }
+
+        @JavascriptInterface
+        public boolean getNotif() {
+            return prefs.getBoolean("notif", true);
+        }
+
+        @JavascriptInterface
+        public void setNotif(boolean on) {
+            prefs.edit().putBoolean("notif", on).apply();
+            if (on) askNotifPermission(true);
         }
 
         /** الماوس في تليفزيونات LG. */
@@ -388,11 +403,55 @@ public class MainActivity extends Activity implements TvClient.Listener, LgClien
         }
     }
 
+    void keyDirect(final int code, final int dir) {
+        Remote r = remote;
+        if (code == 26 && "lg".equals(kind) && (r == null || !r.isConnected())) {
+            wakeLg(); // LG مقفول: نشغله بالواي فاي
+            return;
+        }
+        send(new IoTask() { public void run(Remote c) throws IOException { c.sendKey(code, dir); } });
+    }
+
+    /** زرار من الإشعار. */
+    void external(final int code) {
+        lastUse = System.currentTimeMillis();
+        runOnUiThread(new Runnable() { public void run() { keyDirect(code, TvClient.SHORT); } });
+    }
+
+    /** زرار ✕ في الإشعار أو عدّت ساعة من غير استخدام: نقفل الاتصال لحد ما تفتح التطبيق. */
+    void externalClose(String why) {
+        onLgLog("notification closed (" + why + ")");
+        final Remote c = remote;
+        if (c != null && !resumed) worker.execute(new Runnable() { public void run() { c.disconnect(); } });
+    }
+
+    /** الإشعار محتاج إذن في أندرويد 13+. */
+    private void askNotifPermission(boolean force) {
+        if (Build.VERSION.SDK_INT < 33) return;
+        if (checkSelfPermission("android.permission.POST_NOTIFICATIONS") == android.content.pm.PackageManager.PERMISSION_GRANTED) return;
+        if (!force && prefs.getBoolean("notifAsked", false)) return;
+        prefs.edit().putBoolean("notifAsked", true).apply();
+        final Activity a = this;
+        runOnUiThread(new Runnable() {
+            public void run() {
+                try { a.requestPermissions(new String[]{"android.permission.POST_NOTIFICATIONS"}, 7); } catch (Exception ignored) { }
+            }
+        });
+    }
+
+    private boolean notifAllowed() {
+        if (!prefs.getBoolean("notif", true)) return false;
+        if (Build.VERSION.SDK_INT >= 33
+                && checkSelfPermission("android.permission.POST_NOTIFICATIONS") != android.content.pm.PackageManager.PERMISSION_GRANTED) return false;
+        return true;
+    }
+
     private interface IoTask {
         void run(Remote c) throws IOException;
     }
 
     private void send(final IoTask task) {
+        lastUse = System.currentTimeMillis();
         final Remote c = remote;
         if (c == null || !c.isConnected()) {
             emit(obj("type", "notConnected"));
@@ -455,10 +514,13 @@ public class MainActivity extends Activity implements TvClient.Listener, LgClien
                 remote = c;
                 remember(h, name, k);
                 emit(obj("type", "kind", "kind", k));
+                nName = name;
                 int fails = 0;
                 while (gen == connectGen) {
-                    if (!resumed) { pause(30000); continue; }
+                    if (!resumed && !RemoteService.running) { pause(30000); continue; }
                     emit(obj("type", "status", "state", "connecting", "host", h, "name", name));
+                    nState = "connecting";
+                    RemoteService.refresh(MainActivity.this);
                     long t0 = System.currentTimeMillis();
                     try {
                         c.runRemote(h);
@@ -471,7 +533,7 @@ public class MainActivity extends Activity implements TvClient.Listener, LgClien
                     } catch (IOException e) {
                         if (gen != connectGen) return;
                         if (System.currentTimeMillis() - t0 > 20000) fails = 0;
-                        if (!resumed) fails = 0; // اتقفل عشان خرجنا من التطبيق، مش عطل
+                        if (!resumed && !RemoteService.running) fails = 0; // اتقفل عشان خرجنا من التطبيق، مش عطل
                         else fails++;
                         emit(obj("type", "status", "state", "offline", "host", h, "name", name, "msg", msg(e)));
                     }
@@ -581,6 +643,10 @@ public class MainActivity extends Activity implements TvClient.Listener, LgClien
     @Override
     public void onConnected(String vendor, String model) {
         emit(obj("type", "status", "state", "connected", "host", host, "name", hostName, "vendor", vendor, "model", model, "kind", kind));
+        nName = hostName;
+        nState = "connected";
+        RemoteService.refresh(this);
+        askNotifPermission(false); // أول مرة بس
     }
 
     // ------------------------------------------------------- LgClient.Events
@@ -648,6 +714,9 @@ public class MainActivity extends Activity implements TvClient.Listener, LgClien
     @Override
     public void onDisconnected(String reason) {
         emit(obj("type", "status", "state", "offline", "host", host, "name", hostName, "msg", reason));
+        nState = "offline";
+        nVolume = -1;
+        RemoteService.refresh(this);
     }
 
     @Override
@@ -658,6 +727,11 @@ public class MainActivity extends Activity implements TvClient.Listener, LgClien
     @Override
     public void onVolume(int level, int max, boolean muted) {
         emit(obj("type", "volume", "level", String.valueOf(level), "max", String.valueOf(max), "muted", muted ? "1" : ""));
+        if (level != nVolume || muted != nMuted) {
+            nVolume = level;
+            nMuted = muted;
+            RemoteService.refresh(this);
+        }
     }
 
     @Override
@@ -1073,6 +1147,7 @@ public class MainActivity extends Activity implements TvClient.Listener, LgClien
         super.onResume();
         resumed = true;
         handler.removeCallbacks(idleDisconnect);
+        RemoteService.stop(this); // التطبيق مفتوح: مش محتاجين الإشعار
         kick(); // لو الاتصال كان مقفول، نحاول على طول من غير انتظار
         emit(obj("type", "resume"));
         if (pendingInstall != null && (Build.VERSION.SDK_INT < 26 || getPackageManager().canRequestPackageInstalls())) {
@@ -1086,15 +1161,26 @@ public class MainActivity extends Activity implements TvClient.Listener, LgClien
     protected void onPause() {
         super.onPause();
         resumed = false;
-        // بنسيب الاتصال مفتوح دقيقة لو رجعت بسرعة، وبعدها نقفله عشان البطارية
         handler.removeCallbacks(idleDisconnect);
+        // لو متوصل: الريموت يفضل في الإشعارات (وبيقفل لوحده بعد ساعة من غير استخدام)
+        Remote r = remote;
+        if (host != null && r != null && r.isConnected() && notifAllowed()) {
+            try {
+                lastUse = System.currentTimeMillis();
+                RemoteService.start(this);
+                return;
+            } catch (Exception e) {
+                onLgLog("notification failed: " + e);
+            }
+        }
+        // غير كده: بنسيب الاتصال مفتوح دقيقة لو رجعت بسرعة، وبعدها نقفله عشان البطارية
         handler.postDelayed(idleDisconnect, 60000);
     }
 
     private final android.os.Handler handler = new android.os.Handler(android.os.Looper.getMainLooper());
     private final Runnable idleDisconnect = new Runnable() {
         public void run() {
-            if (resumed) return;
+            if (resumed || RemoteService.running) return;
             Remote c = remote;
             if (c != null && c.isConnected()) worker.execute(new Runnable() { public void run() { c.disconnect(); } });
         }
@@ -1105,6 +1191,8 @@ public class MainActivity extends Activity implements TvClient.Listener, LgClien
         connectGen++;
         kick();
         handler.removeCallbacks(idleDisconnect);
+        RemoteService.stop(this);
+        if (live == this) live = null;
         stopDiscovery();
         Remote c = remote;
         if (c != null) c.disconnect();

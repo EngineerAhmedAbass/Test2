@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- ألوان الإشعار (غامق) -->
+    <color name="n_btn">#33FFFFFF</color>
+    <color name="n_pad">#22FFFFFF</color>
+    <color name="n_icon">#FFFFFFFF</color>
+    <color name="n_text">#FFFFFFFF</color>
+    <color name="n_sub">#FFA9B0C0</color>
+    <color name="n_power">#FFFF5A6A</color>
+</resources>
