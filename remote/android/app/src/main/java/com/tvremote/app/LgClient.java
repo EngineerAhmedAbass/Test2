@@ -111,7 +111,12 @@ public class LgClient implements Remote {
             log("main: wss:" + portWss + " OK");
         } catch (IOException e) {
             log("main: wss:" + portWss + " failed: " + e);
-            ws = Ws.connect("ws://" + host + ":" + portWs, 6000); // webOS القديم
+            try {
+                ws = Ws.connect("ws://" + host + ":" + portWs, 6000); // webOS القديم
+            } catch (IOException e2) {
+                log("main: ws:" + portWs + " failed: " + e2);
+                throw e2;
+            }
             log("main: ws:" + portWs + " OK");
         }
         main = ws;
@@ -138,13 +143,23 @@ public class LgClient implements Remote {
                 JSONObject sys2 = call(ws, msg("request", null, "ssap://system/getSystemInfo", new JSONObject()));
                 if (sys2 != null && sys2.optJSONObject("payload") != null) model = sys2.optJSONObject("payload").optString("modelName", model);
             }
+            // عنوان MAC عشان نشغّل التليفزيون وهو مقفول. بنحفظ الاتنين (واي فاي وكابل) لأننا مش عارفين هو متوصل بأنهي واحد
             JSONObject info = call(ws, msg("request", null, "ssap://com.webos.service.connectionmanager/getinfo", new JSONObject()));
+            log("network info: " + (info == null ? "none" : info.optString("type") + " " + info.optString("error")));
             if (info != null && info.optJSONObject("payload") != null) {
                 JSONObject p = info.optJSONObject("payload");
-                String mac = "";
-                if (p.optJSONObject("wiredInfo") != null) mac = p.optJSONObject("wiredInfo").optString("macAddress", "");
-                if (mac.isEmpty() && p.optJSONObject("wifiInfo") != null) mac = p.optJSONObject("wifiInfo").optString("macAddress", "");
-                if (!mac.isEmpty()) events.onLgMac(mac);
+                StringBuilder macs = new StringBuilder();
+                String[] keys = {"wifiInfo", "wiredInfo"};
+                for (String k : keys) {
+                    JSONObject o = p.optJSONObject(k);
+                    String mac = o == null ? "" : o.optString("macAddress", "");
+                    if (mac.matches("([0-9A-Fa-f]{2}[:-]){5}[0-9A-Fa-f]{2}")) {
+                        if (macs.length() > 0) macs.append(',');
+                        macs.append(mac.toLowerCase(java.util.Locale.US));
+                    }
+                }
+                log("MAC: " + (macs.length() == 0 ? "not provided" : macs));
+                if (macs.length() > 0) events.onLgMac(macs.toString());
             }
 
             send(ws, msg("subscribe", "sub_apps", "ssap://com.webos.applicationManager/listLaunchPoints", new JSONObject()));

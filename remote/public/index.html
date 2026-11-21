@@ -239,6 +239,15 @@
     <button class="btn ghost wide" id="repairBtn">اعمل اقتران من جديد</button>
   </div>
   <p class="muted small" id="tvInfo" dir="auto"></p>
+  <div class="wol" id="wolBox" hidden>
+    <h3>تشغيل التليفزيون وهو مقفول</h3>
+    <p class="muted small">التطبيق بيحفظ عنوان الـ MAC لوحده. لو مش متحفظ، اكتبه من التليفزيون:
+      الإعدادات ← الشبكة ← اتصال Wi-Fi ← إعدادات Wi-Fi المتقدمة. ولازم تفعّل: عام ← الأجهزة ← <b>التشغيل عن طريق Wi-Fi</b>.</p>
+    <form class="ip-row" id="macForm" autocomplete="off">
+      <input id="macInput" dir="ltr" spellcheck="false" placeholder="a8:23:fe:12:34:56">
+      <button class="btn primary" type="submit">حفظ</button>
+    </form>
+  </div>
   <details class="diag" id="diagBox">
     <summary>سجل التشخيص (لو حاجة مش شغالة)</summary>
     <pre id="diagText" dir="ltr"></pre>

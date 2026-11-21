@@ -284,9 +284,34 @@ public class MainActivity extends Activity implements TvClient.Listener, LgClien
         }
 
         @JavascriptInterface
+        public String getMac() {
+            String h = host;
+            return h == null ? "" : prefs.getString("lgmac:" + h, "");
+        }
+
+        /** MAC مكتوب بالإيد (من إعدادات الشبكة في التليفزيون). */
+        @JavascriptInterface
+        public boolean setMac(String macs) {
+            String h = host;
+            if (h == null) return false;
+            StringBuilder sb = new StringBuilder();
+            for (String m : macs.split("[,\\s]+")) {
+                m = m.trim().replace('-', ':').toLowerCase(java.util.Locale.US);
+                if (m.isEmpty()) continue;
+                if (!m.matches("([0-9a-f]{2}:){5}[0-9a-f]{2}")) return false;
+                if (sb.length() > 0) sb.append(',');
+                sb.append(m);
+            }
+            prefs.edit().putString("lgmac:" + h, sb.toString()).apply();
+            onLgLog("MAC set by user: " + sb);
+            return true;
+        }
+
+        @JavascriptInterface
         public String diagnostics() {
             StringBuilder sb = new StringBuilder();
             sb.append("app ").append(versionName()).append(" • ").append(kind).append(" • ").append(host).append('\n');
+            if ("lg".equals(kind) && host != null) sb.append("saved MAC: ").append(prefs.getString("lgmac:" + host, "none")).append('\n');
             synchronized (diag) {
                 for (String l : diag) sb.append(l).append('\n');
             }
@@ -467,19 +492,25 @@ public class MainActivity extends Activity implements TvClient.Listener, LgClien
 
     private void wakeLg() {
         final String h = host;
-        final String mac = h == null ? null : prefs.getString("lgmac:" + h, null);
-        if (mac == null) {
-            emit(obj("type", "error", "msg", "شغّل التليفزيون بالريموت بتاعه المرة دي، وبعد كده هتقدر تشغله من هنا"));
+        final String macs = h == null ? null : prefs.getString("lgmac:" + h, null);
+        if (macs == null || macs.isEmpty()) {
+            onLgLog("wake: no MAC saved for " + h);
+            emit(obj("type", "needMac"));
             return;
         }
         worker.execute(new Runnable() {
             public void run() {
-                try {
-                    LgClient.wake(mac, h);
-                    emit(obj("type", "error", "msg", "بنشغّل التليفزيون…"));
-                } catch (IOException e) {
-                    emit(obj("type", "error", "msg", "معرفناش نشغّله: " + msg(e)));
+                int ok = 0;
+                for (String mac : macs.split(",")) {
+                    try {
+                        LgClient.wake(mac.trim(), h);
+                        onLgLog("wake sent to " + mac.trim());
+                        ok++;
+                    } catch (IOException e) {
+                        onLgLog("wake failed " + mac + ": " + e);
+                    }
                 }
+                emit(obj("type", "error", "msg", ok > 0 ? "بنشغّل التليفزيون… استنى ثواني" : "معرفناش نبعت أمر التشغيل"));
             }
         });
     }
@@ -520,7 +551,14 @@ public class MainActivity extends Activity implements TvClient.Listener, LgClien
     @Override
     public void onLgMac(String mac) {
         String h = host;
-        if (h != null) prefs.edit().putString("lgmac:" + h, mac).apply();
+        if (h == null) return;
+        // لو المستخدم كاتب MAC بإيده بنضيفه للي التليفزيون اداهولنا
+        String old = prefs.getString("lgmac:" + h, "");
+        java.util.LinkedHashSet<String> all = new java.util.LinkedHashSet<>();
+        for (String m : (mac + "," + old).split(",")) if (!m.trim().isEmpty()) all.add(m.trim().toLowerCase(java.util.Locale.US));
+        StringBuilder sb = new StringBuilder();
+        for (String m : all) { if (sb.length() > 0) sb.append(','); sb.append(m); }
+        prefs.edit().putString("lgmac:" + h, sb.toString()).apply();
     }
 
     private final java.util.LinkedList<String> diag = new java.util.LinkedList<>();

@@ -53,6 +53,7 @@ if (!window.TV) {
     pairCancel() {},
     key(c) { console.log('key', c); }, keyDir(c, d) { console.log('key', c, d); },
     text(t) { console.log('text', t); }, launch(l) { console.log('launch', l); },
+    getMac: () => '', setMac: (m) => /^([0-9a-f]{2}[:-]){5}[0-9a-f]{2}$/i.test(m.trim()),
     diagnostics: () => 'app 1.0.x • lg • 192.168.1.31\n16:20:01  main: wss:3001 OK\n16:20:01  buttons socket OK', share() {},
     pointer(dx, dy) { console.log('pointer', dx, dy); }, click() { console.log('click'); }, scroll() {}, kind: () => state.kind,
     vibrate() {}, setVibrate() {}, getVibrate: () => true, resetIdentity() {},
@@ -126,6 +127,11 @@ window.onTv = (e) => {
       toast(state.connected ? 'بيوصل…' : 'مش متوصل بالتليفزيون');
       break;
     case 'error': toast(e.msg); break;
+    case 'needMac':
+      openSheet('settingsSheet');
+      toast('اكتب عنوان MAC بتاع التليفزيون عشان نقدر نشغّله');
+      setTimeout(() => $('#macInput').focus(), 300);
+      break;
     case 'resume': break;
     case 'update':
       state.update = e;
@@ -602,6 +608,8 @@ function openSheet(id) {
     let v = ''; try { v = TV.appVersion(); } catch (_) {}
     $('#verText').textContent = v ? 'نسخة التطبيق ' + v : '';
     renderThemes();
+    $('#wolBox').hidden = state.kind !== 'lg' || !state.host;
+    try { $('#macInput').value = TV.getMac(); } catch (_) {}
     try { $('#diagText').textContent = TV.diagnostics(); } catch (_) { $('#diagText').textContent = ''; }
   }
 }
@@ -620,6 +628,14 @@ $$('[data-sheet]').forEach(b => b.onclick = () => {
   openSheet(b.dataset.sheet);
   if (b.dataset.sheet === 'kbdSheet') setTimeout(() => $('#kbdInput').focus(), 250);
 });
+$('#macForm').onsubmit = (ev) => {
+  ev.preventDefault();
+  const v = $('#macInput').value.trim();
+  let ok = false;
+  try { ok = TV.setMac(v); } catch (_) {}
+  toast(ok ? 'اتحفظ ✔ — دلوقتي زرار ⏻ يشغّل التليفزيون' : 'العنوان مش صحيح — لازم يكون زي a8:23:fe:12:34:56');
+  if (ok) $('#macInput').blur();
+};
 $('#diagShare').onclick = () => { try { TV.share(TV.diagnostics()); } catch (_) {} };
 $('#diagBox').ontoggle = () => { try { $('#diagText').textContent = TV.diagnostics(); } catch (_) {} };
 $('#vibrateChk').onchange = (e) => TV.setVibrate(e.target.checked);
