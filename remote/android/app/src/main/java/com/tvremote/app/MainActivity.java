@@ -284,6 +284,24 @@ public class MainActivity extends Activity implements TvClient.Listener, LgClien
         }
 
         @JavascriptInterface
+        public String diagnostics() {
+            StringBuilder sb = new StringBuilder();
+            sb.append("app ").append(versionName()).append(" • ").append(kind).append(" • ").append(host).append('\n');
+            synchronized (diag) {
+                for (String l : diag) sb.append(l).append('\n');
+            }
+            return sb.toString();
+        }
+
+        @JavascriptInterface
+        public void share(String text) {
+            Intent i = new Intent(Intent.ACTION_SEND);
+            i.setType("text/plain");
+            i.putExtra(Intent.EXTRA_TEXT, text);
+            try { startActivity(Intent.createChooser(i, "ابعت السجل")); } catch (Exception ignored) { }
+        }
+
+        @JavascriptInterface
         public String kind() {
             return kind;
         }
@@ -345,7 +363,13 @@ public class MainActivity extends Activity implements TvClient.Listener, LgClien
                 try {
                     task.run(c);
                 } catch (IOException e) {
-                    c.disconnect(); // الـ loop هيعيد الاتصال
+                    if (c instanceof LgClient) {
+                        // في LG الاتصال الأساسي سليم؛ بس نقول للمستخدم إيه اللي حصل
+                        onLgLog("key failed: " + e);
+                        emit(obj("type", "error", "msg", msg(e)));
+                    } else {
+                        c.disconnect(); // الـ loop هيعيد الاتصال
+                    }
                 }
             }
         });
@@ -497,6 +521,17 @@ public class MainActivity extends Activity implements TvClient.Listener, LgClien
     public void onLgMac(String mac) {
         String h = host;
         if (h != null) prefs.edit().putString("lgmac:" + h, mac).apply();
+    }
+
+    private final java.util.LinkedList<String> diag = new java.util.LinkedList<>();
+
+    @Override
+    public void onLgLog(String line) {
+        String t = new java.text.SimpleDateFormat("HH:mm:ss", java.util.Locale.US).format(new java.util.Date());
+        synchronized (diag) {
+            diag.add(t + "  " + line);
+            while (diag.size() > 80) diag.removeFirst();
+        }
     }
 
     @Override

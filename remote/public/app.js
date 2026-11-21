@@ -53,6 +53,7 @@ if (!window.TV) {
     pairCancel() {},
     key(c) { console.log('key', c); }, keyDir(c, d) { console.log('key', c, d); },
     text(t) { console.log('text', t); }, launch(l) { console.log('launch', l); },
+    diagnostics: () => 'app 1.0.x • lg • 192.168.1.31\n16:20:01  main: wss:3001 OK\n16:20:01  buttons socket OK', share() {},
     pointer(dx, dy) { console.log('pointer', dx, dy); }, click() { console.log('click'); }, scroll() {}, kind: () => state.kind,
     vibrate() {}, setVibrate() {}, getVibrate: () => true, resetIdentity() {},
     setBars() {}, appVersion: () => '1.0.1',
@@ -502,7 +503,9 @@ const PKG_NAMES = {
   'com.stream.iptv': 'STREAM IPTV', 'com.amazon.amazonvideo.livingroom': 'Prime Video', 'com.spotify.tv.android': 'Spotify',
   'com.google.android.tvlauncher': 'الشاشة الرئيسية', 'com.google.android.apps.tv.launcherx': 'الشاشة الرئيسية',
   'com.android.vending': 'Google Play', 'com.android.tv.settings': 'الإعدادات', 'com.mitv.tvhome': 'الشاشة الرئيسية',
-  'com.google.android.katniss': 'بحث جوجل', 'org.videolan.vlc': 'VLC', 'com.disney.disneyplus': 'Disney+',
+  'com.google.android.katniss': 'بحث جوجل', 'com.webos.app.home': 'الشاشة الرئيسية', 'com.webos.app.livetv': 'Live TV',
+  'com.webos.app.hdmi1': 'HDMI 1', 'com.webos.app.hdmi2': 'HDMI 2', 'com.webos.app.hdmi3': 'HDMI 3', 'com.webos.app.browser': 'المتصفح',
+  'com.palm.app.settings': 'الإعدادات', 'youtube.leanback.v4': 'YouTube', 'netflix': 'Netflix', 'amazon': 'Prime Video', 'org.videolan.vlc': 'VLC', 'com.disney.disneyplus': 'Disney+',
 };
 function appLabel(pkg) {
   const tvApp = state.tvApps.find(a => a.id === pkg);
@@ -599,6 +602,7 @@ function openSheet(id) {
     let v = ''; try { v = TV.appVersion(); } catch (_) {}
     $('#verText').textContent = v ? 'نسخة التطبيق ' + v : '';
     renderThemes();
+    try { $('#diagText').textContent = TV.diagnostics(); } catch (_) { $('#diagText').textContent = ''; }
   }
 }
 function closeSheet(silent) {
@@ -616,6 +620,8 @@ $$('[data-sheet]').forEach(b => b.onclick = () => {
   openSheet(b.dataset.sheet);
   if (b.dataset.sheet === 'kbdSheet') setTimeout(() => $('#kbdInput').focus(), 250);
 });
+$('#diagShare').onclick = () => { try { TV.share(TV.diagnostics()); } catch (_) {} };
+$('#diagBox').ontoggle = () => { try { $('#diagText').textContent = TV.diagnostics(); } catch (_) {} };
 $('#vibrateChk').onchange = (e) => TV.setVibrate(e.target.checked);
 
 // زرار الرجوع في الموبايل

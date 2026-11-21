@@ -27,6 +27,8 @@ public class LgClient implements Remote {
         void onLgKey(String clientKey);
         void onLgMac(String mac);
         void onLgApps(JSONArray apps);
+        /** سطر في سجل التشخيص (بيظهر في الإعدادات). */
+        void onLgLog(String line);
     }
 
     /** التليفزيون رفض أو محدش وافق. */
@@ -86,6 +88,9 @@ public class LgClient implements Remote {
     private volatile boolean connected;
     private volatile boolean playing = true;
     private volatile boolean screenOn = true;
+    private volatile boolean muted;
+    private volatile String host;
+    private final Map<String, JSONObject[]> pending = new HashMap<>();
     private int nextId = 1;
     private final ArrayDeque<JSONObject> early = new ArrayDeque<>();
 
@@ -99,11 +104,15 @@ public class LgClient implements Remote {
 
     @Override
     public void runRemote(String host) throws IOException {
+        this.host = host;
         Ws ws;
         try {
             ws = Ws.connect("wss://" + host + ":" + portWss, 6000);
+            log("main: wss:" + portWss + " OK");
         } catch (IOException e) {
+            log("main: wss:" + portWss + " failed: " + e);
             ws = Ws.connect("ws://" + host + ":" + portWs, 6000); // webOS القديم
+            log("main: ws:" + portWs + " OK");
         }
         main = ws;
         early.clear();
@@ -121,6 +130,7 @@ public class LgClient implements Remote {
 
             // زراير الريموت بتروح على socket تاني
             JSONObject sock = call(ws, msg("request", null, "ssap://com.webos.service.networkinput/getPointerInputSocket", new JSONObject()));
+            log("pointer socket reply: " + (sock == null ? "none" : sock.toString()));
             inputPath = sock == null || sock.optJSONObject("payload") == null ? null : sock.optJSONObject("payload").optString("socketPath", null);
             openInput();
 
@@ -186,6 +196,7 @@ public class LgClient implements Remote {
         for (int attempt = 0; attempt < 2; attempt++) {
             JSONObject res = call(ws, registration(signed, "register_" + attempt));
             if (res == null) throw new IOException("مفيش رد على التسجيل");
+            log("register (" + (signed ? "signed" : "unsigned") + "): " + res.optString("type") + " " + res.optString("error"));
             if ("error".equals(res.optString("type")) && signed) {
                 signed = false; // الـ firmware الجديد بيرفض المانيفست الموقّع
                 continue;
@@ -223,12 +234,21 @@ public class LgClient implements Remote {
 
     private void handle(JSONObject m) {
         String id = m.optString("id");
+        synchronized (pending) {
+            JSONObject[] slot = pending.get(id);
+            if (slot != null) {
+                slot[0] = m;
+                pending.notifyAll();
+                return;
+            }
+        }
+        if ("error".equals(m.optString("type"))) log("TV error (" + id + "): " + m.optString("error"));
         JSONObject p = m.optJSONObject("payload");
         if (p == null) return;
         if ("sub_vol".equals(id)) {
             JSONObject v = p.optJSONObject("volumeStatus") != null ? p.optJSONObject("volumeStatus") : p;
             if (v.has("volume")) {
-                boolean muted = v.optBoolean("muteStatus", v.optBoolean("muted", false));
+                muted = v.optBoolean("muteStatus", v.optBoolean("muted", false));
                 listener.onVolume(v.optInt("volume"), v.optInt("maxVolume", 100), muted);
             }
         } else if ("sub_app".equals(id)) {
@@ -301,26 +321,78 @@ public class LgClient implements Remote {
         send(ws, msg("request", null, uri, payload == null ? new JSONObject() : payload));
     }
 
-    private void openInput() {
-        String path = inputPath;
-        if (path == null) return;
+    /** طلب وهو متوصل: بيستنى الرد من الـ loop الأساسي. */
+    private JSONObject requestWait(String uri, JSONObject payload, int timeoutMs) throws IOException {
+        Ws ws = main;
+        if (ws == null || !connected) throw new IOException("مش متوصل");
+        JSONObject m = msg("request", null, uri, payload == null ? new JSONObject() : payload);
+        String id = m.optString("id");
+        JSONObject[] slot = new JSONObject[1];
+        synchronized (pending) {
+            pending.put(id, slot);
+        }
         try {
-            final Ws in = Ws.connect(path, 6000);
-            in.setTimeout(0);
-            input = in;
-            Thread t = new Thread(new Runnable() {
-                public void run() {
-                    try {
-                        while (true) in.readText();
-                    } catch (IOException e) {
-                        if (input == in) input = null;
-                    }
+            send(ws, m);
+            long end = System.currentTimeMillis() + timeoutMs;
+            synchronized (pending) {
+                while (slot[0] == null) {
+                    long left = end - System.currentTimeMillis();
+                    if (left <= 0) return null;
+                    try { pending.wait(left); } catch (InterruptedException e) { return null; }
                 }
-            }, "lg-input");
-            t.setDaemon(true);
-            t.start();
-        } catch (IOException ignored) {
-            input = null;
+            }
+            return slot[0];
+        } finally {
+            synchronized (pending) {
+                pending.remove(id);
+            }
+        }
+    }
+
+    /** بيفتح socket الزراير. بنجرب العنوان اللي التليفزيون اداه، وكمان wss:3001 / ws:3000 (تليفزيونات webOS الجديدة بتقفل 3000). */
+    private synchronized void openInput() {
+        if (input != null) return;
+        String path = inputPath;
+        if (path == null && connected) {
+            try {
+                JSONObject r = requestWait("ssap://com.webos.service.networkinput/getPointerInputSocket", null, 5000);
+                log("pointer socket reply (retry): " + (r == null ? "none" : r.toString()));
+                if (r != null && r.optJSONObject("payload") != null) path = r.optJSONObject("payload").optString("socketPath", null);
+                inputPath = path;
+            } catch (IOException e) {
+                log("pointer socket request failed: " + e);
+            }
+        }
+        if (path == null || path.isEmpty()) return;
+        java.util.LinkedHashSet<String> tries = new java.util.LinkedHashSet<>();
+        tries.add(path);
+        String rest = path.replaceFirst("^wss?://[^/]+", "");
+        if (host != null) {
+            tries.add("wss://" + host + ":" + portWss + rest);
+            tries.add("ws://" + host + ":" + portWs + rest);
+        }
+        for (String url : tries) {
+            try {
+                final Ws in = Ws.connect(url, 5000);
+                in.setTimeout(0);
+                input = in;
+                inputPath = url;
+                log("buttons socket OK: " + url);
+                Thread t = new Thread(new Runnable() {
+                    public void run() {
+                        try {
+                            while (true) in.readText();
+                        } catch (IOException e) {
+                            if (input == in) input = null;
+                        }
+                    }
+                }, "lg-input");
+                t.setDaemon(true);
+                t.start();
+                return;
+            } catch (IOException e) {
+                log("buttons socket failed: " + url + " → " + e);
+            }
         }
     }
 
@@ -330,7 +402,7 @@ public class LgClient implements Remote {
             openInput();
             in = input;
         }
-        if (in == null) throw new IOException("زراير الريموت مش متاحة");
+        if (in == null) throw new IOException("زراير الريموت مش متاحة في التليفزيون ده");
         try {
             in.sendText(text);
         } catch (IOException e) {
@@ -339,6 +411,10 @@ public class LgClient implements Remote {
             if (input == null) throw e;
             input.sendText(text);
         }
+    }
+
+    private void log(String line) {
+        try { events.onLgLog(line); } catch (Exception ignored) { }
     }
 
     // ---------------------------------------------------------- Remote
@@ -382,7 +458,33 @@ public class LgClient implements Remote {
                 return;
             default:
                 String b = BUTTONS.get(keyCode);
-                if (b != null) inputCommand(button(b));
+                if (b == null) return;
+                try {
+                    inputCommand(button(b));
+                } catch (IOException e) {
+                    // لو socket الزراير مش شغال، اللي ليه أمر ssap بديل نبعته بيه
+                    if (!ssapFallback(b)) throw e;
+                }
+        }
+    }
+
+    private boolean ssapFallback(String b) throws IOException {
+        try {
+            if ("VOLUMEUP".equals(b)) request("ssap://audio/volumeUp", null);
+            else if ("VOLUMEDOWN".equals(b)) request("ssap://audio/volumeDown", null);
+            else if ("MUTE".equals(b)) request("ssap://audio/setMute", new JSONObject().put("mute", !muted));
+            else if ("CHANNELUP".equals(b)) request("ssap://tv/channelUp", null);
+            else if ("CHANNELDOWN".equals(b)) request("ssap://tv/channelDown", null);
+            else if ("PLAY".equals(b)) request("ssap://media.controls/play", null);
+            else if ("PAUSE".equals(b)) request("ssap://media.controls/pause", null);
+            else if ("STOP".equals(b)) request("ssap://media.controls/stop", null);
+            else if ("REWIND".equals(b)) request("ssap://media.controls/rewind", null);
+            else if ("FASTFORWARD".equals(b)) request("ssap://media.controls/fastForward", null);
+            else if ("HOME".equals(b)) request("ssap://system.launcher/launch", new JSONObject().put("id", "com.webos.app.home"));
+            else return false;
+            return true;
+        } catch (JSONException e) {
+            return false;
         }
     }
 

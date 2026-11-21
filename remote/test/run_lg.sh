@@ -8,6 +8,7 @@ J="$R/android/app/src/main/java/com/tvremote/app"
 javac -encoding UTF-8 -cp "$JSONJAR" -d "$W/classes" "$J/Proto.java" "$J/TvClient.java" "$J/Remote.java" "$J/Ws.java" "$J/LgClient.java" "$R/test/LgTest.java" 2>&1 | grep -v _OPTIONS
 python3 -I "$R/test/fake_lg.py" "$W" "$@" & PID=$!
 i=0; while ! grep -q ready "$W/lg.log" 2>/dev/null; do i=$((i+1)); [ $i -gt 100 ] && break; sleep 0.1; done
-timeout 60 java -cp "$W/classes:$JSONJAR" com.tvremote.app.LgTest 2>&1 | grep -v _OPTIONS
+NP=""; case "$*" in *--no-pointer*) NP="-Dnopointer=1";; esac
+timeout 60 java $NP -cp "$W/classes:$JSONJAR" com.tvremote.app.LgTest 2>&1 | grep -v _OPTIONS
 sleep 0.5; kill $PID
 echo "--- TV log"; cat "$W/lg.log"

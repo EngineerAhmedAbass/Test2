@@ -24,6 +24,7 @@ public class LgTest {
             public void onLgPrompt() { prompts++; System.out.println("prompt on TV"); }
             public void onLgKey(String k) { key = k; System.out.println("key " + k); }
             public void onLgMac(String mac) { System.out.println("mac " + mac); }
+            public void onLgLog(String line) { System.out.println("log: " + line); }
             public void onLgApps(JSONArray apps) { System.out.println("apps " + apps.length() + " " + apps.optJSONObject(0).optString("title")); status.countDown(); }
         };
 
@@ -37,7 +38,11 @@ public class LgTest {
         if (!connected.await(15, TimeUnit.SECONDS)) throw new AssertionError("not connected");
         if (!status.await(5, TimeUnit.SECONDS)) throw new AssertionError("no status");
         if (prompts != 1 || key == null) throw new AssertionError("pairing flow");
-        tv.sendKey(19, TvClient.SHORT);
+        try { tv.sendKey(19, TvClient.SHORT); } catch (java.io.IOException e) { System.out.println("arrow failed (expected without pointer): " + e.getMessage()); }
+        if (!tv.isConnected()) throw new AssertionError("dropped connection");
+        tv.sendKey(24, TvClient.SHORT);
+        tv.sendKey(164, TvClient.SHORT);
+        if (System.getProperty("nopointer") != null) { tv.disconnect(); t.join(5000); System.out.println("DONE"); return; }
         tv.sendKey(23, TvClient.START_LONG);
         tv.sendKey(23, TvClient.END_LONG);
         tv.sendKey(24, TvClient.SHORT);

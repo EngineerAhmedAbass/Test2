@@ -19,6 +19,8 @@ from cryptography.x509.oid import NameOID
 WORK = sys.argv[1]
 NO_WSS = "--no-wss" in sys.argv
 REJECT_SIGNED = "--reject-signed" in sys.argv
+NEW_FW = "--new-fw" in sys.argv          # زي webOS 23: مفيش ws:3000 بس socketPath بيقول ws://:3000
+NO_POINTER = "--no-pointer" in sys.argv  # التليفزيون رافض يدي socket الزراير
 LOG = open(os.path.join(WORK, "lg.log"), "a", buffering=1)
 KEY = "client-key-123"
 state = {"scheme": "wss" if not NO_WSS else "ws"}
@@ -74,8 +76,14 @@ async def main_socket(ws):
             if uri.endswith("getSystemInfo"):
                 p["modelName"] = "OLED55C1"
             elif uri.endswith("getPointerInputSocket"):
+                if NO_POINTER:
+                    await ws.send(json.dumps({"type": "error", "id": mid, "error": "401 insufficient permissions", "payload": {}}))
+                    continue
                 port = 3001 if state["scheme"] == "wss" else 3000
-                p["socketPath"] = f"{state['scheme']}://127.0.0.1:{port}/resources/abc123/netinput.pointer.sock"
+                scheme = state["scheme"]
+                if NEW_FW:
+                    scheme, port = "ws", 3000
+                p["socketPath"] = f"{scheme}://127.0.0.1:{port}/resources/abc123/netinput.pointer.sock"
             elif uri.endswith("connectionmanager/getinfo"):
                 p["wiredInfo"] = {"macAddress": "a8:23:fe:01:02:03"}
             await ws.send(json.dumps({"type": "response", "id": mid, "payload": p}))
@@ -110,7 +118,8 @@ async def handler(ws):
 
 
 async def main():
-    await websockets.serve(handler, "127.0.0.1", 3000)
+    if not NEW_FW:
+        await websockets.serve(handler, "127.0.0.1", 3000)
     if not NO_WSS:
         await websockets.serve(handler, "127.0.0.1", 3001, ssl=tls_ctx())
     log("ready")
