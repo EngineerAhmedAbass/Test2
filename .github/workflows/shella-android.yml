@@ -47,5 +47,5 @@ jobs:
           gh release create shella-latest shella/shella-alwan.apk \
             --target "${{ github.sha }}" \
             --latest=false \
-            --title "شلة الألوان — لعبة كروت أونلاين (نسخة ${{ github.run_number }})" \
+            --title "ترفيه العيلة — لعبة كروت أونلاين (نسخة ${{ github.run_number }})" \
             --notes "نزّل shella-alwan.apk وسطّبه على الموبايل. اعمل أوضة وابعت الكود لصحابك (من ٢ لحد ١٠ لاعيبة)."

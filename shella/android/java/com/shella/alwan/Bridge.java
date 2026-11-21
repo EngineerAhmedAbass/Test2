@@ -3,6 +3,7 @@ package com.shella.alwan;
 import android.app.Activity;
 import android.content.Context;
 import android.content.Intent;
+import android.net.Uri;
 import android.os.Build;
 import android.os.VibrationEffect;
 import android.os.Vibrator;
@@ -19,6 +20,27 @@ final class Bridge {
     @JavascriptInterface
     public void share(String text) {
         activity.runOnUiThread(new ShareTask(activity, text));
+    }
+
+    @JavascriptInterface
+    public int versionCode() {
+        try {
+            return activity.getPackageManager().getPackageInfo(activity.getPackageName(), 0).versionCode;
+        } catch (Exception e) {
+            return 0;
+        }
+    }
+
+    /** Opens a link (the new APK) in the phone's browser, which downloads it. */
+    @JavascriptInterface
+    public void openUrl(String url) {
+        if (url == null || !url.startsWith("https://github.com/")) return;
+        Intent i = new Intent(Intent.ACTION_VIEW, Uri.parse(url));
+        i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+        try {
+            activity.startActivity(i);
+        } catch (Exception ignored) {
+        }
     }
 
     @JavascriptInterface
