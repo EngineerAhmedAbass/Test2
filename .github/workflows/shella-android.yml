@@ -1,0 +1,51 @@
+name: Shella APK
+
+on:
+  push:
+    branches: ['ccr-3ee0d9a2-9g5tp8', 'main']
+    paths: ['shella/**', '.github/workflows/shella-android.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: shella-apk
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Install Android SDK parts
+        run: yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "platforms;android-34" "build-tools;34.0.0" > /dev/null
+
+      - name: Build APK
+        env:
+          VERSION_CODE: ${{ github.run_number }}
+        run: bash shella/build.sh
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: shella-alwan-apk
+          path: shella/shella-alwan.apk
+
+      # رابط ثابت لآخر نسخة: releases/download/shella-latest/shella-alwan.apk
+      # (ومش بنعلّمها "Latest" عشان رابط تطبيق STREAM يفضل شغال)
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release delete shella-latest --yes --cleanup-tag || true
+          gh release create shella-latest shella/shella-alwan.apk \
+            --target "${{ github.sha }}" \
+            --latest=false \
+            --title "شلة الألوان — لعبة كروت أونلاين (نسخة ${{ github.run_number }})" \
+            --notes "نزّل shella-alwan.apk وسطّبه على الموبايل. اعمل أوضة وابعت الكود لصحابك (من ٢ لحد ١٠ لاعيبة)."

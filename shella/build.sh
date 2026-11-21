@@ -22,7 +22,8 @@ EOF
 # 2. Resources and manifest.
 "$BT/aapt2" compile --dir android/res -o "$OUT/res/res.zip"
 "$BT/aapt2" link -o "$OUT/base.apk" -I "$JAR" --manifest android/AndroidManifest.xml \
-  -A "$OUT/assets" --java "$OUT/gen" "$OUT/res/res.zip"
+  -A "$OUT/assets" --java "$OUT/gen" "$OUT/res/res.zip" \
+  --version-code "${VERSION_CODE:-1}" --version-name "1.${VERSION_CODE:-0}" --replace-version
 
 # 3. Java -> dex.
 javac -source 8 -target 8 -nowarn -encoding UTF-8 -bootclasspath "$JAR" -classpath "$JAR" -d "$OUT/classes" \
