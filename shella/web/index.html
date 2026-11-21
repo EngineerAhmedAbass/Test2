@@ -355,7 +355,7 @@ function netNotice(){
 function rulesHTML(){
   const r=(c,t)=>`<div class="rule">${cardHTML(c)}<span>${t}</span></div>`;
   return `<div class="rules">${r("c5","نزّل كارت بنفس اللون أو نفس الرقم")}${r("bS","تخطي: اللي بعدك يتخطى دوره")}${r("dR","عكس: اللعب يلف بالعكس")}${r("aD","+2: اللي بعدك يسحب ٢ ويتخطى")}${r("W","جوكر: اختار اللون اللي يكمّل")}${r("W4","جوكر +4: اللي بعدك يسحب ٤")}</div>
-  <p class="muted" style="font-size:.92rem">قبل ما تنزّل الكارت قبل الأخير دوس <b>«أونو!»</b>. لو نسيت، أي حد يقدر يمسكك وتسحب ٢. لو معاكش لعب اسحب كارت، ولو برضو مينفعش تقدر تسحب كارت كمان بس. أول واحد يخلّص كروته يكسب.</p>`;
+  <p class="muted" style="font-size:.92rem">قبل ما تنزّل الكارت قبل الأخير دوس <b>«أونو!»</b>. لو نسيت، أي حد يقدر يمسكك وتسحب ٢. لو معاكش لعب اللعبة بتسحبلك كارت لوحدها، ولو برضو مينفعش بتسحبلك كارت كمان بس، وبعدها الدور بيعدّي. أول واحد يخلّص كروته يكسب.</p>`;
 }
 function lobbyHTML(){
   const fan=["a7","bS","W4","d2"].map((c,i)=>cardHTML(c,"",null,`transform:rotate(${[-16,-6,5,15][i]}deg) translateY(${i%3?-8:0}px)`)).join("");
@@ -412,7 +412,7 @@ function gameHTML(){
     if(vul&&vul!==myId)acts+=`<button class="btn warn" data-act="catch">امسك ${esc(nameOf(s,vul))}! (+2)</button>`;
     if(stale)acts+=`<button class="btn small" data-act="skip">عدّي دور ${esc(cur.name)}</button>`;
   }
-  const status=s.status!=="playing"?"":myTurn?(s.drew?"نزّل الكارت اللي سحبته أو عدّي":s.draws?"معاكش لعب؟ اسحب كمان واحدة أو عدّي":"دورك!"):"دور "+esc(cur.name);
+  const status=s.status!=="playing"?"":myTurn?(s.drew?"نزّل الكارت اللي سحبته أو عدّي":!hand.some(c=>canPlay(c,s))&&(s.draws||0)<2?(s.draws?"لسه معاكش لعب… بنسحبلك كمان واحدة":"معاكش لعب… بنسحبلك كارت"):"دورك!"):"دور "+esc(cur.name);
   const handHTML=meIn?sorted.map(c=>{const ok=myTurn&&canPlay(c,s)&&(!s.drew||c===s.drawn);return cardHTML(c,ok?"ok":"",`type="button" data-card="${c}" aria-label="${esc(cardName(c))}"`)}).join("")
     :`<p class="muted" style="margin:auto;padding:20px">${(s.waiting||[]).some(p=>p.id===myId)?"إنت داخل الجولة الجاية — اتفرج دلوقتي":"إنت بتتفرج"}</p>`;
   return `<div class="topbar"><button class="btn small" data-act="leave">خروج</button><span class="code-pill">${esc(s.code)}</span><span class="dir">${online?"":'<b style="color:var(--danger)">مفيش نت · </b>'}${s.dir===1?"↻":"↺"} الاتجاه</span></div>
@@ -462,6 +462,18 @@ async function checkUpdate(){
     if(asset&&latest>mine){update={version:latest,url:asset.browser_download_url};render()}
   }catch(e){}
 }
+// No playable card on your turn: draw for you automatically (up to the two-card limit).
+let autoTimer=null,autoRev=-1;
+function needsAutoDraw(){
+  if(!room||room.status!=="playing"||!online)return false;
+  if(room.players[room.turn]?.id!==myId||room.drew||(room.draws||0)>=2)return false;
+  return !(room.hands[myId]||[]).some(c=>canPlay(c,room));
+}
+function maybeAutoDraw(){
+  if(autoTimer||!needsAutoDraw()||autoRev===room.rev)return;
+  const rev=room.rev;
+  autoTimer=setTimeout(()=>{autoTimer=null;if(room&&room.rev===rev&&needsAutoDraw()){autoRev=rev;mutate(s=>ops.draw(s,myId))}},1400);
+}
 let lastKey="",lastHTML="";
 function render(){
   const scr=$("screen");const hand=$("hand");const sl=hand?hand.scrollLeft:0;
@@ -482,6 +494,7 @@ function render(){
   scr.classList.toggle("scroll",mode!=="game");
   if(focusId&&$(focusId)&&$(focusId)!==ae){const el=$(focusId);if(val!=null)el.value=val;el.focus()}
   const h2=$("hand");if(h2)h2.scrollLeft=sl;
+  maybeAutoDraw();
   $("layer").innerHTML=overHTML()+updateHTML()+(pendingWild?`<div class="sheet-bg" data-act="cancelwild"><div class="sheet" role="dialog" aria-label="اختار لون"><h2>اختار اللون اللي يكمّل</h2><div class="swatches">${"abcd".split("").map(c=>`<button class="swatch" style="--c:${COLOR_VAR[c]}" data-color="${c}">${COLOR_NAME[c]}</button>`).join("")}</div><button class="btn small" data-act="cancelwild">إلغاء</button></div></div>`:"");
 }
 
