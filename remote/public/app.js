@@ -18,14 +18,19 @@ if (!window.TV) {
     discover() {
       fire({ type: 'found', host: '192.168.1.23', name: 'Mi Box S' }, 700);
       fire({ type: 'found', host: '192.168.1.31', name: '[LG] webOS TV OLED55C1', kind: 'lg' }, 1100);
+      fire({ type: 'found', host: '192.168.1.50', name: 'TIGER T8 HIGH CLASS V2', kind: 'rcv' }, 1300);
       fire({ type: 'found', host: '192.168.1.40', name: '' }, 1500);
       fire({ type: 'scanDone' }, 2500);
     },
     connect(host, name, kind) {
-      kind = kind || (devices.find(d => d.host === host) || {}).kind || (host.endsWith('.31') ? 'lg' : 'atv');
+      kind = kind || (devices.find(d => d.host === host) || {}).kind || (host.endsWith('.31') ? 'lg' : host.endsWith('.50') ? 'rcv' : 'atv');
       devices = [{ host, name, kind }].concat(devices.filter(d => d.host !== host));
       fire({ type: 'status', state: 'connecting', host, name }, 50);
       fire({ type: 'kind', kind }, 80);
+      if (kind === 'rcv') {
+        fire({ type: 'status', state: 'connected', host, name, vendor: 'Receiver', model: name, kind }, 500);
+        return;
+      }
       if (kind === 'lg') {
         if (!this._lgOk) { this._lgOk = true; fire({ type: 'lgPrompt' }, 500); fire({ type: 'paired' }, 2500); }
         const d = this._lgOk === true ? 2600 : 600; this._lgOk = 1;
@@ -60,7 +65,7 @@ if (!window.TV) {
     text(t) { console.log('text', t); }, launch(l) { console.log('launch', l); },
     getMac: () => '', setMac: (m) => /^([0-9a-f]{2}[:-]){5}[0-9a-f]{2}$/i.test(m.trim()),
     diagnostics: () => 'app 1.0.x • lg • 192.168.1.31\n16:20:01  main: wss:3001 OK\n16:20:01  buttons socket OK', share() {},
-    switchInput(id) { console.log('input', id); },
+    switchInput(id) { console.log('input', id); }, rawKey(k) { console.log('raw', k); },
     pointer(dx, dy) { console.log('pointer', dx, dy); }, click() { console.log('click'); }, scroll() {}, kind: () => state.kind,
     vibrate() {}, setVibrate() {}, getVibrate: () => true, resetIdentity() {},
     setBars() {}, appVersion: () => '1.0.1',
@@ -174,7 +179,7 @@ function setStatus(e) {
   dot.className = 'dot' + (e.state === 'connected' ? ' on' : e.state === 'offline' ? ' off' : '');
   if (e.name) $('#tvName').textContent = e.name;
   $('#tvState').textContent =
-    e.state === 'connected' ? 'متوصل' + (e.model ? ' • ' + e.model : '') :
+    e.state === 'connected' ? 'متوصل' + (e.model && e.model !== e.name ? ' • ' + e.model : '') :
     e.state === 'connecting' ? 'بيوصل…' : 'مش متوصل' + (e.msg ? ' — بيحاول تاني' : '');
   if (e.state === 'connected') {
     $('#tvInfo').textContent = [e.vendor, e.model, e.host].filter(Boolean).join(' • ');
@@ -191,12 +196,12 @@ function devItem(host, name, saved, kind) {
   const b = document.createElement('button');
   b.className = 'dev';
   b.innerHTML = '<span class="ico"><svg><use href="#i-tv"/></svg></span><span class="meta"><b></b><small></small></span>';
-  $('b', b).textContent = name || (kind === 'lg' ? 'LG TV' : 'Android TV');
+  $('b', b).textContent = name || (kind === 'lg' ? 'LG TV' : kind === 'rcv' ? 'ريسيفر' : 'Android TV');
   $('small', b).textContent = host;
   if (kind) {
     const tag = document.createElement('em');
     tag.className = 'kind ' + kind;
-    tag.textContent = kind === 'lg' ? 'LG' : 'Android TV';
+    tag.textContent = kind === 'lg' ? 'LG' : kind === 'rcv' ? 'ريسيفر' : 'Android TV';
     $('.meta', b).appendChild(tag);
   }
   b.onclick = () => connect(host, name || host, kind || '');
@@ -273,8 +278,12 @@ function connect(host, name, kind) {
 function setKind(kind) {
   state.kind = kind;
   document.body.classList.toggle('kind-lg', kind === 'lg');
+  document.body.classList.toggle('kind-rcv', kind === 'rcv');
+  const appsTab = $('[data-sheet="appsSheet"] span');
+  if (appsTab) appsTab.textContent = kind === 'rcv' ? 'زراير' : 'تطبيقات';
+  $('#appsTitle').textContent = kind === 'rcv' ? 'زراير الريسيفر' : 'افتح تطبيق';
   $('#padHint').textContent = kind === 'lg' ? 'حرّك صباعك = ماوس • دوسة = كليك • صباعين = سكرول' : 'اسحب للتنقل • دوسة = OK';
-  $('#repairBtn').hidden = kind === 'lg';
+  $('#repairBtn').hidden = kind === 'lg' || kind === 'rcv';
   if (kind !== 'lg') { state.tvApps = []; state.tvInputs = []; }
 }
 
@@ -590,9 +599,33 @@ function renderTvApps(grid) {
     grid.appendChild(b);
   });
 }
+// زراير الريسيفر اللي مش موجودة في الريموت العادي (أكواد G-MScreen)
+const RCV_KEYS = [
+  { label: 'المفضلة', code: 33, glyph: '★' }, { label: 'TV / راديو', code: 22, glyph: '📻' },
+  { label: 'القناة اللي فاتت', code: 29, glyph: '↺' }, { label: 'دليل البرامج', code: 32, glyph: 'EPG' },
+  { label: 'معلومات', code: 57, glyph: 'i' }, { label: 'الصوت/اللغة', code: 54, glyph: '♪' },
+  { label: 'الترجمة', code: 31, glyph: 'CC' }, { label: 'القمر', code: 30, glyph: 'SAT' },
+  { label: 'بحث', code: 39, glyph: '🔍' }, { label: 'التسجيلات', code: 66, glyph: 'PVR' },
+  { label: 'تسجيل', code: 58, glyph: '●' }, { label: 'زووم', code: 56, glyph: '⤢' },
+  { label: 'صفحة +', code: 37, glyph: '⇞' }, { label: 'صفحة −', code: 38, glyph: '⇟' },
+  { label: 'النوم', code: 41, glyph: 'Zz' }, { label: 'YouTube', code: 74, glyph: '▶' },
+];
+function renderRcvKeys(grid) {
+  RCV_KEYS.forEach((k, i) => {
+    const b = document.createElement('button');
+    b.className = 'app';
+    b.innerHTML = '<i></i><span></span>';
+    $('i', b).textContent = k.glyph;
+    $('i', b).style.background = APP_COLORS[i % APP_COLORS.length];
+    $('span', b).textContent = k.label;
+    b.onclick = () => { buzz(); TV.rawKey(k.code); };
+    grid.appendChild(b);
+  });
+}
 function renderApps() {
   const grid = $('#appsGrid');
   grid.innerHTML = '';
+  if (state.kind === 'rcv') return renderRcvKeys(grid);
   if (state.kind === 'lg') return renderTvApps(grid);
   const custom = customApps();
   BUILTIN_APPS.concat(custom.map(a => Object.assign({ custom: true }, a))).forEach(a => {
@@ -752,7 +785,7 @@ if (!savedDevices().length) scan();
   let last = '';
   try { last = TV.lastHost(); } catch (_) {}
   const d = last && savedDevices().find(x => x.host === last);
-  if (d && d.kind === 'lg') connect(d.host, d.name, 'lg');
+  if (d && (d.kind === 'lg' || d.kind === 'rcv')) connect(d.host, d.name, d.kind);
 })();
 try { if (TV.isReady()) window.onTv({ type: 'ready' }); } catch (_) {}
 // كل ما التطبيق يتفتح بيشوف لو فيه نسخة أحدث

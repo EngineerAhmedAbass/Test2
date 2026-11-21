@@ -472,3 +472,7 @@ h3 { font-size: 14px; margin: 16px 0 10px; color: var(--muted); font-weight: 600
 .input.off { opacity: .55; }
 .input:active { transform: scale(.97); }
 .tabs button { gap: 6px; font-size: 13px; padding: 0 4px; }
+
+/* ---------- الريسيفر ---------- */
+.dev .meta em.rcv { color: #fff; background: #0b7a75; }
+.kind-rcv [data-sheet="inputSheet"], .kind-rcv .add-app, .kind-rcv #appsSheet .sys-row { display: none; }

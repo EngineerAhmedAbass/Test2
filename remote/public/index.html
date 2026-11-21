@@ -45,7 +45,7 @@
     <div class="logo"><svg><use href="#i-tv"/></svg></div>
     <div>
       <h1>ريموت التليفزيون</h1>
-      <p class="sub">شاومي Mi Box و Mi TV Stick، تليفزيونات LG، وأي Android TV / Google TV</p>
+      <p class="sub">شاومي، تليفزيونات LG، ريسيفرات تايجر، وأي Android TV</p>
     </div>
     <button class="round" id="devSettingsBtn" aria-label="التصميم والإعدادات"><svg><use href="#i-palette"/></svg></button>
   </header>
@@ -93,7 +93,7 @@
   <header class="top">
     <button class="tv-name" id="tvNameBtn" aria-label="تغيير الجهاز">
       <span class="dot" id="dot"></span>
-      <span class="names"><b id="tvName">التليفزيون</b><small id="tvState">بيوصل…</small></span>
+      <span class="names"><b id="tvName" dir="auto">التليفزيون</b><small id="tvState">بيوصل…</small></span>
     </button>
     <button class="round settings" id="settingsBtn" aria-label="إعدادات"><svg><use href="#i-gear"/></svg></button>
     <button class="round power" data-key="26" aria-label="تشغيل/إطفاء"><svg><use href="#i-power"/></svg></button>
@@ -177,7 +177,7 @@
 <div class="sheet" id="kbdSheet" role="dialog" aria-modal="true">
   <div class="grab"></div>
   <h2>اكتب في التليفزيون</h2>
-  <p class="muted small">اختار خانة البحث في التليفزيون الأول، وبعدين اكتب هنا.</p>
+  <p class="muted small">اختار خانة البحث في التليفزيون الأول، وبعدين اكتب هنا. في الريسيفر: افتح كيبورد الريسيفر على الشاشة الأول.</p>
   <form class="kbd-form" id="kbdForm" autocomplete="off">
     <input id="kbdInput" placeholder="اكتب هنا…" enterkeyhint="send">
     <button class="btn primary" type="submit">ابعت</button>
@@ -209,7 +209,7 @@
 
 <div class="sheet" id="appsSheet" role="dialog" aria-modal="true">
   <div class="grab"></div>
-  <h2>افتح تطبيق</h2>
+  <h2 id="appsTitle">افتح تطبيق</h2>
   <div class="apps" id="appsGrid"></div>
   <details class="add-app">
     <summary>+ ضيف تطبيق</summary>

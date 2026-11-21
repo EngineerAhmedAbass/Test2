@@ -51,7 +51,7 @@ import java.util.concurrent.TimeUnit;
  * ريموت للتليفزيون: الواجهة HTML (من remote/public) جوه WebView،
  * والاتصال بالتليفزيون من هنا (TvClient) عن طريق الواي فاي.
  */
-public class MainActivity extends Activity implements TvClient.Listener, LgClient.Events {
+public class MainActivity extends Activity implements TvClient.Listener, LgClient.Events, GmsClient.Events {
 
     private static final String SERVICE = "_androidtvremote2._tcp.";
     // آخر نسخة بتترفع هنا من GitHub Actions (remote-android.yml)
@@ -70,7 +70,7 @@ public class MainActivity extends Activity implements TvClient.Listener, LgClien
 
     private TvClient tv;                 // Android TV / Google TV (شاومي)
     private volatile Remote remote;      // التليفزيون اللي متوصلين بيه دلوقتي (TvClient أو LgClient)
-    private volatile String kind = "";   // "atv" أو "lg"
+    private volatile String kind = "";   // "atv" أو "lg" أو "rcv" (ريسيفر دش)
     private volatile String host;
     private volatile String hostName = "";
     private volatile int connectGen;
@@ -335,6 +335,12 @@ public class MainActivity extends Activity implements TvClient.Listener, LgClien
             try { startActivity(Intent.createChooser(i, "ابعت السجل")); } catch (Exception ignored) { }
         }
 
+        /** زرار ريسيفر بالكود بتاعه مباشرة (FAV، TV/Radio...). */
+        @JavascriptInterface
+        public void rawKey(final int stbKey) {
+            send(new IoTask() { public void run(Remote c) throws IOException { if (c instanceof GmsClient) ((GmsClient) c).sendRaw(stbKey); } });
+        }
+
         @JavascriptInterface
         public String kind() {
             return kind;
@@ -435,6 +441,8 @@ public class MainActivity extends Activity implements TvClient.Listener, LgClien
                 final Remote c;
                 if ("lg".equals(k)) {
                     c = new LgClient(prefs.getString("lgkey:" + h, null), MainActivity.this, MainActivity.this);
+                } else if ("rcv".equals(k)) {
+                    c = new GmsClient(MainActivity.this, MainActivity.this);
                 } else {
                     c = tv;
                     if (c == null) {
@@ -497,6 +505,7 @@ public class MainActivity extends Activity implements TvClient.Listener, LgClien
     private static String probe(String h) {
         if (portOpen(h, TvClient.REMOTE_PORT, 1500)) return "atv";
         if (portOpen(h, LgClient.portWss, 1500) || portOpen(h, LgClient.portWs, 1500)) return "lg";
+        if (portOpen(h, GmsClient.PORT, 1500)) return "rcv";
         return "";
     }
 
@@ -612,6 +621,11 @@ public class MainActivity extends Activity implements TvClient.Listener, LgClien
     }
 
     @Override
+    public void onRcvLog(String line) {
+        onLgLog(line);
+    }
+
+    @Override
     public void onLgUnsigned() {
         prefs.edit().putBoolean("lgUnsigned", true).apply();
     }
@@ -693,6 +707,16 @@ public class MainActivity extends Activity implements TvClient.Listener, LgClien
         worker.execute(new Runnable() {
             public void run() {
                 ssdpLg();
+            }
+        });
+        // ريسيفرات الدش (تايجر وغيره) بتعلن عن نفسها على UDP 25860
+        worker.execute(new Runnable() {
+            public void run() {
+                GmsClient.listen(8000, new GmsClient.Found() {
+                    public void onFound(String ip, GmsClient.Info info) {
+                        foundTv(ip, info.model.isEmpty() ? "ريسيفر" : info.model, "rcv");
+                    }
+                });
             }
         });
         worker.execute(new Runnable() {
@@ -809,7 +833,8 @@ public class MainActivity extends Activity implements TvClient.Listener, LgClien
                         pool.execute(new Runnable() {
                             public void run() {
                                 String k = portOpen(ip, TvClient.REMOTE_PORT, 500) ? "atv"
-                                        : (portOpen(ip, LgClient.portWs, 400) || portOpen(ip, LgClient.portWss, 400)) ? "lg" : null;
+                                        : (portOpen(ip, LgClient.portWs, 400) || portOpen(ip, LgClient.portWss, 400)) ? "lg"
+                                        : portOpen(ip, GmsClient.PORT, 400) ? "rcv" : null;
                                 if (k == null) return;
                                 sleep(1500); // نستنى mDNS/SSDP يجيبوا الاسم الحقيقي
                                 boolean known = false;

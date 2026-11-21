@@ -3,6 +3,7 @@
 تطبيق أندرويد بيخلي الموبايل ريموت عن طريق الواي فاي لـ:
 - **شاومي Mi Box / Mi TV Stick / تليفزيونات شاومي** وأي جهاز **Android TV أو Google TV**.
 - **تليفزيونات LG الذكية (webOS)**.
+- **ريسيفرات الدش اللي بتشتغل مع G-MScreen** (تايجر، ستارسات، ميدياستار، جيانت…) عن طريق الواي فاي.
 
 ## التحميل
 **https://github.com/EngineerAhmedAbass/Test2/releases/download/remote-latest/TV-Remote.apk**
@@ -35,14 +36,19 @@
   مشفّر TLS بشهادة متخزنة في AndroidKeyStore (`TvClient.java`).
 - LG: **webOS SSAP** على WebSocket — بورت `3001` (wss) أو `3000` (ws)، والزراير على pointer input socket (`LgClient.java`, `Ws.java`).
   الاكتشاف بـ SSDP، والتشغيل وهو مقفول بـ Wake-on-LAN.
+- الريسيفر: بروتوكول **G-MScreen** — بيعلن عن نفسه على UDP `25860`، والتحكم على TCP `20000`
+  (رسايل `Start`+الطول+`End`+XML/JSON، والزرار `request="1040"`) (`GmsClient.java`).
 
 - `android/` — كود Java (`TvClient.java` هو البروتوكول، `MainActivity.java` الربط بالواجهة).
 - `public/` — الواجهة (HTML/CSS/JS) اللي بتتحط جوه الـ APK. تقدر تفتح `index.html` في المتصفح لتجربة الشكل.
 - `test/` — تليفزيون وهمي (`fake_tv.py`) بيتأكد إن الاقتران والزراير والكتابة شغالين:
   `remote/test/run.sh <مجلد androidtvremote2> <مجلد مؤقت>`
+- `test/fake_receiver.py` + `run_rcv.sh` — ريسيفر وهمي: `remote/test/run_rcv.sh <مجلد مؤقت> [--json] [--platform 30] [--full]`
 - `test/fake_lg.py` + `run_lg.sh` — تليفزيون LG وهمي: `remote/test/run_lg.sh <json.jar> <مجلد مؤقت> [--no-wss] [--reject-signed]`
 
 ## لو حاجة مش شغالة
+- **الريسيفر مش ظاهر**: لازم يكون متوصل بنفس الواي فاي، وجرّب تكتب الـ IP بتاعه (من إعدادات الشبكة في الريسيفر).
+  لو ظهر "الريسيفر متوصل بأجهزة كتير" اقفل تطبيق G-MScreen من الموبايلات التانية.
 - **LG مش بيوصل**: اتأكد إن التليفزيون مفتوح (مش Standby)، وإن في الإعدادات ← عام ← الأجهزة ← **LG Connect Apps** مفعّلة (في الموديلات القديمة).
 - **مش لاقي التليفزيون**: اكتب الـ IP بإيدك (الإعدادات ← الشبكة والإنترنت ← اسم الواي فاي). بعض الراوترات بتمنع الأجهزة تشوف بعض (AP isolation / شبكة الضيوف).
 - **الكود مش بيظهر**: في التليفزيون: الإعدادات ← التطبيقات ← تطبيقات النظام ← *Android TV Remote Service* ← حدّثه من Google Play أو امسح بياناته.
