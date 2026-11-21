@@ -50,9 +50,22 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release delete remote-latest --yes --cleanup-tag || true
+          # امسح أي نسخة قديمة بنفس الـ tag (حتى لو اتسابت draft)
+          for id in $(gh api "repos/${{ github.repository }}/releases?per_page=100" --jq '.[] | select(.tag_name=="remote-latest") | .id'); do
+            gh api -X DELETE "repos/${{ github.repository }}/releases/$id" || true
+          done
+          gh api -X DELETE "repos/${{ github.repository }}/git/refs/tags/remote-latest" || true
           gh release create remote-latest TV-Remote.apk version.json \
             --target "${{ github.sha }}" \
             --latest=false \
             --title "ريموت TV (نسخة ${{ github.run_number }})" \
             --notes "نزّل TV-Remote.apk وسطّبه على الموبايل، وخلي الموبايل والتليفزيون على نفس الواي فاي."
+          # أحيانًا GitHub بيسيبها draft — ننشرها ونتأكد
+          for i in 1 2 3 4 5; do
+            gh release edit remote-latest --draft=false || true
+            if curl -sfL -o /dev/null "https://github.com/${{ github.repository }}/releases/download/remote-latest/version.json"; then
+              echo "published"; exit 0
+            fi
+            sleep 5
+          done
+          echo "release is not public"; exit 1
