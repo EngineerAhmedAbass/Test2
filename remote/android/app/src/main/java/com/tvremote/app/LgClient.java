@@ -39,6 +39,8 @@ public class LgClient implements Remote {
     }
 
     static int portWss = 3001;
+    /** التليفزيونات الجديدة بترفض المانيفست الموقّع ("blacklisted certificate") — بنفتكر ده عشان مانضيعش وقت. */
+    static volatile boolean signedRejected;
     static int portWs = 3000;
 
     // زراير الريموت (أرقام KeyEvent بتاعة أندرويد) → أسماء زراير webOS
@@ -207,12 +209,13 @@ public class LgClient implements Remote {
     }
 
     private void register(Ws ws) throws IOException, JSONException {
-        boolean signed = true;
+        boolean signed = !signedRejected;
         for (int attempt = 0; attempt < 2; attempt++) {
             JSONObject res = call(ws, registration(signed, "register_" + attempt));
             if (res == null) throw new IOException("مفيش رد على التسجيل");
             log("register (" + (signed ? "signed" : "unsigned") + "): " + res.optString("type") + " " + res.optString("error"));
             if ("error".equals(res.optString("type")) && signed) {
+                signedRejected = true;
                 signed = false; // الـ firmware الجديد بيرفض المانيفست الموقّع
                 continue;
             }

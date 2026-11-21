@@ -75,6 +75,7 @@ public class MainActivity extends Activity implements TvClient.Listener, LgClien
     private volatile String hostName = "";
     private volatile int connectGen;
     private volatile boolean resumed;
+    private volatile long wakeUntil;   // بعد أمر التشغيل بنحاول نوصل بسرعة لحد ما التليفزيون يقوم
 
     private NsdManager nsd;
     private NsdManager.DiscoveryListener discovery;
@@ -455,7 +456,12 @@ public class MainActivity extends Activity implements TvClient.Listener, LgClien
                         fails++;
                         emit(obj("type", "status", "state", "offline", "host", h, "name", name, "msg", msg(e)));
                     }
-                    sleep(Math.min(8000, 700L * fails));
+                    if (System.currentTimeMillis() < wakeUntil) {
+                        fails = 0;
+                        sleep(1500);
+                    } else {
+                        sleep(Math.min(8000, 700L * fails));
+                    }
                 }
             }
         });
@@ -498,19 +504,25 @@ public class MainActivity extends Activity implements TvClient.Listener, LgClien
             emit(obj("type", "needMac"));
             return;
         }
+        wakeUntil = System.currentTimeMillis() + 60000;
+        emit(obj("type", "status", "state", "connecting", "host", h, "name", hostName));
         worker.execute(new Runnable() {
             public void run() {
                 int ok = 0;
-                for (String mac : macs.split(",")) {
-                    try {
-                        LgClient.wake(mac.trim(), h);
-                        onLgLog("wake sent to " + mac.trim());
-                        ok++;
-                    } catch (IOException e) {
-                        onLgLog("wake failed " + mac + ": " + e);
+                // بنكرر الأمر كام مرة: كارت الواي فاي وهو نايم ممكن يفوّت أول رسالة
+                for (int round = 0; round < 4; round++) {
+                    for (String mac : macs.split(",")) {
+                        try {
+                            LgClient.wake(mac.trim(), h);
+                            if (round == 0) onLgLog("wake sent to " + mac.trim());
+                            ok++;
+                        } catch (IOException e) {
+                            if (round == 0) onLgLog("wake failed " + mac + ": " + e);
+                        }
                     }
+                    if (round == 0) emit(obj("type", "error", "msg", ok > 0 ? "بنشغّل التليفزيون… بياخد حوالي 20 ثانية" : "معرفناش نبعت أمر التشغيل"));
+                    sleep(1500);
                 }
-                emit(obj("type", "error", "msg", ok > 0 ? "بنشغّل التليفزيون… استنى ثواني" : "معرفناش نبعت أمر التشغيل"));
             }
         });
     }
