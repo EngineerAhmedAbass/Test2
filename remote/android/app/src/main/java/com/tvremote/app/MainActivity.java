@@ -274,6 +274,12 @@ public class MainActivity extends Activity implements TvClient.Listener, LgClien
             send(new IoTask() { public void run(Remote c) throws IOException { if (c instanceof LgClient) ((LgClient) c).move(dx, dy); } });
         }
 
+        /** LG: id زي HDMI_1. */
+        @JavascriptInterface
+        public void switchInput(final String id) {
+            send(new IoTask() { public void run(Remote c) throws IOException { if (c instanceof LgClient) ((LgClient) c).switchInput(id); } });
+        }
+
         @JavascriptInterface
         public void click() {
             send(new IoTask() { public void run(Remote c) throws IOException { if (c instanceof LgClient) ((LgClient) c).click(); } });
@@ -582,6 +588,13 @@ public class MainActivity extends Activity implements TvClient.Listener, LgClien
             diag.add(t + "  " + line);
             while (diag.size() > 80) diag.removeFirst();
         }
+    }
+
+    @Override
+    public void onLgInputs(JSONArray inputs) {
+        try {
+            emit(new JSONObject().put("type", "inputs").put("list", inputs));
+        } catch (Exception ignored) { }
     }
 
     @Override

@@ -27,6 +27,8 @@ public class LgClient implements Remote {
         void onLgKey(String clientKey);
         void onLgMac(String mac);
         void onLgApps(JSONArray apps);
+        /** مصادر الدخل (HDMI...) اللي في التليفزيون. */
+        void onLgInputs(JSONArray inputs);
         /** سطر في سجل التشخيص (بيظهر في الإعدادات). */
         void onLgLog(String line);
     }
@@ -165,6 +167,7 @@ public class LgClient implements Remote {
             }
 
             send(ws, msg("subscribe", "sub_apps", "ssap://com.webos.applicationManager/listLaunchPoints", new JSONObject()));
+            send(ws, msg("subscribe", "sub_inputs", "ssap://tv/getExternalInputList", new JSONObject()));
             send(ws, msg("subscribe", "sub_vol", "ssap://audio/getVolume", new JSONObject()));
             send(ws, msg("subscribe", "sub_app", "ssap://com.webos.applicationManager/getForegroundAppInfo", new JSONObject()));
             send(ws, msg("subscribe", "sub_power", "ssap://com.webos.service.tvpower/power/getPowerState", new JSONObject()));
@@ -277,6 +280,25 @@ public class LgClient implements Remote {
             if (!state.isEmpty()) {
                 screenOn = "Active".equals(state);
                 listener.onPower(screenOn);
+            }
+        } else if ("sub_inputs".equals(id)) {
+            JSONArray dev = p.optJSONArray("devices");
+            if (dev != null) {
+                JSONArray out = new JSONArray();
+                for (int i = 0; i < dev.length(); i++) {
+                    JSONObject d = dev.optJSONObject(i);
+                    if (d == null) continue;
+                    try {
+                        out.put(new JSONObject()
+                                .put("id", d.optString("id"))
+                                .put("label", d.optString("label", d.optString("id")))
+                                .put("appId", d.optString("appId"))
+                                .put("connected", d.optBoolean("connected", false)));
+                    } catch (JSONException ignored) { }
+                }
+                events.onLgInputs(out);
+            } else {
+                log("inputs: " + m.toString());
             }
         } else if ("sub_apps".equals(id)) {
             JSONArray lp = p.optJSONArray("launchPoints");
@@ -531,6 +553,15 @@ public class LgClient implements Remote {
             } else {
                 request("ssap://system.launcher/launch", new JSONObject().put("id", link));
             }
+        } catch (JSONException e) {
+            throw new IOException(e);
+        }
+    }
+
+    /** تغيير المصدر (مثلًا HDMI_1). */
+    public void switchInput(String inputId) throws IOException {
+        try {
+            request("ssap://tv/switchInput", new JSONObject().put("inputId", inputId));
         } catch (JSONException e) {
             throw new IOException(e);
         }

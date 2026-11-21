@@ -36,7 +36,12 @@ if (!window.TV) {
           { id: 'shahid', title: 'Shahid', icon: '' }, { id: 'com.webos.app.livetv', title: 'Live TV', icon: '' },
           { id: 'com.webos.app.hdmi1', title: 'HDMI 1', icon: '' }, { id: 'com.webos.app.browser', title: 'Web Browser', icon: '' },
           { id: 'amazon', title: 'Prime Video', icon: '' }, { id: 'com.palm.app.settings', title: 'Settings', icon: '' }] }, d + 150);
-        fire({ type: 'app', pkg: 'netflix' }, d + 200);
+        fire({ type: 'app', pkg: 'com.webos.app.hdmi2' }, d + 200);
+        fire({ type: 'inputs', list: [
+          { id: 'HDMI_1', label: 'HDMI 1', appId: 'com.webos.app.hdmi1', connected: true },
+          { id: 'HDMI_2', label: 'PlayStation', appId: 'com.webos.app.hdmi2', connected: true },
+          { id: 'HDMI_3', label: 'HDMI 3', appId: 'com.webos.app.hdmi3', connected: false },
+          { id: 'HDMI_4', label: 'HDMI 4', appId: 'com.webos.app.hdmi4', connected: false }] }, d + 220);
         return;
       }
       if (!paired) return fire({ type: 'needPair', host, name }, 600);
@@ -55,6 +60,7 @@ if (!window.TV) {
     text(t) { console.log('text', t); }, launch(l) { console.log('launch', l); },
     getMac: () => '', setMac: (m) => /^([0-9a-f]{2}[:-]){5}[0-9a-f]{2}$/i.test(m.trim()),
     diagnostics: () => 'app 1.0.x • lg • 192.168.1.31\n16:20:01  main: wss:3001 OK\n16:20:01  buttons socket OK', share() {},
+    switchInput(id) { console.log('input', id); },
     pointer(dx, dy) { console.log('pointer', dx, dy); }, click() { console.log('click'); }, scroll() {}, kind: () => state.kind,
     vibrate() {}, setVibrate() {}, getVibrate: () => true, resetIdentity() {},
     setBars() {}, appVersion: () => '1.0.1',
@@ -63,7 +69,7 @@ if (!window.TV) {
   };
 }
 
-const state = { host: '', name: '', kind: '', connected: false, sheet: null, ready: false, tvApps: [] };
+const state = { host: '', name: '', kind: '', connected: false, sheet: null, ready: false, tvApps: [], tvInputs: [] };
 
 /* ----------------------------------------------------------- رسايل Java */
 window.onTv = (e) => {
@@ -86,6 +92,10 @@ window.onTv = (e) => {
       if (state.sheet !== 'pairSheet') openLgPrompt();
       $('#pairMsg').textContent = '';
       $('#pairErr').textContent = (e.msg || 'التليفزيون رفض') + ' — اضغط "جرّب تاني" ووافق على التليفزيون.';
+      break;
+    case 'inputs':
+      state.tvInputs = e.list || [];
+      if (state.sheet === 'inputSheet') renderInputs();
       break;
     case 'apps':
       state.tvApps = e.list || [];
@@ -265,7 +275,7 @@ function setKind(kind) {
   document.body.classList.toggle('kind-lg', kind === 'lg');
   $('#padHint').textContent = kind === 'lg' ? 'حرّك صباعك = ماوس • دوسة = كليك • صباعين = سكرول' : 'اسحب للتنقل • دوسة = OK';
   $('#repairBtn').hidden = kind === 'lg';
-  if (kind !== 'lg') state.tvApps = [];
+  if (kind !== 'lg') { state.tvApps = []; state.tvInputs = []; }
 }
 
 function show(id) {
@@ -513,6 +523,33 @@ const PKG_NAMES = {
   'com.webos.app.hdmi1': 'HDMI 1', 'com.webos.app.hdmi2': 'HDMI 2', 'com.webos.app.hdmi3': 'HDMI 3', 'com.webos.app.browser': 'المتصفح',
   'com.palm.app.settings': 'الإعدادات', 'youtube.leanback.v4': 'YouTube', 'netflix': 'Netflix', 'amazon': 'Prime Video', 'org.videolan.vlc': 'VLC', 'com.disney.disneyplus': 'Disney+',
 };
+/* ------------------------------------------------------------- المصادر */
+function renderInputs() {
+  const grid = $('#inputGrid');
+  grid.innerHTML = '';
+  let list;
+  if (state.kind === 'lg') {
+    if (!state.tvInputs.length) {
+      grid.innerHTML = '<p class="muted small">بنجيب المصادر من التليفزيون…</p>';
+      return;
+    }
+    list = state.tvInputs.map(i => ({ label: i.label || i.id, sub: i.connected ? 'متوصل بيه جهاز' : 'مفيش جهاز', on: i.connected,
+      active: state.curApp && state.curApp === i.appId, go: () => TV.switchInput(i.id) }));
+  } else {
+    // Android TV: مفاتيح HDMI المباشرة (تليفزيونات شاومي)؛ أجهزة زي Mi Box مالهاش مداخل
+    list = [1, 2, 3, 4].map(n => ({ label: 'HDMI ' + n, sub: '', on: true, active: false, go: () => TV.key(242 + n) }));
+  }
+  list.forEach(i => {
+    const b = document.createElement('button');
+    b.className = 'input' + (i.active ? ' active' : '') + (i.on ? '' : ' off');
+    b.innerHTML = '<svg><use href="#i-input"/></svg><span><b></b><small></small></span>';
+    $('b', b).textContent = i.label;
+    $('small', b).textContent = i.active ? 'شغال دلوقتي' : i.sub;
+    b.onclick = () => { buzz(); i.go(); closeSheet(); toast('بيغيّر لـ ' + i.label + '…'); };
+    grid.appendChild(b);
+  });
+}
+
 function appLabel(pkg) {
   const tvApp = state.tvApps.find(a => a.id === pkg);
   if (tvApp) return '▶ ' + tvApp.title;
@@ -601,6 +638,7 @@ function openSheet(id) {
   $('#' + id).classList.add('show');
   $('#scrim').classList.add('show');
   if (id === 'appsSheet') renderApps();
+  if (id === 'inputSheet') renderInputs();
   if (id === 'settingsSheet') {
     $('#vibrateChk').checked = !!TV.getVibrate();
     $('#tvActions').hidden = !state.host;

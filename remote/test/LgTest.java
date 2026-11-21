@@ -24,6 +24,7 @@ public class LgTest {
             public void onLgPrompt() { prompts++; System.out.println("prompt on TV"); }
             public void onLgKey(String k) { key = k; System.out.println("key " + k); }
             public void onLgMac(String mac) { System.out.println("mac " + mac); }
+            public void onLgInputs(JSONArray in) { System.out.println("inputs " + in.length() + " " + in.optJSONObject(1).optString("label") + " connected=" + in.optJSONObject(1).optBoolean("connected")); }
             public void onLgLog(String line) { System.out.println("log: " + line); }
             public void onLgApps(JSONArray apps) { System.out.println("apps " + apps.length() + " " + apps.optJSONObject(0).optString("title")); status.countDown(); }
         };
@@ -53,6 +54,7 @@ public class LgTest {
         tv.sendKey(67, TvClient.SHORT);
         tv.sendKey(66, TvClient.SHORT);
         tv.launch("lg:netflix");
+        tv.switchInput("HDMI_2");
         tv.move(12, -5);
         tv.click();
         tv.sendKey(26, TvClient.SHORT);

@@ -457,3 +457,18 @@ h3 { font-size: 14px; margin: 16px 0 10px; color: var(--muted); font-weight: 600
 }
 
 .wol .ip-row input { text-align: left; font-family: ui-monospace, monospace; }
+
+/* ---------- المصادر ---------- */
+.inputs { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.input {
+  display: flex; align-items: center; gap: 10px; padding: 12px; border-radius: 16px; text-align: start;
+  background: var(--panel-2); border: 2px solid transparent; box-shadow: var(--raise);
+}
+.input svg { color: var(--accent); width: 26px; height: 26px; }
+.input span { display: flex; flex-direction: column; min-width: 0; }
+.input b { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.input small { color: var(--muted); font-size: 11.5px; }
+.input.active { border-color: var(--accent); }
+.input.off { opacity: .55; }
+.input:active { transform: scale(.97); }
+.tabs button { gap: 6px; font-size: 13px; padding: 0 4px; }
