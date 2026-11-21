@@ -18,11 +18,11 @@ public class MainActivity extends Activity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
-        getWindow().setStatusBarColor(Color.rgb(0x22, 0x12, 0x2a));
-        getWindow().setNavigationBarColor(Color.rgb(0x22, 0x12, 0x2a));
+        getWindow().setStatusBarColor(Color.rgb(0x06, 0x2a, 0x20));
+        getWindow().setNavigationBarColor(Color.rgb(0x06, 0x2a, 0x20));
 
         web = new WebView(this);
-        web.setBackgroundColor(Color.rgb(0x22, 0x12, 0x2a));
+        web.setBackgroundColor(Color.rgb(0x06, 0x2a, 0x20));
         WebSettings s = web.getSettings();
         s.setJavaScriptEnabled(true);
         s.setDomStorageEnabled(true);
