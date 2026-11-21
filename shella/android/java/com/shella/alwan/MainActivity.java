@@ -26,7 +26,7 @@ public class MainActivity extends Activity {
         WebSettings s = web.getSettings();
         s.setJavaScriptEnabled(true);
         s.setDomStorageEnabled(true);
-        s.setMediaPlaybackRequiresUserGesture(true);
+        s.setMediaPlaybackRequiresUserGesture(false); // lets the turn chime play without a tap first
         s.setTextZoom(100);
         web.setWebViewClient(new WebViewClient());
         web.addJavascriptInterface(new Bridge(this), "Android");

@@ -286,7 +286,10 @@ function mutate(fn){
   const s=JSON.parse(JSON.stringify(room));
   const out=fn(s);if(!out)return false;
   out.rev=(room.rev||0)+1;out.by=myId;out.updatedAt=Date.now();
-  room=out;publish(out);render();return true;
+  const wasMine=room.status==="playing"&&room.players[room.turn]?.id===myId;
+  room=out;publish(out);
+  if(out.status==="playing"&&out.players[out.turn]?.id===myId&&!wasMine)buzz();
+  render();return true;
 }
 function onState(code,payload){
   if(code!==roomCode)return;
@@ -345,7 +348,27 @@ function createRoom(){
 }
 
 /* ---------- UI ---------- */
-function buzz(){try{native&&native.vibrate?native.vibrate(150):navigator.vibrate&&navigator.vibrate(150)}catch(e){}}
+// Turn chime, synthesized with Web Audio (no sound files needed).
+let actx=null,soundOn=store.get("shella.sound")!=="0";
+function audio(){
+  try{
+    if(!actx){const A=window.AudioContext||window.webkitAudioContext;if(!A)return null;actx=new A()}
+    if(actx.state==="suspended")actx.resume().catch(()=>{});
+    return actx;
+  }catch(e){return null}
+}
+document.addEventListener("pointerdown",()=>audio(),{once:true});
+function chime(){
+  if(!soundOn)return;const a=audio();if(!a)return;
+  const t=a.currentTime+0.02;
+  [[784,0],[1046.5,0.13],[1318.5,0.26]].forEach(([f,d])=>{
+    const o=a.createOscillator(),g=a.createGain();
+    o.type="triangle";o.frequency.value=f;
+    g.gain.setValueAtTime(0.0001,t+d);g.gain.exponentialRampToValueAtTime(0.4,t+d+0.02);g.gain.exponentialRampToValueAtTime(0.0001,t+d+0.5);
+    o.connect(g);g.connect(a.destination);o.start(t+d);o.stop(t+d+0.55);
+  });
+}
+function buzz(){chime();try{native&&native.vibrate?native.vibrate(150):navigator.vibrate&&navigator.vibrate(150)}catch(e){}}
 let toastT;function toast(t){let el=$("toast");if(!el){el=document.createElement("div");el.id="toast";el.className="toast";el.setAttribute("role","status");document.body.appendChild(el)}el.textContent=t;el.hidden=false;clearTimeout(toastT);toastT=setTimeout(()=>el.hidden=true,2600)}
 function netNotice(){
   if(typeof mqtt==="undefined")return `<div class="notice">في مشكلة في تحميل اللعبة. اقفل التطبيق وافتحه تاني.</div>`;
@@ -415,7 +438,7 @@ function gameHTML(){
   const status=s.status!=="playing"?"":myTurn?(s.drew?"نزّل الكارت اللي سحبته أو عدّي":!hand.some(c=>canPlay(c,s))&&(s.draws||0)<2?(s.draws?"لسه معاكش لعب… بنسحبلك كمان واحدة":"معاكش لعب… بنسحبلك كارت"):"دورك!"):"دور "+esc(cur.name);
   const handHTML=meIn?sorted.map(c=>{const ok=myTurn&&canPlay(c,s)&&(!s.drew||c===s.drawn);return cardHTML(c,ok?"ok":"",`type="button" data-card="${c}" aria-label="${esc(cardName(c))}"`)}).join("")
     :`<p class="muted" style="margin:auto;padding:20px">${(s.waiting||[]).some(p=>p.id===myId)?"إنت داخل الجولة الجاية — اتفرج دلوقتي":"إنت بتتفرج"}</p>`;
-  return `<div class="topbar"><button class="btn small" data-act="leave">خروج</button><span class="code-pill">${esc(s.code)}</span><span class="dir">${online?"":'<b style="color:var(--danger)">مفيش نت · </b>'}${s.dir===1?"↻":"↺"} الاتجاه</span></div>
+  return `<div class="topbar"><button class="btn small" data-act="leave">خروج</button><span class="code-pill">${esc(s.code)}</span><button class="btn small" data-act="sound" aria-pressed="${soundOn}" aria-label="${soundOn?"اقفل الصوت":"شغّل الصوت"}">${soundOn?"🔔":"🔕"}</button><span class="dir">${online?"":'<b style="color:var(--danger)">مفيش نت · </b>'}${s.dir===1?"↻":"↺"} الاتجاه</span></div>
     <div class="seats" role="list">${seats}</div>
     <div class="table">
       <div class="statusline ${myTurn?"mine":""}" aria-live="polite">${status}</div>
@@ -532,6 +555,7 @@ function act(a){
   if(a==="draw"){mutate(s=>ops.draw(s,myId));return}
   if(a==="pass"){mutate(s=>ops.pass(s,myId));return}
   if(a==="one"){saidOne=!saidOne;render();return}
+  if(a==="sound"){soundOn=!soundOn;store.set("shella.sound",soundOn?"1":"0");toast(soundOn?"الصوت اشتغل":"الصوت اتقفل");if(soundOn)chime();render();return}
   if(a==="sayone"){mutate(s=>ops.sayOne(s,myId));return}
   if(a==="catch"){mutate(s=>ops.catchOne(s,myId));return}
   if(a==="skip"){mutate(s=>ops.skip(s,myId));return}
