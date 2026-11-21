@@ -837,7 +837,27 @@
       subs: (r.roster || []).filter((p) => !p.starter).map((p) => ({ no: p.jersey, name: p.athlete?.displayName, in: !!p.subbedIn, id: p.athlete?.id })),
       tid: r.team?.id, slug,
     })).filter((r) => r.xi.length);
-    return { fx, events, stats, lineups, notStarted: fx?.st === 'NS' };
+    const esTeam = (t) => ({ key: 'es:' + t?.id, name: t?.shortDisplayName || t?.displayName || '', logo: t?.logo || t?.logos?.[0]?.href || '' });
+    const last5 = (j.lastFiveGames || []).map((x) => {
+      const me = esTeam(x.team);
+      return {
+        team: { ...me, logo: me.logo || (comp?.competitors || []).find((c) => c.team?.id === x.team?.id)?.team?.logos?.[0]?.href || '' },
+        games: (x.events || []).map((e) => {
+          const op = { ...esTeam(e.opponent), logo: e.opponentLogo || e.opponent?.logo || '' };
+          const meHome = String(e.homeTeamId) === String(x.team?.id);
+          return { ts: Date.parse(e.gameDate), h: meHome ? me : op, a: meHome ? op : me, g: [Number(e.homeTeamScore) || 0, Number(e.awayTeamScore) || 0], res: e.gameResult || '', lg: e.leagueAbbreviation || e.leagueName || '' };
+        }).sort((a, b) => b.ts - a.ts),
+      };
+    }).sort((a, b) => (a.team.key === fx?.h?.key ? -1 : b.team.key === fx?.h?.key ? 1 : 0));
+    const h2h = (j.seasonseries || []).filter((x) => x.type === 'head-to-head').flatMap((x) => x.events || [])
+      .filter((e) => e.statusType?.completed !== false && (e.competitors || []).length === 2)
+      .map((e) => {
+        const H = e.competitors.find((c) => c.homeAway === 'home') || e.competitors[0];
+        const A = e.competitors.find((c) => c !== H);
+        return { ts: Date.parse(e.date), h: esTeam(H.team), a: esTeam(A.team), g: [scoreNum(H.score), scoreNum(A.score)], lg: e.competitionName || '' };
+      }).filter((e) => e.ts && e.ts < (fx?.ts || Infinity)).sort((a, b) => b.ts - a.ts).slice(0, 5);
+    const info = { attendance: Number(j.gameInfo?.attendance) || 0, country: j.gameInfo?.venue?.address?.country || '', last5, h2h };
+    return { fx, events, stats, lineups, info, notStarted: fx?.st === 'NS' };
   }
 
   // ---- API-Football → شكل موحّد ----
@@ -883,7 +903,7 @@
       xi: (t.startXI || []).map((p) => ({ no: p.player.number, name: p.player.name, pos: p.player.pos || '', grid: p.player.grid || '' })),
       subs: (t.substitutes || []).map((p) => ({ no: p.player.number, name: p.player.name })),
     }));
-    return { fx, events, stats, lineups, notStarted: fx.st === 'NS' };
+    return { fx, events, stats, lineups, info: { attendance: 0, country: f.fixture.venue?.country || '', last5: [], h2h: [] }, notStarted: fx.st === 'NS' };
   }
 
   // ---- العرض ----
@@ -922,13 +942,15 @@
   let matchTab = 'events';
   function renderMatch(d) {
     const body = $('#match-body');
-    const tabs = [['events', tr("الأحداث")], ['stats', tr("الإحصائيات")], ['lineups', tr("التشكيل")]];
+    const tabs = [['events', tr("الأحداث")], ['info', tr("التفاصيل")], ['stats', tr("الإحصائيات")], ['lineups', tr("التشكيل")]];
     body.innerHTML = header(d.fx) + `<div class="tabs">${tabs.map(([k, l]) => `<button type="button" class="tab${k === matchTab ? ' active' : ''}" data-tab="${k}">${l}</button>`).join('')}</div><div class="pane"></div>`;
     bindStars(body);
     const pane = $('.pane', body);
     const draw = () => {
       $$('.tab', body).forEach((t) => t.classList.toggle('active', t.dataset.tab === matchTab));
-      pane.innerHTML = matchTab === 'events' ? eventsHtml(d) : matchTab === 'stats' ? statsHtml(d) : lineupsHtml(d);
+      pane.innerHTML = matchTab === 'events' ? eventsHtml(d) : matchTab === 'info' ? infoHtml(d) : matchTab === 'stats' ? statsHtml(d) : lineupsHtml(d);
+      const lgRow = $('.info-row[data-open-league]', pane);
+      if (lgRow) lgRow.onclick = () => openLeagueTable(d.fx.lg);
     };
     $$('.tab', body).forEach((t) => (t.onclick = () => { matchTab = t.dataset.tab; draw(); }));
     draw();
@@ -947,6 +969,43 @@
       return `<div class="ev">${e.side === 'h' ? side : '<div></div>'}<div class="min">${esc(e.min)}</div>${e.side === 'h' ? '<div></div>' : side}</div>`;
     }).join('');
   }
+  // ---- تفاصيل الماتش: البطولة والملعب والحكم والميعاد وآخر النتايج ----
+  function infoHtml(d) {
+    const f = d.fx;
+    const I = d.info || {};
+    const row = (label, value, extra = '') => (value ? `<div class="info-row"${extra}><span class="k">${label}</span><span class="v">${value}</span>${extra ? '<span class="chev" aria-hidden="true"></span>' : ''}</div>` : '');
+    const dt = new Date(f.ts);
+    const off = -dt.getTimezoneOffset() / 60;
+    const gmt = `<span dir="ltr">(GMT${off >= 0 ? '+' : ''}${Number.isInteger(off) ? off : off.toFixed(1)})</span>`;
+    const date = `${dt.toLocaleDateString(LOC, { weekday: 'long' })} <span dir="ltr">(${String(dt.getDate()).padStart(2, '0')}-${String(dt.getMonth() + 1).padStart(2, '0')}-${dt.getFullYear()})</span>`;
+    const place = [f.ven, f.city].filter(Boolean).map(esc).join(tr("، "));
+    let html = `<div class="info-title">${tr("معلومات اللقاء")}</div><div class="info-list">
+      ${row(tr("البطولة"), `${imgTag(f.lg.logo)}${esc(leagueName(f.lg))}`, ' data-open-league role="button" tabindex="0"')}
+      ${row(tr("الدور"), f.lg.round ? esc(roundName(f.lg.round)) : '')}
+      ${row(tr("ملعب المباراة"), place)}
+      ${row(tr("حكم المباراة"), esc(f.ref || ''))}
+      ${row(tr("الحضور"), I.attendance ? `${I.attendance.toLocaleString(LOC)} ${tr("متفرج")}` : '')}
+      ${row(tr("وقت المباراة"), `<span dir="ltr">${hhmm(f.ts)}</span> ${gmt}`)}
+      ${row(tr("تاريخ المباراة"), date)}
+    </div>`;
+    const game = (g, me) => {
+      const res = g.res || (me ? (g.g[0] === g.g[1] ? 'D' : (g.g[0] > g.g[1]) === (g.h.key === me) ? 'W' : 'L') : '');
+      return `<div class="info-game">
+        <div class="ig-date" dir="ltr">${esc(dt2(g.ts))}</div>
+        <div class="ig-team${g.h.key === me ? ' me' : ''}"><span>${esc(tname(g.h))}</span>${imgTag(g.h.logo)}</div>
+        <div class="ig-score">${scoreTxt(g.g)}</div>
+        <div class="ig-team away${g.a.key === me ? ' me' : ''}">${imgTag(g.a.logo)}<span>${esc(tname(g.a))}</span></div>
+        ${me && res ? `<i class="res ${res}">${res === 'W' ? tr("ف") : res === 'D' ? tr("ت") : tr("خ")}</i>` : '<i></i>'}
+      </div>`;
+    };
+    if (I.h2h?.length) html += `<div class="info-title">${tr("المواجهات المباشرة")}</div><div class="info-list">${I.h2h.map((g) => game(g, null)).join('')}</div>`;
+    for (const t of I.last5 || []) {
+      if (!t.games.length) continue;
+      html += `<div class="info-title">${imgTag(t.team.logo)}${tr("آخر ماتشات")} ${esc(tname(t.team))}</div><div class="info-list">${t.games.map((g) => game(g, t.team.key)).join('')}</div>`;
+    }
+    return html;
+  }
+  const dt2 = (ts) => { const x = new Date(ts); return `${String(x.getDate()).padStart(2, '0')}/${String(x.getMonth() + 1).padStart(2, '0')}/${String(x.getFullYear()).slice(2)}`; };
   function statsHtml(d) {
     if (!d.stats.length) return `<div class="note">${d.notStarted ? tr("الإحصائيات بتظهر لما الماتش يبدأ.") : tr("مفيش إحصائيات للماتش ده.")}</div>`;
     return d.stats.map((s) => {
