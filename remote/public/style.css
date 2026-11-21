@@ -431,3 +431,20 @@ h3 { font-size: 14px; margin: 16px 0 10px; color: var(--muted); font-weight: 600
 [data-theme="material"] .tabs button:first-child { background: #4a3b6b; }
 [data-theme="material"] .power { background: #4d2532; color: #ffb3c1; }
 .sheet-actions.col .btn { flex: none; }
+
+/* ---------- LG ---------- */
+.dev .meta em { font-style: normal; font-size: 11px; font-weight: 700; align-self: flex-start; padding: 2px 8px; border-radius: 6px; margin-top: 2px; background: var(--bg); color: var(--muted); }
+.dev .meta em.lg { color: #fff; background: #a50034; }
+.dev .meta em.atv { color: var(--accent); }
+.lg-allow { display: none; }
+.lg-mode .code-boxes, .lg-mode .hexpad { display: none; }
+.lg-mode .lg-allow {
+  display: flex; align-items: center; justify-content: center; gap: 12px; margin: 22px auto 10px; padding: 16px 20px; width: max-content;
+  border-radius: 18px; background: var(--bg); border: 1px solid var(--line); font-weight: 700;
+}
+.lg-allow svg { width: 34px; height: 34px; color: var(--accent); }
+.lg-allow b { background: var(--accent); color: var(--on-accent); padding: 6px 14px; border-radius: 10px; animation: pulse 1.2s ease-in-out infinite; }
+@keyframes pulse { 50% { transform: scale(1.12); } }
+.app i.has-img { background: #fff !important; overflow: hidden; }
+.app i img { width: 100%; height: 100%; object-fit: cover; }
+.kind-lg .add-app { display: none; }

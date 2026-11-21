@@ -27,7 +27,7 @@ import javax.net.ssl.X509TrustManager;
  *   - بورت 6466: الريموت نفسه (زراير، كتابة، فتح تطبيقات، الصوت).
  * الكلاس ده Java عادي من غير أي حاجة من أندرويد، عشان يتجرب على الكمبيوتر كمان.
  */
-public class TvClient {
+public class TvClient implements Remote {
 
     public static final int REMOTE_PORT = 6466;
     public static final int PAIRING_PORT = 6467;
@@ -243,6 +243,7 @@ public class TvClient {
      * بيوصل بالريموت ويفضل يقرا الرسايل لحد ما الاتصال يقفل (الدالة دي بتفضل شغالة — شغّلها في Thread).
      * لو الجهاز محتاج اقتران بترمي NeedsPairingException قبل ما توصل.
      */
+    @Override
     public void runRemote(String host) throws IOException {
         SSLSocket s;
         try {
@@ -328,10 +329,12 @@ public class TvClient {
         }
     }
 
+    @Override
     public boolean isConnected() {
         return remoteOut != null;
     }
 
+    @Override
     public void disconnect() {
         SSLSocket s = remoteSocket;
         if (s != null) {
@@ -347,11 +350,13 @@ public class TvClient {
     }
 
     /** keyCode = أرقام KeyEvent بتاعة أندرويد (مثلًا 19 فوق، 23 OK، 4 رجوع، 3 هوم). */
+    @Override
     public void sendKey(int keyCode, int direction) throws IOException {
         sendRemote(new Proto.Writer().msg(10, new Proto.Writer().varint(1, keyCode).varint(2, direction)));
     }
 
     /** بيكتب نص في الخانة اللي عليها الفوكس في التليفزيون. */
+    @Override
     public void sendText(String text) throws IOException {
         if (text == null || text.isEmpty()) return;
         int len = text.length();
@@ -362,6 +367,7 @@ public class TvClient {
     }
 
     /** بيفتح تطبيق برابط (مثلًا https://www.youtube.com أو market://launch?id=com.netflix.ninja). */
+    @Override
     public void launch(String link) throws IOException {
         sendRemote(new Proto.Writer().msg(90, new Proto.Writer().string(1, link)));
     }

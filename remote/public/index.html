@@ -44,7 +44,7 @@
     <div class="logo"><svg><use href="#i-tv"/></svg></div>
     <div>
       <h1>ريموت التليفزيون</h1>
-      <p class="sub">لأجهزة شاومي Mi Box و Mi TV Stick وأي Android TV / Google TV</p>
+      <p class="sub">شاومي Mi Box و Mi TV Stick، تليفزيونات LG، وأي Android TV / Google TV</p>
     </div>
     <button class="round" id="devSettingsBtn" aria-label="التصميم والإعدادات"><svg><use href="#i-palette"/></svg></button>
   </header>
@@ -78,10 +78,11 @@
     <ol>
       <li>الموبايل والتليفزيون لازم يكونوا على <b>نفس الواي فاي</b>.</li>
       <li>اختار التليفزيون من اللستة.</li>
-      <li>أول مرة بس: هيظهر <b>كود من 6 حروف</b> على شاشة التليفزيون، اكتبه هنا.</li>
+      <li>أول مرة بس: في شاومي/Android TV هيظهر <b>كود من 6 حروف</b> اكتبه هنا، وفي LG هتظهر رسالة <b>«سماح؟»</b> وافق عليها بريموت التليفزيون.</li>
       <li>خلاص! بعد كده البرنامج بيوصل لوحده.</li>
     </ol>
     <p class="muted small">زراير الصوت في الموبايل بتعلّي وتوطّي صوت التليفزيون.</p>
+    <p class="muted small">LG: عشان تشغّل التليفزيون من الموبايل وهو مقفول، فعّل في التليفزيون: الإعدادات ← عام ← الأجهزة ← <b>التشغيل عن طريق Wi-Fi</b> (أو Mobile TV On).</p>
     <p class="muted small">لو مفيش كود ظهر: في التليفزيون افتح الإعدادات ← التطبيقات ← تطبيقات النظام ← <span dir="ltr">Android TV Remote Service</span> واعمله تحديث أو امسح بياناته.</p>
   </details>
 </section>
@@ -111,7 +112,7 @@
       <button class="ok" data-key="23" data-long aria-label="OK">OK</button>
     </div>
     <div class="touchpad" id="touchpad" hidden>
-      <span class="hint">اسحب للتنقل • دوسة = OK</span>
+      <span class="hint" id="padHint">اسحب للتنقل • دوسة = OK</span>
       <span class="ripple" id="ripple"></span>
     </div>
     <button class="mode-toggle" id="modeToggle" aria-label="تبديل لوحة اللمس"><svg><use href="#i-pad"/></svg></button>
@@ -159,7 +160,8 @@
 
 <div class="sheet" id="pairSheet" role="dialog" aria-modal="true">
   <div class="grab"></div>
-  <h2>اكتب الكود اللي ظاهر على التليفزيون</h2>
+  <h2 id="pairTitle">اكتب الكود اللي ظاهر على التليفزيون</h2>
+  <div class="lg-allow" aria-hidden="true"><svg><use href="#i-tv"/></svg><span>سماح؟</span><b>OK</b></div>
   <p class="muted" id="pairMsg">بنطلب الكود من التليفزيون…</p>
   <div class="code-boxes" id="codeBoxes" dir="ltr"></div>
   <div class="hexpad" id="hexpad" dir="ltr"></div>

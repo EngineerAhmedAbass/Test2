@@ -51,7 +51,7 @@ import java.util.concurrent.TimeUnit;
  * ريموت للتليفزيون: الواجهة HTML (من remote/public) جوه WebView،
  * والاتصال بالتليفزيون من هنا (TvClient) عن طريق الواي فاي.
  */
-public class MainActivity extends Activity implements TvClient.Listener {
+public class MainActivity extends Activity implements TvClient.Listener, LgClient.Events {
 
     private static final String SERVICE = "_androidtvremote2._tcp.";
     // آخر نسخة بتترفع هنا من GitHub Actions (remote-android.yml)
@@ -68,7 +68,9 @@ public class MainActivity extends Activity implements TvClient.Listener {
     private final ExecutorService sender = Executors.newSingleThreadExecutor();
     private final ExecutorService worker = Executors.newCachedThreadPool();
 
-    private TvClient tv;
+    private TvClient tv;                 // Android TV / Google TV (شاومي)
+    private volatile Remote remote;      // التليفزيون اللي متوصلين بيه دلوقتي (TvClient أو LgClient)
+    private volatile String kind = "";   // "atv" أو "lg"
     private volatile String host;
     private volatile String hostName = "";
     private volatile int connectGen;
@@ -175,15 +177,15 @@ public class MainActivity extends Activity implements TvClient.Listener {
         }
 
         @JavascriptInterface
-        public void connect(String h, String name) {
-            startConnect(h.trim(), name == null || name.isEmpty() ? h.trim() : name);
+        public void connect(String h, String name, String k) {
+            startConnect(h.trim(), name == null || name.isEmpty() ? h.trim() : name, k == null ? "" : k);
         }
 
         @JavascriptInterface
         public void disconnect() {
             connectGen++;
             host = null;
-            final TvClient c = tv;
+            final Remote c = remote;
             if (c != null) worker.execute(new Runnable() { public void run() { c.disconnect(); } });
         }
 
@@ -205,6 +207,10 @@ public class MainActivity extends Activity implements TvClient.Listener {
             final TvClient c = tv;
             if (h == null || h.isEmpty() || c == null) return;
             connectGen++; // وقف محاولات الاتصال لحد ما الاقتران يخلص
+            Remote old = remote;
+            if (old != null && old != c) old.disconnect();
+            remote = c;
+            kind = "atv";
             host = h;
             hostName = name == null || name.isEmpty() ? h : name;
             if (c.isConnected()) c.disconnect();
@@ -230,7 +236,7 @@ public class MainActivity extends Activity implements TvClient.Listener {
                         c.finishPairing(code);
                         emit(obj("type", "paired"));
                         String h = host;
-                        if (h != null) startConnect(h, hostName);
+                        if (h != null) startConnect(h, hostName, "atv");
                     } catch (TvClient.WrongCodeException e) {
                         emit(obj("type", "pairError", "msg", e.getMessage(), "retry", "1"));
                     } catch (IOException e) {
@@ -253,17 +259,43 @@ public class MainActivity extends Activity implements TvClient.Listener {
 
         @JavascriptInterface
         public void keyDir(final int code, final int dir) {
-            send(new IoTask() { public void run(TvClient c) throws IOException { c.sendKey(code, dir); } });
+            Remote r = remote;
+            if (code == 26 && "lg".equals(kind) && (r == null || !r.isConnected())) {
+                wakeLg(); // LG مقفول: نشغله بالواي فاي
+                return;
+            }
+            send(new IoTask() { public void run(Remote c) throws IOException { c.sendKey(code, dir); } });
+        }
+
+        /** الماوس في تليفزيونات LG. */
+        @JavascriptInterface
+        public void pointer(final int dx, final int dy) {
+            send(new IoTask() { public void run(Remote c) throws IOException { if (c instanceof LgClient) ((LgClient) c).move(dx, dy); } });
+        }
+
+        @JavascriptInterface
+        public void click() {
+            send(new IoTask() { public void run(Remote c) throws IOException { if (c instanceof LgClient) ((LgClient) c).click(); } });
+        }
+
+        @JavascriptInterface
+        public void scroll(final int dx, final int dy) {
+            send(new IoTask() { public void run(Remote c) throws IOException { if (c instanceof LgClient) ((LgClient) c).scroll(dx, dy); } });
+        }
+
+        @JavascriptInterface
+        public String kind() {
+            return kind;
         }
 
         @JavascriptInterface
         public void text(final String t) {
-            send(new IoTask() { public void run(TvClient c) throws IOException { c.sendText(t); } });
+            send(new IoTask() { public void run(Remote c) throws IOException { c.sendText(t); } });
         }
 
         @JavascriptInterface
         public void launch(final String link) {
-            send(new IoTask() { public void run(TvClient c) throws IOException { c.launch(link); } });
+            send(new IoTask() { public void run(Remote c) throws IOException { c.launch(link); } });
         }
 
         @JavascriptInterface
@@ -299,11 +331,11 @@ public class MainActivity extends Activity implements TvClient.Listener {
     }
 
     private interface IoTask {
-        void run(TvClient c) throws IOException;
+        void run(Remote c) throws IOException;
     }
 
     private void send(final IoTask task) {
-        final TvClient c = tv;
+        final Remote c = remote;
         if (c == null || !c.isConnected()) {
             emit(obj("type", "notConnected"));
             return;
@@ -321,20 +353,40 @@ public class MainActivity extends Activity implements TvClient.Listener {
 
     // ------------------------------------------------------- Connection loop
 
-    private void startConnect(final String h, final String name) {
-        final TvClient c = tv;
-        if (c == null) {
-            emit(obj("type", "error", "msg", "استنى ثانية والبرنامج بيجهز…"));
-            return;
-        }
+    private void startConnect(final String h, final String name, final String wantKind) {
         final int gen = ++connectGen;
-        String old = host;
         host = h;
         hostName = name;
-        remember(h, name);
-        if (old != null && c.isConnected()) c.disconnect();
+        Remote old = remote;
+        if (old != null && old.isConnected()) old.disconnect();
         worker.execute(new Runnable() {
             public void run() {
+                // لو مش عارفين نوع التليفزيون (IP مكتوب بالإيد) بنشوف البورتات المفتوحة
+                String k = wantKind;
+                if (k.isEmpty()) k = savedKind(h);
+                if (k.isEmpty()) {
+                    emit(obj("type", "status", "state", "connecting", "host", h, "name", name));
+                    k = probe(h);
+                }
+                if (gen != connectGen) return;
+                if (k.isEmpty()) {
+                    emit(obj("type", "status", "state", "offline", "host", h, "name", name, "msg", "مش لاقي تليفزيون على " + h));
+                    k = "atv";
+                }
+                final Remote c;
+                if ("lg".equals(k)) {
+                    c = new LgClient(prefs.getString("lgkey:" + h, null), MainActivity.this, MainActivity.this);
+                } else {
+                    c = tv;
+                    if (c == null) {
+                        emit(obj("type", "error", "msg", "استنى ثانية والبرنامج بيجهز…"));
+                        return;
+                    }
+                }
+                kind = k;
+                remote = c;
+                remember(h, name, k);
+                emit(obj("type", "kind", "kind", k));
                 int fails = 0;
                 while (gen == connectGen) {
                     if (!resumed) { sleep(500); continue; }
@@ -344,6 +396,9 @@ public class MainActivity extends Activity implements TvClient.Listener {
                         c.runRemote(h);
                     } catch (TvClient.NeedsPairingException e) {
                         if (gen == connectGen) emit(obj("type", "needPair", "host", h, "name", name));
+                        return;
+                    } catch (LgClient.RejectedException e) {
+                        if (gen == connectGen) emit(obj("type", "lgRejected", "msg", e.getMessage()));
                         return;
                     } catch (IOException e) {
                         if (gen != connectGen) return;
@@ -357,11 +412,59 @@ public class MainActivity extends Activity implements TvClient.Listener {
         });
     }
 
-    private void remember(String h, String name) {
+    /** بيشوف التليفزيون نوعه إيه من البورتات: 6466 = Android TV، 3000/3001 = LG. */
+    private static String probe(String h) {
+        if (portOpen(h, TvClient.REMOTE_PORT, 1500)) return "atv";
+        if (portOpen(h, LgClient.portWss, 1500) || portOpen(h, LgClient.portWs, 1500)) return "lg";
+        return "";
+    }
+
+    private static boolean portOpen(String h, int port, int timeout) {
+        Socket s = new Socket();
+        try {
+            s.connect(new InetSocketAddress(h, port), timeout);
+            return true;
+        } catch (IOException e) {
+            return false;
+        } finally {
+            try { s.close(); } catch (IOException ignored) { }
+        }
+    }
+
+    private String savedKind(String h) {
+        try {
+            JSONArray arr = new JSONArray(prefs.getString("devices", "[]"));
+            for (int i = 0; i < arr.length(); i++) {
+                if (h.equals(arr.getJSONObject(i).optString("host"))) return arr.getJSONObject(i).optString("kind", "");
+            }
+        } catch (Exception ignored) { }
+        return "";
+    }
+
+    private void wakeLg() {
+        final String h = host;
+        final String mac = h == null ? null : prefs.getString("lgmac:" + h, null);
+        if (mac == null) {
+            emit(obj("type", "error", "msg", "شغّل التليفزيون بالريموت بتاعه المرة دي، وبعد كده هتقدر تشغله من هنا"));
+            return;
+        }
+        worker.execute(new Runnable() {
+            public void run() {
+                try {
+                    LgClient.wake(mac, h);
+                    emit(obj("type", "error", "msg", "بنشغّل التليفزيون…"));
+                } catch (IOException e) {
+                    emit(obj("type", "error", "msg", "معرفناش نشغّله: " + msg(e)));
+                }
+            }
+        });
+    }
+
+    private void remember(String h, String name, String k) {
         try {
             JSONArray arr = new JSONArray(prefs.getString("devices", "[]"));
             JSONArray out = new JSONArray();
-            out.put(new JSONObject().put("host", h).put("name", name));
+            out.put(new JSONObject().put("host", h).put("name", name).put("kind", k));
             for (int i = 0; i < arr.length() && out.length() < 8; i++) {
                 if (!h.equals(arr.getJSONObject(i).optString("host"))) out.put(arr.getJSONObject(i));
             }
@@ -373,7 +476,34 @@ public class MainActivity extends Activity implements TvClient.Listener {
 
     @Override
     public void onConnected(String vendor, String model) {
-        emit(obj("type", "status", "state", "connected", "host", host, "name", hostName, "vendor", vendor, "model", model));
+        emit(obj("type", "status", "state", "connected", "host", host, "name", hostName, "vendor", vendor, "model", model, "kind", kind));
+    }
+
+    // ------------------------------------------------------- LgClient.Events
+
+    @Override
+    public void onLgPrompt() {
+        emit(obj("type", "lgPrompt"));
+    }
+
+    @Override
+    public void onLgKey(String clientKey) {
+        String h = host;
+        if (h != null) prefs.edit().putString("lgkey:" + h, clientKey).apply();
+        emit(obj("type", "paired"));
+    }
+
+    @Override
+    public void onLgMac(String mac) {
+        String h = host;
+        if (h != null) prefs.edit().putString("lgmac:" + h, mac).apply();
+    }
+
+    @Override
+    public void onLgApps(JSONArray apps) {
+        try {
+            emit(new JSONObject().put("type", "apps").put("list", apps));
+        } catch (Exception ignored) { }
     }
 
     @Override
@@ -438,6 +568,11 @@ public class MainActivity extends Activity implements TvClient.Listener {
         });
         worker.execute(new Runnable() {
             public void run() {
+                ssdpLg();
+            }
+        });
+        worker.execute(new Runnable() {
+            public void run() {
                 sleep(9000);
                 stopDiscovery();
                 emit(obj("type", "scanDone"));
@@ -461,7 +596,7 @@ public class MainActivity extends Activity implements TvClient.Listener {
 
                 public void onServiceResolved(NsdServiceInfo s) {
                     InetAddress a = s.getHost();
-                    if (a != null) foundTv(a.getHostAddress(), s.getServiceName());
+                    if (a != null) foundTv(a.getHostAddress(), s.getServiceName(), "atv");
                     done();
                 }
 
@@ -479,10 +614,58 @@ public class MainActivity extends Activity implements TvClient.Listener {
         }
     }
 
-    private void foundTv(String ip, String name) {
+    private void foundTv(String ip, String name, String k) {
         if (ip == null || ip.contains(":")) return; // IPv4 بس
         boolean isNew = found.add(ip + "|" + name);
-        if (isNew) emit(obj("type", "found", "host", ip, "name", name));
+        if (isNew) emit(obj("type", "found", "host", ip, "name", name, "kind", k));
+    }
+
+    /** تليفزيونات LG بترد على SSDP (UPnP) بالخدمة دي. */
+    private void ssdpLg() {
+        java.net.DatagramSocket s = null;
+        try {
+            String req = "M-SEARCH * HTTP/1.1\r\nHOST: 239.255.255.250:1900\r\nMAN: \"ssdp:discover\"\r\nMX: 2\r\n"
+                    + "ST: urn:lge-com:service:webos-second-screen:1\r\n\r\n";
+            byte[] b = req.getBytes("UTF-8");
+            s = new java.net.DatagramSocket();
+            s.setSoTimeout(1000);
+            InetAddress group = InetAddress.getByName("239.255.255.250");
+            long end = System.currentTimeMillis() + 7000;
+            int sent = 0;
+            while (System.currentTimeMillis() < end) {
+                if (sent < 3) { s.send(new java.net.DatagramPacket(b, b.length, group, 1900)); sent++; }
+                byte[] buf = new byte[2048];
+                java.net.DatagramPacket p = new java.net.DatagramPacket(buf, buf.length);
+                try {
+                    s.receive(p);
+                } catch (java.net.SocketTimeoutException e) {
+                    continue;
+                }
+                String res = new String(p.getData(), 0, p.getLength(), "UTF-8");
+                if (!res.toLowerCase(java.util.Locale.US).contains("webos")) continue;
+                final String ip = p.getAddress().getHostAddress();
+                String loc = header(res, "location");
+                String name = "LG TV";
+                if (loc != null) {
+                    try {
+                        java.util.regex.Matcher m = java.util.regex.Pattern.compile("<friendlyName>([^<]+)</friendlyName>").matcher(httpGet(loc));
+                        if (m.find()) name = m.group(1).replace("&amp;", "&").replace("[LG]", "LG").replace("webOS TV", "").replaceAll("\\s+", " ").trim();
+                    } catch (Exception ignored) { }
+                }
+                foundTv(ip, name, "lg");
+            }
+        } catch (Exception ignored) {
+        } finally {
+            if (s != null) s.close();
+        }
+    }
+
+    private static String header(String res, String name) {
+        for (String line : res.split("\r\n")) {
+            int i = line.indexOf(':');
+            if (i > 0 && line.substring(0, i).trim().equalsIgnoreCase(name)) return line.substring(i + 1).trim();
+        }
+        return null;
     }
 
     private void scanSubnet() {
@@ -501,18 +684,15 @@ public class MainActivity extends Activity implements TvClient.Listener {
                         final String ip = prefix + i;
                         pool.execute(new Runnable() {
                             public void run() {
-                                Socket s = new Socket();
-                                try {
-                                    s.connect(new InetSocketAddress(ip, TvClient.REMOTE_PORT), 600);
-                                    boolean known = false;
-                                    synchronized (found) {
-                                        for (String f : found) if (f.startsWith(ip + "|")) known = true;
-                                    }
-                                    if (!known) foundTv(ip, "");
-                                } catch (IOException ignored) {
-                                } finally {
-                                    try { s.close(); } catch (IOException ignored) { }
+                                String k = portOpen(ip, TvClient.REMOTE_PORT, 500) ? "atv"
+                                        : (portOpen(ip, LgClient.portWs, 400) || portOpen(ip, LgClient.portWss, 400)) ? "lg" : null;
+                                if (k == null) return;
+                                sleep(1500); // نستنى mDNS/SSDP يجيبوا الاسم الحقيقي
+                                boolean known = false;
+                                synchronized (found) {
+                                    for (String f : found) if (f.startsWith(ip + "|")) known = true;
                                 }
+                                if (!known) foundTv(ip, "", k);
                             }
                         });
                     }
@@ -699,11 +879,11 @@ public class MainActivity extends Activity implements TvClient.Listener {
     @Override
     public boolean dispatchKeyEvent(KeyEvent event) {
         int k = event.getKeyCode();
-        TvClient c = tv;
+        Remote c = remote;
         if ((k == KeyEvent.KEYCODE_VOLUME_UP || k == KeyEvent.KEYCODE_VOLUME_DOWN) && c != null && c.isConnected()) {
             if (event.getAction() == KeyEvent.ACTION_DOWN) {
                 final int code = k;
-                send(new IoTask() { public void run(TvClient t) throws IOException { t.sendKey(code, TvClient.SHORT); } });
+                send(new IoTask() { public void run(Remote t) throws IOException { t.sendKey(code, TvClient.SHORT); } });
             }
             return true;
         }
@@ -736,7 +916,7 @@ public class MainActivity extends Activity implements TvClient.Listener {
         super.onPause();
         resumed = false;
         // بنقفل الاتصال وإحنا في الخلفية عشان البطارية؛ بيرجع لوحده لما تفتح التطبيق
-        TvClient c = tv;
+        Remote c = remote;
         if (c != null && c.isConnected()) c.disconnect();
     }
 
@@ -744,7 +924,7 @@ public class MainActivity extends Activity implements TvClient.Listener {
     protected void onDestroy() {
         connectGen++;
         stopDiscovery();
-        TvClient c = tv;
+        Remote c = remote;
         if (c != null) c.disconnect();
         sender.shutdownNow();
         worker.shutdownNow();
