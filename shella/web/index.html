@@ -1,0 +1,517 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<title>شلة الألوان</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Baloo+Bhaijaan+2:wght@500;700;800&display=swap">
+<style>[hidden]{display:none!important}</style>
+<style>
+/* Layout: one-screen phone app around a card table — seats on top, table in the middle, your hand pinned to the bottom. Single dark "felt" look by choice. */
+:root{
+  --table:#22122a; --table-2:#321b3c; --table-3:#45284f; --line:#563766;
+  --ink:#fbf3e8; --muted:#c4adc9; --cream:#fff7ec; --glow:#ffd36b;
+  --coral:#ff5a47; --saffron:#f2ad18; --jade:#12a27d; --cobalt:#3a62f0;
+  --danger:#ff7a6b;
+  --font:"Baloo Bhaijaan 2","Segoe UI",Tahoma,Arial,sans-serif;
+  --cw:clamp(56px,16.5vw,82px);
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;background:radial-gradient(120% 70% at 50% 45%,var(--table-2),var(--table) 70%) fixed,var(--table);color:var(--ink);font-family:var(--font);font-size:16px;-webkit-tap-highlight-color:transparent;overflow:hidden}
+button{font:inherit;color:inherit;cursor:pointer;border:0;background:none}
+button:focus-visible,input:focus-visible{outline:3px solid var(--glow);outline-offset:2px}
+button:disabled{cursor:default;opacity:.45}
+.app{height:100%;max-width:760px;margin:0 auto;display:flex;flex-direction:column;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:10px}
+.screen{flex:1;min-height:0;display:flex;flex-direction:column}
+.scroll{overflow-y:auto}
+h1,h2{margin:0;text-wrap:balance;line-height:1.15}
+h1{font-size:clamp(2.2rem,10vw,3.4rem);font-weight:800;letter-spacing:-.01em}
+h1 em{font-style:normal;background:linear-gradient(90deg,var(--coral),var(--saffron),var(--jade),var(--cobalt));-webkit-background-clip:text;background-clip:text;color:transparent}
+h2{font-size:1.3rem;font-weight:700}
+p{margin:0;line-height:1.6}
+.muted{color:var(--muted)}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;min-height:48px;padding:8px 18px;border-radius:14px;font-weight:700;font-size:1.05rem;background:var(--table-3);border:1px solid var(--line)}
+.btn.primary{background:var(--glow);color:#2a1630;border-color:transparent}
+.btn.warn{background:var(--coral);color:#fff;border-color:transparent}
+.btn.small{min-height:38px;padding:4px 12px;font-size:.95rem;border-radius:11px}
+.field{display:flex;flex-direction:column;gap:6px}
+.field label{font-size:.9rem;color:var(--muted);font-weight:700}
+input[type=text]{width:100%;min-height:50px;border-radius:14px;border:1px solid var(--line);background:var(--table);color:var(--ink);font:inherit;font-size:1.1rem;padding:6px 14px}
+.code-input{letter-spacing:.35em;text-transform:uppercase;text-align:center;font-weight:800;direction:ltr}
+.row{display:flex;gap:10px;flex-wrap:wrap}
+.row>*{flex:1 1 140px}
+.panel{background:color-mix(in srgb,var(--table-2) 85%,transparent);border:1px solid var(--line);border-radius:20px;padding:18px;display:flex;flex-direction:column;gap:14px}
+.notice{border-radius:14px;padding:10px 14px;background:#4a2330;border:1px solid #7a3a48;font-size:.95rem;line-height:1.5}
+
+/* lobby */
+.hero{display:flex;flex-direction:column;align-items:center;text-align:center;gap:10px;padding-block:14px 18px}
+.fan{display:flex;justify-content:center;height:calc(var(--cw)*1.7);align-items:flex-end;margin-bottom:4px}
+.fan .card{margin-inline:calc(var(--cw)*-.18);transform-origin:50% 120%}
+.rules{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
+.rule{display:flex;gap:10px;align-items:center;font-size:.92rem;line-height:1.4}
+.rule .card{--cw:38px;border-radius:7px;padding:2px}
+.rule .card .face{inset:2px;border-radius:5px}
+.lobby-body{display:flex;flex-direction:column;gap:16px;padding-bottom:16px}
+
+/* cards */
+.card{width:var(--cw);height:calc(var(--cw)*1.48);border-radius:calc(var(--cw)*.16);background:var(--cream);position:relative;flex:none;box-shadow:0 2px 0 rgba(0,0,0,.25),0 6px 14px rgba(0,0,0,.35);transition:transform .16s ease}
+.card .face{position:absolute;inset:calc(var(--cw)*.06);border-radius:calc(var(--cw)*.11);background:var(--c);display:grid;place-items:center;overflow:hidden}
+.card .face::after{content:"";position:absolute;inset:0;background:repeating-linear-gradient(135deg,rgba(255,255,255,.09) 0 6px,transparent 6px 14px)}
+.gem{width:60%;aspect-ratio:1;background:var(--cream);transform:rotate(45deg);border-radius:22%;display:grid;place-items:center;position:relative;z-index:1}
+.gem span{transform:rotate(-45deg);color:var(--c);font-weight:800;font-size:calc(var(--cw)*.4);line-height:1;direction:ltr}
+.corner{position:absolute;z-index:1;color:var(--cream);font-weight:800;font-size:calc(var(--cw)*.2);line-height:1;direction:ltr}
+.corner.tl{top:calc(var(--cw)*.06);left:calc(var(--cw)*.08)}
+.corner.br{bottom:calc(var(--cw)*.06);right:calc(var(--cw)*.08);transform:rotate(180deg)}
+.card.wild .face{background:conic-gradient(var(--coral) 0 25%,var(--saffron) 0 50%,var(--jade) 0 75%,var(--cobalt) 0)}
+.card.wild .gem{background:var(--table)}
+.card.wild .gem span{color:var(--cream)}
+.card.back{background:var(--cream)}
+.card.back .face{background:var(--table-3)}
+.card.back .face::after{background:repeating-linear-gradient(45deg,rgba(255,211,107,.16) 0 3px,transparent 3px 9px)}
+.card.back .gem{background:transparent;border:2px solid var(--glow)}
+.card.back .gem span{color:var(--glow);font-size:calc(var(--cw)*.22)}
+.c-a{--c:var(--coral)} .c-b{--c:var(--saffron)} .c-c{--c:var(--jade)} .c-d{--c:var(--cobalt)}
+
+/* game */
+.topbar{display:flex;align-items:center;gap:8px;justify-content:space-between}
+.code-pill{font-weight:800;letter-spacing:.2em;direction:ltr;background:var(--table-3);border:1px solid var(--line);border-radius:999px;padding:2px 14px}
+.seats{display:flex;gap:8px;overflow-x:auto;padding:10px 2px 6px;scrollbar-width:none}
+.seats::-webkit-scrollbar{display:none}
+.seat{flex:none;min-width:70px;display:flex;flex-direction:column;align-items:center;gap:2px;padding:6px 10px;border-radius:14px;background:var(--table-2);border:1px solid var(--line);position:relative}
+.seat .nm{font-weight:700;font-size:.9rem;max-width:84px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.seat .ct{font-size:.8rem;color:var(--muted);font-variant-numeric:tabular-nums}
+.seat.turn{border-color:var(--glow);box-shadow:0 0 0 2px var(--glow),0 0 18px rgba(255,211,107,.35)}
+.seat.me .nm{color:var(--glow)}
+.seat .flag{position:absolute;top:-8px;inset-inline-end:-6px;background:var(--coral);color:#fff;border-radius:999px;font-size:.72rem;font-weight:800;padding:0 7px}
+.table{flex:1;min-height:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px}
+.pile-row{display:flex;align-items:center;gap:clamp(18px,8vw,44px)}
+.pile-row .card{--cw:clamp(74px,22vw,104px)}
+.drawpile{position:relative;padding:0;border-radius:16px}
+.drawpile .card:first-child{position:absolute;top:4px;left:4px;opacity:.6}
+.drawpile .lbl{position:absolute;bottom:-26px;inset-inline:0;text-align:center;font-size:.85rem;color:var(--muted);font-weight:700}
+.drawpile.can .card:last-child{box-shadow:0 0 0 3px var(--glow),0 6px 18px rgba(0,0,0,.4)}
+.discard{position:relative;border-radius:18px;padding:6px;background:var(--ring);transition:background .2s}
+.statusline{font-size:1.25rem;font-weight:800;text-align:center;min-height:1.6em}
+.statusline.mine{color:var(--glow)}
+.msg{font-size:.95rem;color:var(--muted);text-align:center;min-height:1.5em;max-width:34ch}
+.dir{font-size:.85rem;color:var(--muted);display:flex;gap:6px;align-items:center}
+.actions{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;min-height:48px;padding-block:6px}
+.actions .btn{flex:0 1 auto}
+.btn.one{background:var(--coral);color:#fff;border-color:transparent}
+.btn.one.on{background:var(--jade)}
+.hand-wrap{position:relative}
+.hand{display:flex;overflow-x:auto;padding:24px 12px 10px;scroll-padding-inline:12px}
+.hand .card{margin-inline-start:calc(var(--cw)*-.32);padding:0;border:0}
+.hand .card:first-child{margin-inline-start:0}
+.hand .card.ok{transform:translateY(-14px)}
+.hand .card.ok::before{content:"";position:absolute;inset:-3px;border-radius:calc(var(--cw)*.18);box-shadow:0 0 0 3px var(--glow);pointer-events:none}
+.hand.myturn .card:not(.ok){filter:brightness(.6) saturate(.7)}
+.hand-count{font-size:.85rem;color:var(--muted);text-align:center}
+.sheet-bg{position:fixed;inset:0;background:rgba(10,4,14,.6);display:flex;align-items:flex-end;justify-content:center;z-index:20}
+.sheet{width:100%;max-width:520px;background:var(--table-2);border:1px solid var(--line);border-radius:22px 22px 0 0;padding:18px max(16px,env(safe-area-inset-right,0px)) calc(18px + env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px));display:flex;flex-direction:column;gap:14px}
+.swatches{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
+.swatch{min-height:68px;border-radius:16px;font-weight:800;font-size:1.15rem;color:#fff;background:var(--c);text-shadow:0 1px 2px rgba(0,0,0,.3)}
+.over{position:fixed;inset:0;background:rgba(10,4,14,.72);display:grid;place-items:center;z-index:15;padding:16px}
+.over .panel{max-width:420px;width:100%;text-align:center;align-items:center}
+.over .big{font-size:2rem;font-weight:800;color:var(--glow)}
+.players-list{display:flex;flex-direction:column;gap:8px;margin:0;padding:0;list-style:none}
+.players-list li{display:flex;align-items:center;justify-content:space-between;gap:10px;background:var(--table);border:1px solid var(--line);border-radius:12px;padding:8px 12px}
+.badge{font-size:.78rem;color:var(--muted);border:1px solid var(--line);border-radius:999px;padding:0 8px}
+.bigcode{font-size:2.6rem;font-weight:800;letter-spacing:.3em;direction:ltr;text-align:center;color:var(--glow)}
+.toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--cream);color:#2a1630;font-weight:700;padding:8px 16px;border-radius:12px;z-index:30;box-shadow:0 8px 24px rgba(0,0,0,.4);max-width:calc(100% - 32px);text-align:center}
+.shake{animation:shake .3s}
+@keyframes shake{25%{transform:translateX(-5px)}75%{transform:translateX(5px)}}
+@keyframes pop{from{transform:scale(.85) rotate(-6deg);opacity:.4}to{transform:none;opacity:1}}
+.discard .card{animation:pop .22s ease-out}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+<div class="app" dir="rtl" id="app">
+  <div class="screen scroll" id="screen">
+    <div class="hero"><h1>شلة <em>الألوان</em></h1><p class="muted">بتحمّل اللعبة…</p></div>
+  </div>
+</div>
+<div id="layer"></div>
+
+<script src="mqtt.min.js"></script>
+<script>
+(function(){
+"use strict";
+/* Online play: every phone keeps the whole room state and shares it through a public
+   MQTT relay as one retained message per room. Newest "rev" wins; ties go to the
+   higher writer id, so every phone ends up on the same state. */
+const BROKER="wss://broker.hivemq.com:8884/mqtt";
+const TOPIC="shella-alwan/v1/room/";
+const COLOR_NAME={a:"أحمر",b:"أصفر",c:"أخضر",d:"أزرق"};
+const COLOR_VAR={a:"var(--coral)",b:"var(--saffron)",c:"var(--jade)",d:"var(--cobalt)"};
+const MAX_PLAYERS=10, HAND=7, CODE_LEN=5;
+const CODE_RE=new RegExp("^[A-Z]{"+CODE_LEN+"}$");
+const $=id=>document.getElementById(id);
+const esc=s=>String(s==null?"":s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const store={get(k){try{return localStorage.getItem(k)}catch(e){return null}},set(k,v){try{v==null?localStorage.removeItem(k):localStorage.setItem(k,v)}catch(e){}}};
+const native=window.Android||null;
+
+let client=null,online=false,myId=null;
+let roomCode=null,room=null,roomLoaded=false,loadTimer=null,joinIntent=false;
+let saidOne=false,pendingWild=null;
+let myName=store.get("shella.name")||"";
+
+/* ---------- card helpers ---------- */
+const isWild=c=>c[0]==="W";
+const colorOf=c=>isWild(c)?null:c[0];
+const valOf=c=>isWild(c)?c:c.slice(1);
+const glyph=c=>{const v=valOf(c);return v==="S"?"⊘":v==="R"?"⇄":v==="D"?"+2":v==="W"?"✦":v==="W4"?"+4":v};
+const cardName=c=>{const v=valOf(c);const n=v==="S"?"تخطي":v==="R"?"عكس":v==="D"?"+2":v==="W"?"جوكر":v==="W4"?"جوكر +4":v;return isWild(c)?n:n+" "+COLOR_NAME[colorOf(c)]};
+function cardHTML(c,extra,attrs,style){
+  const cls=isWild(c)?"wild":"c-"+colorOf(c);const g=glyph(c);const tag=attrs?"button":"div";
+  return `<${tag} class="card ${cls} ${extra||""}" ${attrs||""} ${style?`style="${style}"`:""}><div class="face"><span class="corner tl">${g}</span><div class="gem"><span>${g}</span></div><span class="corner br">${g}</span></div></${tag}>`;
+}
+const backHTML=()=>`<div class="card back"><div class="face"><div class="gem"><span>ألوان</span></div></div></div>`;
+function shuffle(a){for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a}
+function makeDeck(){const d=[];for(const c of "abcd"){d.push(c+"0");for(let n=1;n<=9;n++)d.push(c+n,c+n);for(const s of "SRD")d.push(c+s,c+s)}for(let i=0;i<4;i++)d.push("W","W4");return shuffle(d)}
+const top=s=>s.discard[s.discard.length-1];
+function canPlay(c,s){if(isWild(c))return true;const t=top(s);return colorOf(c)===s.color||valOf(c)===valOf(t)}
+const sortKey=c=>(isWild(c)?"z":c[0])+({S:"k",R:"l",D:"m",W:"n",W4:"o"}[valOf(c)]||valOf(c));
+
+/* ---------- pure game logic: (state) -> new state | null ---------- */
+const nameOf=(s,id)=>{const p=s.players.find(p=>p.id===id)||(s.waiting||[]).find(p=>p.id===id);return p?p.name:"حد"};
+function nextIdx(s,k){const n=s.players.length;return((s.turn+s.dir*k)%n+n)%n}
+function drawInto(s,pid,n){
+  const h=s.hands[pid]||(s.hands[pid]=[]);
+  for(let i=0;i<n;i++){
+    if(!s.deck.length){const t=s.discard.pop();s.deck=shuffle(s.discard);s.discard=[t];if(!s.deck.length)break}
+    h.push(s.deck.pop());
+  }
+}
+const ops={
+  join(s,pid,name){
+    if(!s)return null;
+    const p=s.players.find(p=>p.id===pid);
+    if(p){if(p.name===name)return null;p.name=name;return s}
+    s.waiting=s.waiting||[];
+    const w=s.waiting.find(p=>p.id===pid);
+    if(s.status==="playing"){if(w){if(w.name===name)return null;w.name=name;return s}if(s.players.length+s.waiting.length>=MAX_PLAYERS)return null;s.waiting.push({id:pid,name});s.msg=name+" مستني الجولة الجاية";return s}
+    if(s.players.length>=MAX_PLAYERS)return null;
+    s.players.push({id:pid,name});s.msg=name+" دخل الأوضة";return s;
+  },
+  start(s,pid){
+    if(!s||s.status==="playing")return null;
+    s.players=s.players.concat(s.waiting||[]);s.waiting=[];
+    if(!s.players.some(p=>p.id===pid)||s.players.length<2)return null;
+    s.deck=makeDeck();s.hands={};
+    for(const p of s.players)s.hands[p.id]=s.deck.splice(-HAND,HAND);
+    let c;for(;;){c=s.deck.pop();if(!isWild(c)&&/^\d$/.test(valOf(c)))break;s.deck.unshift(c)}
+    s.discard=[c];s.color=colorOf(c);s.dir=1;
+    s.round=(s.round||0)+1;s.turn=(s.round-1)%s.players.length;
+    s.drew=false;s.drawn=null;s.vulnerable=null;s.winner=null;s.status="playing";
+    s.msg="الجولة "+s.round+" بدأت — "+s.players[s.turn].name+" يبدأ";return s;
+  },
+  play(s,pid,card,color,said){
+    if(!s||s.status!=="playing"||s.players[s.turn].id!==pid)return null;
+    const h=s.hands[pid];const i=h.indexOf(card);
+    if(i<0||!canPlay(card,s))return null;
+    if(s.drew&&card!==s.drawn)return null;
+    if(isWild(card)&&!COLOR_NAME[color])return null;
+    h.splice(i,1);s.discard.push(card);s.color=isWild(card)?color:colorOf(card);
+    s.drew=false;s.drawn=null;s.vulnerable=null;
+    const me=nameOf(s,pid);
+    let m=me+" لعب "+cardName(card)+(isWild(card)?" واختار "+COLOR_NAME[color]:"");
+    if(!h.length){s.status="over";s.winner=pid;s.msg=me+" كسب الجولة!";s.wins=s.wins||{};s.wins[pid]=(s.wins[pid]||0)+1;return s}
+    if(h.length===1){if(said)m+=" وقال واحدة!";else s.vulnerable=pid}
+    const v=valOf(card),n=s.players.length;
+    if(v==="S"){m+=" — "+s.players[nextIdx(s,1)].name+" اتخطى";s.turn=nextIdx(s,2)}
+    else if(v==="R"){s.dir*=-1;if(n===2)s.turn=nextIdx(s,2);else s.turn=nextIdx(s,1)}
+    else if(v==="D"||v==="W4"){const k=v==="D"?2:4;const vic=s.players[nextIdx(s,1)];drawInto(s,vic.id,k);m+=" — "+vic.name+" سحب "+k;s.turn=nextIdx(s,2)}
+    else s.turn=nextIdx(s,1);
+    s.msg=m;return s;
+  },
+  draw(s,pid){
+    if(!s||s.status!=="playing"||s.players[s.turn].id!==pid||s.drew)return null;
+    s.vulnerable=null;drawInto(s,pid,1);
+    const h=s.hands[pid];const c=h[h.length-1];
+    if(c&&canPlay(c,s)){s.drew=true;s.drawn=c;s.msg=nameOf(s,pid)+" سحب كارت"}
+    else{s.turn=nextIdx(s,1);s.msg=nameOf(s,pid)+" سحب وعدّى"}
+    return s;
+  },
+  pass(s,pid){
+    if(!s||s.status!=="playing"||s.players[s.turn].id!==pid||!s.drew)return null;
+    s.drew=false;s.drawn=null;s.turn=nextIdx(s,1);s.msg=nameOf(s,pid)+" عدّى";return s;
+  },
+  catchOne(s,pid){
+    if(!s||s.status!=="playing"||!s.vulnerable||s.vulnerable===pid)return null;
+    const v=s.vulnerable;if((s.hands[v]||[]).length!==1){s.vulnerable=null;return s}
+    drawInto(s,v,2);s.vulnerable=null;s.msg=nameOf(s,pid)+" مسك "+nameOf(s,v)+" مقالش واحدة! (+2)";return s;
+  },
+  sayOne(s,pid){
+    if(!s||s.vulnerable!==pid)return null;
+    s.vulnerable=null;s.msg=nameOf(s,pid)+" قال واحدة!";return s;
+  },
+  skip(s,pid){
+    if(!s||s.status!=="playing"||!s.players.some(p=>p.id===pid))return null;
+    const cur=s.players[s.turn];s.drew=false;s.drawn=null;s.vulnerable=null;
+    drawInto(s,cur.id,1);s.turn=nextIdx(s,1);s.msg=nameOf(s,pid)+" عدّى دور "+cur.name+" (اتأخر) وسحّبه كارت";return s;
+  },
+  leave(s,pid){
+    if(!s)return null;
+    s.waiting=(s.waiting||[]).filter(p=>p.id!==pid);
+    const idx=s.players.findIndex(p=>p.id===pid);
+    if(idx<0)return s;
+    const nm=s.players[idx].name;s.players.splice(idx,1);
+    if(s.status==="playing"){
+      const h=s.hands[pid]||[];delete s.hands[pid];s.deck=shuffle(s.deck.concat(h));
+      const n=s.players.length;
+      if(n<2){s.status="over";s.winner=n?s.players[0].id:null}
+      else{if(idx<s.turn)s.turn--;else if(idx===s.turn){s.turn=s.dir===1?idx%n:(idx-1+n)%n;s.drew=false;s.drawn=null}if(s.vulnerable===pid)s.vulnerable=null}
+    }
+    s.msg=nm+" خرج";return s;
+  }
+};
+window.__shellaOps=ops; // used by the automated tests
+
+/* ---------- network ---------- */
+const newer=(a,b)=>!b||a.rev>b.rev||(a.rev===b.rev&&String(a.by)>String(b.by));
+function publish(s){
+  if(!client||!roomCode)return;
+  client.publish(TOPIC+roomCode,s?JSON.stringify(s):"",{qos:1,retain:true});
+}
+function mutate(fn){
+  if(!room){toast("مستني الاتصال بالأوضة…");return false}
+  if(!online){toast("مفيش نت دلوقتي — استنى لما يرجع");return false}
+  const s=JSON.parse(JSON.stringify(room));
+  const out=fn(s);if(!out)return false;
+  out.rev=(room.rev||0)+1;out.by=myId;out.updatedAt=Date.now();
+  room=out;publish(out);render();return true;
+}
+function onState(code,payload){
+  if(code!==roomCode)return;
+  clearTimeout(loadTimer);
+  const first=!roomLoaded;roomLoaded=true;
+  if(!payload.length){if(!room||first){room=null;render()}return}
+  let s;try{s=JSON.parse(payload)}catch(e){return}
+  if(!s||typeof s.rev!=="number"||!Array.isArray(s.players))return;
+  if(!newer(s,room)){
+    // Someone published an older or losing state; the author of the winning one re-announces it.
+    if(room&&room.by===myId&&!(s.rev===room.rev&&s.by===room.by))publish(room);
+    if(!first)return;
+  }else{
+    const prevTurn=room&&room.status==="playing"?room.players[room.turn]?.id:null;
+    room=s;
+    if(room.status==="playing"){
+      const cur=room.players[room.turn]?.id;
+      if(cur===myId&&prevTurn!==myId)buzz();
+      if(cur!==myId)saidOne=false;
+    }
+  }
+  // A join can be lost when two people join at the same moment: try again.
+  if(joinIntent&&room&&!room.players.some(p=>p.id===myId)&&!(room.waiting||[]).some(p=>p.id===myId)){
+    setTimeout(()=>{if(joinIntent&&room&&!room.players.some(p=>p.id===myId)&&!(room.waiting||[]).some(p=>p.id===myId))mutate(s=>ops.join(s,myId,myName))},300+Math.random()*700);
+  }
+  render();
+}
+function connect(){
+  if(typeof mqtt==="undefined"){render();return}
+  client=mqtt.connect(BROKER,{clientId:"shella_"+Math.random().toString(16).slice(2,12),clean:true,keepalive:30,reconnectPeriod:2500,connectTimeout:12000});
+  client.on("connect",()=>{online=true;if(roomCode)client.subscribe(TOPIC+roomCode,{qos:1});render()});
+  client.on("close",()=>{if(online){online=false;render()}});
+  client.on("offline",()=>{online=false;render()});
+  client.on("error",()=>{});
+  client.on("message",(topic,msg)=>onState(topic.slice(TOPIC.length),msg.toString()));
+}
+function enterRoom(code){
+  if(roomCode&&client)client.unsubscribe(TOPIC+roomCode);
+  roomCode=code;room=null;roomLoaded=false;store.set("shella.room",code);
+  if(client&&online)client.subscribe(TOPIC+code,{qos:1});
+  clearTimeout(loadTimer);
+  // No retained message means the room does not exist.
+  loadTimer=setTimeout(()=>{if(roomCode===code&&!room&&online){roomLoaded=true;render()}},6000);
+  render();
+}
+function exitRoom(){
+  if(roomCode&&client)client.unsubscribe(TOPIC+roomCode);
+  roomCode=null;room=null;joinIntent=false;store.set("shella.room",null);render();
+}
+function createRoom(){
+  if(!online){toast("محتاج نت عشان تعمل أوضة");return}
+  const A="ABCDEFGHJKLMNPQRSTUVWXYZ";let code="";for(let i=0;i<CODE_LEN;i++)code+=A[Math.floor(Math.random()*A.length)];
+  enterRoom(code);joinIntent=true;
+  room={code,status:"lobby",host:myId,players:[{id:myId,name:myName}],waiting:[],msg:myName+" عمل الأوضة",rev:1,by:myId,updatedAt:Date.now(),round:0};
+  roomLoaded=true;clearTimeout(loadTimer);publish(room);render();
+}
+
+/* ---------- UI ---------- */
+function buzz(){try{native&&native.vibrate?native.vibrate(150):navigator.vibrate&&navigator.vibrate(150)}catch(e){}}
+let toastT;function toast(t){let el=$("toast");if(!el){el=document.createElement("div");el.id="toast";el.className="toast";el.setAttribute("role","status");document.body.appendChild(el)}el.textContent=t;el.hidden=false;clearTimeout(toastT);toastT=setTimeout(()=>el.hidden=true,2600)}
+function netNotice(){
+  if(typeof mqtt==="undefined")return `<div class="notice">في مشكلة في تحميل اللعبة. اقفل التطبيق وافتحه تاني.</div>`;
+  if(!online)return `<div class="notice">بنحاول نتصل بالسيرفر… اتأكد إن النت شغال.</div>`;
+  return "";
+}
+function rulesHTML(){
+  const r=(c,t)=>`<div class="rule">${cardHTML(c)}<span>${t}</span></div>`;
+  return `<div class="rules">${r("c5","نزّل كارت بنفس اللون أو نفس الرقم")}${r("bS","تخطي: اللي بعدك يتخطى دوره")}${r("dR","عكس: اللعب يلف بالعكس")}${r("aD","+2: اللي بعدك يسحب ٢ ويتخطى")}${r("W","جوكر: اختار اللون اللي يكمّل")}${r("W4","جوكر +4: اللي بعدك يسحب ٤")}</div>
+  <p class="muted" style="font-size:.92rem">قبل ما تنزّل الكارت قبل الأخير دوس <b>«واحدة!»</b>. لو نسيت، أي حد يقدر يمسكك وتسحب ٢. أول واحد يخلّص كروته يكسب.</p>`;
+}
+function lobbyHTML(){
+  const fan=["a7","bS","W4","d2"].map((c,i)=>cardHTML(c,"",null,`transform:rotate(${[-16,-6,5,15][i]}deg) translateY(${i%3?-8:0}px)`)).join("");
+  return `<div class="lobby-body">
+    <div class="hero">
+      <div class="fan" aria-hidden="true">${fan}</div>
+      <h1>شلة <em>الألوان</em></h1>
+      <p class="muted">لعبة كروت ألوان أونلاين، من ٢ لحد ١٠ لاعيبة، كل واحد من موبايله.</p>
+    </div>
+    ${netNotice()}
+    <form class="panel" id="f-name" autocomplete="off">
+      <div class="field"><label for="in-name">اسمك في اللعبة</label><input type="text" id="in-name" maxlength="14" placeholder="مثلاً: أحمد" value="${esc(myName)}"></div>
+      <button class="btn primary" type="submit">اعمل أوضة جديدة</button>
+      <div class="field"><label for="in-code">أو ادخل بكود أوضة صاحبك</label>
+        <div class="row"><input type="text" id="in-code" class="code-input" maxlength="${CODE_LEN}" placeholder="ABCDE" autocapitalize="characters" autocorrect="off" spellcheck="false"><button class="btn" type="button" data-act="join">ادخل</button></div>
+      </div>
+    </form>
+    <div class="panel"><h2>إزاي تتلعب</h2>${rulesHTML()}</div>
+  </div>`;
+}
+function waitingHTML(){
+  const inRoom=room.players.some(p=>p.id===myId)||(room.waiting||[]).some(p=>p.id===myId);
+  const n=room.players.length;
+  return `<div class="lobby-body">
+    <div class="topbar"><button class="btn small" data-act="leave">خروج</button><span class="muted">أوضة الانتظار</span></div>
+    ${netNotice()}
+    <div class="panel" style="align-items:center;text-align:center">
+      <span class="muted">ابعت الكود ده لصحابك عشان يدخلوا</span>
+      <div class="bigcode">${esc(room.code)}</div>
+      <div class="row" style="width:100%"><button class="btn small" data-act="share">شارك الكود</button><button class="btn small" data-act="copy">انسخ الكود</button></div>
+    </div>
+    <div class="panel">
+      <h2>اللاعيبة (${n}/${MAX_PLAYERS})</h2>
+      <ul class="players-list">${room.players.map(p=>`<li><span>${esc(p.name)}${p.id===myId?" (إنت)":""}</span>${p.id===room.host?'<span class="badge">صاحب الأوضة</span>':""}</li>`).join("")}</ul>
+      ${inRoom?`<button class="btn primary" data-act="start" ${n<2?"disabled":""}>${n<2?"مستنيين لاعيبة كمان…":"يلا نبدأ ("+n+" لاعيبة)"}</button>`
+        :`<div class="field"><label for="in-name">اسمك</label><input type="text" id="in-name" maxlength="14" value="${esc(myName)}"></div><button class="btn primary" data-act="joinroom">ادخل الأوضة</button>`}
+    </div>
+  </div>`;
+}
+function gameHTML(){
+  const s=room;const players=s.players;const meIn=players.some(p=>p.id===myId);
+  const cur=players[s.turn]||{};const myTurn=s.status==="playing"&&cur.id===myId;
+  const hand=meIn?(s.hands[myId]||[]).slice():[];
+  const sorted=hand.slice().sort((x,y)=>sortKey(x)<sortKey(y)?-1:1);
+  const stale=s.status==="playing"&&!myTurn&&meIn&&Date.now()-(s.updatedAt||0)>45000;
+  const vul=s.vulnerable;
+  const seats=players.map((p,i)=>{const c=(s.hands[p.id]||[]).length;return `<div class="seat ${i===s.turn&&s.status==="playing"?"turn":""} ${p.id===myId?"me":""}">${vul===p.id?'<span class="flag">١!</span>':""}<span class="nm">${p.id===myId?"إنت":esc(p.name)}</span><span class="ct">${c} ${c===1?"كارت":"كروت"}${s.wins&&s.wins[p.id]?" · ★"+s.wins[p.id]:""}</span></div>`}).join("");
+  const t=top(s);
+  let acts="";
+  if(meIn&&s.status==="playing"){
+    if(vul===myId)acts+=`<button class="btn one" data-act="sayone">واحدة! بسرعة</button>`;
+    else if(myTurn&&hand.length===2)acts+=`<button class="btn one ${saidOne?"on":""}" data-act="one" aria-pressed="${saidOne}">${saidOne?"قلت واحدة ✓":"واحدة!"}</button>`;
+    if(myTurn&&s.drew)acts+=`<button class="btn" data-act="pass">عدّي</button>`;
+    if(vul&&vul!==myId)acts+=`<button class="btn warn" data-act="catch">امسك ${esc(nameOf(s,vul))}! (+2)</button>`;
+    if(stale)acts+=`<button class="btn small" data-act="skip">عدّي دور ${esc(cur.name)}</button>`;
+  }
+  const status=s.status!=="playing"?"":myTurn?(s.drew?"نزّل الكارت اللي سحبته أو عدّي":"دورك!"):"دور "+esc(cur.name);
+  const handHTML=meIn?sorted.map(c=>{const ok=myTurn&&canPlay(c,s)&&(!s.drew||c===s.drawn);return cardHTML(c,ok?"ok":"",`type="button" data-card="${c}" aria-label="${esc(cardName(c))}"`)}).join("")
+    :`<p class="muted" style="margin:auto;padding:20px">${(s.waiting||[]).some(p=>p.id===myId)?"إنت داخل الجولة الجاية — اتفرج دلوقتي":"إنت بتتفرج"}</p>`;
+  return `<div class="topbar"><button class="btn small" data-act="leave">خروج</button><span class="code-pill">${esc(s.code)}</span><span class="dir">${online?"":'<b style="color:var(--danger)">مفيش نت · </b>'}${s.dir===1?"↻":"↺"} الاتجاه</span></div>
+    <div class="seats" role="list">${seats}</div>
+    <div class="table">
+      <div class="statusline ${myTurn?"mine":""}" aria-live="polite">${status}</div>
+      <div class="pile-row">
+        <button class="drawpile ${myTurn&&!s.drew?"can":""}" data-act="draw" ${!myTurn||s.drew?"disabled":""} aria-label="اسحب كارت">${backHTML()}${backHTML()}<span class="lbl">اسحب (${s.deck.length})</span></button>
+        <div class="discard" style="--ring:${COLOR_VAR[s.color]}" aria-label="الكارت اللي فوق: ${esc(cardName(t))}، اللون ${COLOR_NAME[s.color]}">${cardHTML(t)}</div>
+      </div>
+      <div class="dir" style="margin-top:22px">اللون دلوقتي: <b style="color:${COLOR_VAR[s.color]}">${COLOR_NAME[s.color]}</b></div>
+      <div class="msg">${esc(s.msg)}</div>
+    </div>
+    <div class="actions">${acts}</div>
+    <div class="hand-wrap"><div class="hand ${myTurn?"myturn":""}" id="hand">${handHTML}</div>${meIn?`<div class="hand-count">${hand.length} كروت في إيدك</div>`:""}</div>`;
+}
+function overHTML(){
+  if(!room||room.status!=="over")return "";
+  const w=room.winner;const meIn=room.players.some(p=>p.id===myId)||(room.waiting||[]).some(p=>p.id===myId);
+  const n=room.players.length+(room.waiting||[]).length;
+  return `<div class="over"><div class="panel">
+    <div class="big">${w===myId?"إنت كسبت!":esc(w?nameOf(room,w):"حد")+" كسب"}</div>
+    <p class="muted">${esc(room.msg)}</p>
+    ${meIn?`<button class="btn primary" data-act="start" ${n<2?"disabled":""}>${n<2?"محتاجين لاعب كمان":"جولة جديدة"}</button>`:""}
+    <button class="btn small" data-act="leave">خروج من الأوضة</button>
+  </div></div>`;
+}
+let lastKey="",lastHTML="";
+function render(){
+  const scr=$("screen");const hand=$("hand");const sl=hand?hand.scrollLeft:0;
+  const ae=document.activeElement;const focusId=ae&&ae.id;const val=ae&&ae.tagName==="INPUT"?ae.value:null;
+  let html,mode;
+  if(!roomCode){mode="lobby";html=lobbyHTML()}
+  else if(!room){mode="load";html=`<div class="hero"><h1>شلة <em>الألوان</em></h1><p class="muted">${!online?"بنحاول نتصل بالسيرفر… اتأكد إن النت شغال":roomLoaded?"مفيش أوضة بالكود "+esc(roomCode):"بندخل الأوضة "+esc(roomCode)+"…"}</p><button class="btn" data-act="leave">ارجع</button></div>`}
+  else if(room.status==="lobby"){mode="wait";html=waitingHTML()}
+  else{mode="game";html=gameHTML()}
+  if(mode+html!==lastKey+lastHTML){
+    // Keep whatever someone is typing in the lobby form.
+    const nameVal=$("in-name")?$("in-name").value:null,codeVal=$("in-code")?$("in-code").value:null;
+    scr.innerHTML=html;
+    if(nameVal!=null&&$("in-name"))$("in-name").value=nameVal;
+    if(codeVal!=null&&$("in-code"))$("in-code").value=codeVal;
+    lastKey=mode;lastHTML=html;
+  }
+  scr.classList.toggle("scroll",mode!=="game");
+  if(focusId&&$(focusId)&&$(focusId)!==ae){const el=$(focusId);if(val!=null)el.value=val;el.focus()}
+  const h2=$("hand");if(h2)h2.scrollLeft=sl;
+  $("layer").innerHTML=overHTML()+(pendingWild?`<div class="sheet-bg" data-act="cancelwild"><div class="sheet" role="dialog" aria-label="اختار لون"><h2>اختار اللون اللي يكمّل</h2><div class="swatches">${"abcd".split("").map(c=>`<button class="swatch" style="--c:${COLOR_VAR[c]}" data-color="${c}">${COLOR_NAME[c]}</button>`).join("")}</div><button class="btn small" data-act="cancelwild">إلغاء</button></div></div>`:"");
+}
+
+function readName(){const el=$("in-name");const v=(el?el.value:myName).trim().slice(0,14);if(!v){toast("اكتب اسمك الأول");el&&el.focus();return null}myName=v;store.set("shella.name",v);return v}
+
+document.addEventListener("submit",e=>{e.preventDefault();if(e.target.id==="f-name"){if(readName())createRoom()}});
+document.addEventListener("click",e=>{
+  const sw=e.target.closest("[data-color]");
+  if(sw){const c=pendingWild;pendingWild=null;render();if(c){const said=saidOne;saidOne=false;mutate(s=>ops.play(s,myId,c,sw.dataset.color,said))}return}
+  const cd=e.target.closest("[data-card]");
+  if(cd){onCard(cd.dataset.card,cd);return}
+  const b=e.target.closest("[data-act]");
+  if(b&&!b.disabled){if(b.dataset.act==="cancelwild"&&e.target!==b&&!e.target.matches("button"))return;act(b.dataset.act)}
+});
+function onCard(c,el){
+  if(!room||room.status!=="playing")return;
+  const myTurn=room.players[room.turn]?.id===myId;
+  const no=t=>{toast(t);el.classList.remove("shake");void el.offsetWidth;el.classList.add("shake")};
+  if(!myTurn)return no("استنى دورك");
+  if(room.drew&&c!==room.drawn)return no("تقدر تنزّل الكارت اللي سحبته بس، أو تعدّي");
+  if(!canPlay(c,room))return no("الكارت ده مينفعش — لازم نفس اللون أو الرقم");
+  if(isWild(c)){pendingWild=c;render();return}
+  const said=saidOne;saidOne=false;mutate(s=>ops.play(s,myId,c,null,said));
+}
+function act(a){
+  if(a==="join"){if(!readName())return;const code=($("in-code").value||"").trim().toUpperCase();if(!CODE_RE.test(code)){toast("الكود "+CODE_LEN+" حروف إنجليزي");return}joinIntent=true;enterRoom(code);return}
+  if(a==="joinroom"){if(!readName())return;joinIntent=true;mutate(s=>ops.join(s,myId,myName));return}
+  if(a==="leave"){
+    if(room){const s=JSON.parse(JSON.stringify(room));const out=ops.leave(s,myId);
+      if(out&&online){if(!out.players.length&&!(out.waiting||[]).length)publish(null);else{out.rev=(room.rev||0)+1;out.by=myId;out.updatedAt=Date.now();publish(out)}}}
+    exitRoom();return}
+  if(a==="copy"){const t=room?room.code:"";try{navigator.clipboard.writeText(t).then(()=>toast("الكود اتنسخ"),()=>toast("الكود: "+t))}catch(e){toast("الكود: "+t)}return}
+  if(a==="share"){const t="تعالى نلعب شلة الألوان 🎴 كود الأوضة: "+(room?room.code:"");if(native&&native.share)native.share(t);else toast(t);return}
+  if(a==="start"){mutate(s=>ops.start(s,myId));return}
+  if(a==="draw"){mutate(s=>ops.draw(s,myId));return}
+  if(a==="pass"){mutate(s=>ops.pass(s,myId));return}
+  if(a==="one"){saidOne=!saidOne;render();return}
+  if(a==="sayone"){mutate(s=>ops.sayOne(s,myId));return}
+  if(a==="catch"){mutate(s=>ops.catchOne(s,myId));return}
+  if(a==="skip"){mutate(s=>ops.skip(s,myId));return}
+  if(a==="cancelwild"){pendingWild=null;render();return}
+}
+setInterval(()=>{if(room&&room.status==="playing"&&!pendingWild)render()},8000);
+// Android back button: close the color picker first.
+window.shellaBack=function(){if(pendingWild){pendingWild=null;render();return true}return false};
+
+function boot(){
+  myId=store.get("shella.pid");
+  if(!myId){myId="p"+Math.random().toString(36).slice(2,12)+Date.now().toString(36);store.set("shella.pid",myId)}
+  const code=store.get("shella.room");
+  render();connect();
+  if(code&&CODE_RE.test(code)){joinIntent=true;enterRoom(code)}
+}
+boot();
+})();
+</script>
+</body>
+</html>
