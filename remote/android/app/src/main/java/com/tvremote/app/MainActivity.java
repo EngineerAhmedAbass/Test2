@@ -89,6 +89,7 @@ public class MainActivity extends Activity implements TvClient.Listener, LgClien
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         prefs = getSharedPreferences("remote", MODE_PRIVATE);
+        LgClient.signedRejected = prefs.getBoolean("lgUnsigned", false);
 
         web = new WebView(this);
         web.setBackgroundColor(Color.rgb(11, 13, 18));
@@ -185,6 +186,7 @@ public class MainActivity extends Activity implements TvClient.Listener, LgClien
         @JavascriptInterface
         public void disconnect() {
             connectGen++;
+            kick();
             host = null;
             final Remote c = remote;
             if (c != null) worker.execute(new Runnable() { public void run() { c.disconnect(); } });
@@ -411,6 +413,7 @@ public class MainActivity extends Activity implements TvClient.Listener, LgClien
 
     private void startConnect(final String h, final String name, final String wantKind) {
         final int gen = ++connectGen;
+        kick(); // الـ loop القديم يخلص على طول
         host = h;
         hostName = name;
         Remote old = remote;
@@ -445,7 +448,7 @@ public class MainActivity extends Activity implements TvClient.Listener, LgClien
                 emit(obj("type", "kind", "kind", k));
                 int fails = 0;
                 while (gen == connectGen) {
-                    if (!resumed) { sleep(500); continue; }
+                    if (!resumed) { pause(30000); continue; }
                     emit(obj("type", "status", "state", "connecting", "host", h, "name", name));
                     long t0 = System.currentTimeMillis();
                     try {
@@ -459,18 +462,35 @@ public class MainActivity extends Activity implements TvClient.Listener, LgClien
                     } catch (IOException e) {
                         if (gen != connectGen) return;
                         if (System.currentTimeMillis() - t0 > 20000) fails = 0;
-                        fails++;
+                        if (!resumed) fails = 0; // اتقفل عشان خرجنا من التطبيق، مش عطل
+                        else fails++;
                         emit(obj("type", "status", "state", "offline", "host", h, "name", name, "msg", msg(e)));
                     }
                     if (System.currentTimeMillis() < wakeUntil) {
                         fails = 0;
-                        sleep(1500);
+                        pause(1500);
                     } else {
-                        sleep(Math.min(8000, 700L * fails));
+                        pause(Math.min(8000, 700L * fails));
                     }
                 }
             }
         });
+    }
+
+    private final Object loopLock = new Object();
+
+    /** انتظار بين محاولات الاتصال، وبيخلص بدري لو رجعنا للتطبيق أو دسنا تشغيل. */
+    private void pause(long ms) {
+        if (ms <= 0) return;
+        synchronized (loopLock) {
+            try { loopLock.wait(ms); } catch (InterruptedException ignored) { }
+        }
+    }
+
+    private void kick() {
+        synchronized (loopLock) {
+            loopLock.notifyAll();
+        }
     }
 
     /** بيشوف التليفزيون نوعه إيه من البورتات: 6466 = Android TV، 3000/3001 = LG. */
@@ -511,6 +531,7 @@ public class MainActivity extends Activity implements TvClient.Listener, LgClien
             return;
         }
         wakeUntil = System.currentTimeMillis() + 60000;
+        kick();
         emit(obj("type", "status", "state", "connecting", "host", h, "name", hostName));
         worker.execute(new Runnable() {
             public void run() {
@@ -588,6 +609,11 @@ public class MainActivity extends Activity implements TvClient.Listener, LgClien
             diag.add(t + "  " + line);
             while (diag.size() > 80) diag.removeFirst();
         }
+    }
+
+    @Override
+    public void onLgUnsigned() {
+        prefs.edit().putBoolean("lgUnsigned", true).apply();
     }
 
     @Override
@@ -1001,6 +1027,8 @@ public class MainActivity extends Activity implements TvClient.Listener, LgClien
     protected void onResume() {
         super.onResume();
         resumed = true;
+        handler.removeCallbacks(idleDisconnect);
+        kick(); // لو الاتصال كان مقفول، نحاول على طول من غير انتظار
         emit(obj("type", "resume"));
         if (pendingInstall != null && (Build.VERSION.SDK_INT < 26 || getPackageManager().canRequestPackageInstalls())) {
             install(pendingInstall);
@@ -1013,14 +1041,25 @@ public class MainActivity extends Activity implements TvClient.Listener, LgClien
     protected void onPause() {
         super.onPause();
         resumed = false;
-        // بنقفل الاتصال وإحنا في الخلفية عشان البطارية؛ بيرجع لوحده لما تفتح التطبيق
-        Remote c = remote;
-        if (c != null && c.isConnected()) c.disconnect();
+        // بنسيب الاتصال مفتوح دقيقة لو رجعت بسرعة، وبعدها نقفله عشان البطارية
+        handler.removeCallbacks(idleDisconnect);
+        handler.postDelayed(idleDisconnect, 60000);
     }
+
+    private final android.os.Handler handler = new android.os.Handler(android.os.Looper.getMainLooper());
+    private final Runnable idleDisconnect = new Runnable() {
+        public void run() {
+            if (resumed) return;
+            Remote c = remote;
+            if (c != null && c.isConnected()) worker.execute(new Runnable() { public void run() { c.disconnect(); } });
+        }
+    };
 
     @Override
     protected void onDestroy() {
         connectGen++;
+        kick();
+        handler.removeCallbacks(idleDisconnect);
         stopDiscovery();
         Remote c = remote;
         if (c != null) c.disconnect();

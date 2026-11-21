@@ -26,6 +26,7 @@ public class LgTest {
             public void onLgMac(String mac) { System.out.println("mac " + mac); }
             public void onLgInputs(JSONArray in) { System.out.println("inputs " + in.length() + " " + in.optJSONObject(1).optString("label") + " connected=" + in.optJSONObject(1).optBoolean("connected")); }
             public void onLgLog(String line) { System.out.println("log: " + line); }
+            public void onLgUnsigned() { System.out.println("unsigned remembered"); }
             public void onLgApps(JSONArray apps) { System.out.println("apps " + apps.length() + " " + apps.optJSONObject(0).optString("title")); status.countDown(); }
         };
 
@@ -73,6 +74,7 @@ public class LgTest {
             public void onApp(String p) { }
         };
         final LgClient tv2 = new LgClient(key, l2, ev);
+        final long t0 = System.currentTimeMillis();
         Thread t2 = new Thread(new Runnable() {
             public void run() {
                 try { tv2.runRemote("127.0.0.1"); } catch (Exception e) { System.out.println("ended2: " + e); }
@@ -80,6 +82,7 @@ public class LgTest {
         });
         t2.start();
         if (!c2.await(10, TimeUnit.SECONDS)) throw new AssertionError("reconnect failed");
+        System.out.println("TIME to connected with saved key: " + (System.currentTimeMillis() - t0) + " ms");
         if (prompts != 0) throw new AssertionError("asked again");
         System.out.println("reconnect with saved key OK");
         tv2.disconnect();

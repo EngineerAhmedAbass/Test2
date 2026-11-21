@@ -20,7 +20,8 @@ WORK = sys.argv[1]
 NO_WSS = "--no-wss" in sys.argv
 REJECT_SIGNED = "--reject-signed" in sys.argv
 NEW_FW = "--new-fw" in sys.argv          # زي webOS 23: مفيش ws:3000 بس socketPath بيقول ws://:3000
-NO_POINTER = "--no-pointer" in sys.argv  # التليفزيون رافض يدي socket الزراير
+NO_POINTER = "--no-pointer" in sys.argv
+LATENCY = 0.15 if "--slow" in sys.argv else 0  # تليفزيون بطيء في الرد  # التليفزيون رافض يدي socket الزراير
 LOG = open(os.path.join(WORK, "lg.log"), "a", buffering=1)
 KEY = "client-key-123"
 state = {"scheme": "wss" if not NO_WSS else "ws"}
@@ -52,6 +53,8 @@ async def pointer(ws):
 
 async def main_socket(ws):
     async for raw in ws:
+        if LATENCY:
+            await asyncio.sleep(LATENCY)
         m = json.loads(raw)
         t, mid, uri, payload = m.get("type"), m.get("id"), m.get("uri", ""), m.get("payload", {})
         if t == "hello":

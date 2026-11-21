@@ -31,6 +31,8 @@ public class LgClient implements Remote {
         void onLgInputs(JSONArray inputs);
         /** سطر في سجل التشخيص (بيظهر في الإعدادات). */
         void onLgLog(String line);
+        /** التليفزيون ده بيرفض المانيفست الموقّع — نفتكرها حتى بعد ما التطبيق يتقفل. */
+        void onLgUnsigned();
     }
 
     /** التليفزيون رفض أو محدش وافق. */
@@ -43,6 +45,8 @@ public class LgClient implements Remote {
     static int portWss = 3001;
     /** التليفزيونات الجديدة بترفض المانيفست الموقّع ("blacklisted certificate") — بنفتكر ده عشان مانضيعش وقت. */
     static volatile boolean signedRejected;
+    /** تليفزيونات webOS القديمة مافيهاش wss — بنفتكر عشان نبدأ بـ ws على طول. */
+    static volatile boolean preferWs;
     static int portWs = 3000;
 
     // زراير الريموت (أرقام KeyEvent بتاعة أندرويد) → أسماء زراير webOS
@@ -109,19 +113,24 @@ public class LgClient implements Remote {
     @Override
     public void runRemote(String host) throws IOException {
         this.host = host;
+        inputPath = null; // عنوان socket الزراير بيتغير كل مرة
+        long t0 = System.currentTimeMillis();
+        String first = preferWs ? "ws://" + host + ":" + portWs : "wss://" + host + ":" + portWss;
+        String second = preferWs ? "wss://" + host + ":" + portWss : "ws://" + host + ":" + portWs;
         Ws ws;
         try {
-            ws = Ws.connect("wss://" + host + ":" + portWss, 6000);
-            log("main: wss:" + portWss + " OK");
+            ws = Ws.connect(first, 5000);
+            log("main: " + first + " OK");
         } catch (IOException e) {
-            log("main: wss:" + portWss + " failed: " + e);
+            log("main: " + first + " failed: " + e);
             try {
-                ws = Ws.connect("ws://" + host + ":" + portWs, 6000); // webOS القديم
+                ws = Ws.connect(second, 5000);
             } catch (IOException e2) {
-                log("main: ws:" + portWs + " failed: " + e2);
+                log("main: " + second + " failed: " + e2);
                 throw e2;
             }
-            log("main: ws:" + portWs + " OK");
+            preferWs = second.startsWith("ws:");
+            log("main: " + second + " OK");
         }
         main = ws;
         early.clear();
@@ -137,35 +146,6 @@ public class LgClient implements Remote {
             }
             register(ws);
 
-            // زراير الريموت بتروح على socket تاني
-            JSONObject sock = call(ws, msg("request", null, "ssap://com.webos.service.networkinput/getPointerInputSocket", new JSONObject()));
-            log("pointer socket reply: " + (sock == null ? "none" : sock.toString()));
-            inputPath = sock == null || sock.optJSONObject("payload") == null ? null : sock.optJSONObject("payload").optString("socketPath", null);
-            openInput();
-
-            if (model.isEmpty() || "tv".equals(model)) {
-                JSONObject sys2 = call(ws, msg("request", null, "ssap://system/getSystemInfo", new JSONObject()));
-                if (sys2 != null && sys2.optJSONObject("payload") != null) model = sys2.optJSONObject("payload").optString("modelName", model);
-            }
-            // عنوان MAC عشان نشغّل التليفزيون وهو مقفول. بنحفظ الاتنين (واي فاي وكابل) لأننا مش عارفين هو متوصل بأنهي واحد
-            JSONObject info = call(ws, msg("request", null, "ssap://com.webos.service.connectionmanager/getinfo", new JSONObject()));
-            log("network info: " + (info == null ? "none" : info.optString("type") + " " + info.optString("error")));
-            if (info != null && info.optJSONObject("payload") != null) {
-                JSONObject p = info.optJSONObject("payload");
-                StringBuilder macs = new StringBuilder();
-                String[] keys = {"wifiInfo", "wiredInfo"};
-                for (String k : keys) {
-                    JSONObject o = p.optJSONObject(k);
-                    String mac = o == null ? "" : o.optString("macAddress", "");
-                    if (mac.matches("([0-9A-Fa-f]{2}[:-]){5}[0-9A-Fa-f]{2}")) {
-                        if (macs.length() > 0) macs.append(',');
-                        macs.append(mac.toLowerCase(java.util.Locale.US));
-                    }
-                }
-                log("MAC: " + (macs.length() == 0 ? "not provided" : macs));
-                if (macs.length() > 0) events.onLgMac(macs.toString());
-            }
-
             send(ws, msg("subscribe", "sub_apps", "ssap://com.webos.applicationManager/listLaunchPoints", new JSONObject()));
             send(ws, msg("subscribe", "sub_inputs", "ssap://tv/getExternalInputList", new JSONObject()));
             send(ws, msg("subscribe", "sub_vol", "ssap://audio/getVolume", new JSONObject()));
@@ -174,6 +154,19 @@ public class LgClient implements Remote {
 
             connected = true;
             listener.onConnected("LG", model.isEmpty() ? "webOS TV" : model);
+            log("connected in " + (System.currentTimeMillis() - t0) + " ms");
+
+            // الحاجات اللي مش لازمة عشان نقول "متوصل" بتتعمل في الخلفية
+            final Ws mainWs = ws;
+            Thread setup = new Thread(new Runnable() {
+                public void run() {
+                    if (main != mainWs) return;
+                    openInput(); // socket الزراير (أول زرار بيستناه لو لسه بيفتح)
+                    fetchMac();
+                }
+            }, "lg-setup");
+            setup.setDaemon(true);
+            setup.start();
 
             // مفيش ping من التليفزيون، فبنبعت إحنا كل 15 ثانية
             final Ws pinged = ws;
@@ -217,9 +210,12 @@ public class LgClient implements Remote {
             JSONObject res = call(ws, registration(signed, "register_" + attempt));
             if (res == null) throw new IOException("مفيش رد على التسجيل");
             log("register (" + (signed ? "signed" : "unsigned") + "): " + res.optString("type") + " " + res.optString("error"));
-            if ("error".equals(res.optString("type")) && signed) {
-                signedRejected = true;
-                signed = false; // الـ firmware الجديد بيرفض المانيفست الموقّع
+            if ("error".equals(res.optString("type")) && attempt == 0) {
+                if (signed) {
+                    signedRejected = true; // الـ firmware الجديد بيرفض المانيفست الموقّع
+                    events.onLgUnsigned();
+                }
+                signed = !signed; // نجرب الطريقة التانية
                 continue;
             }
             if ("response".equals(res.optString("type"))) {
@@ -359,6 +355,30 @@ public class LgClient implements Remote {
         Ws ws = main;
         if (ws == null || !connected) throw new IOException("مش متوصل");
         send(ws, msg("request", null, uri, payload == null ? new JSONObject() : payload));
+    }
+
+    /** عنوان MAC عشان نشغّل التليفزيون وهو مقفول. بنحفظ الاتنين (واي فاي وكابل). */
+    private void fetchMac() {
+        try {
+            JSONObject info = requestWait("ssap://com.webos.service.connectionmanager/getinfo", null, 6000);
+            log("network info: " + (info == null ? "none" : info.optString("type") + " " + info.optString("error")));
+            if (info == null || info.optJSONObject("payload") == null) return;
+            JSONObject p = info.optJSONObject("payload");
+            StringBuilder macs = new StringBuilder();
+            String[] keys = {"wifiInfo", "wiredInfo"};
+            for (String k : keys) {
+                JSONObject o = p.optJSONObject(k);
+                String mac = o == null ? "" : o.optString("macAddress", "");
+                if (mac.matches("([0-9A-Fa-f]{2}[:-]){5}[0-9A-Fa-f]{2}")) {
+                    if (macs.length() > 0) macs.append(',');
+                    macs.append(mac.toLowerCase(java.util.Locale.US));
+                }
+            }
+            log("MAC: " + (macs.length() == 0 ? "not provided" : macs));
+            if (macs.length() > 0) events.onLgMac(macs.toString());
+        } catch (IOException e) {
+            log("network info failed: " + e);
+        }
     }
 
     /** طلب وهو متوصل: بيستنى الرد من الـ loop الأساسي. */

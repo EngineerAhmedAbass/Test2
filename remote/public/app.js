@@ -747,6 +747,13 @@ $('#checkUpdBtn').onclick = () => { toast('بنشوف لو فيه تحديث…'
 renderSaved();
 if (!savedDevices().length) scan();
 // Java ممكن يكون خلص تجهيز قبل ما الصفحة تحمل
+// LG مش محتاج مفتاح الأمان بتاع Android TV، فبنوصل على طول من غير ما نستنى
+(function connectLgNow() {
+  let last = '';
+  try { last = TV.lastHost(); } catch (_) {}
+  const d = last && savedDevices().find(x => x.host === last);
+  if (d && d.kind === 'lg') connect(d.host, d.name, 'lg');
+})();
 try { if (TV.isReady()) window.onTv({ type: 'ready' }); } catch (_) {}
 // كل ما التطبيق يتفتح بيشوف لو فيه نسخة أحدث
 setTimeout(() => { try { TV.checkUpdate(false); } catch (_) {} }, 1200);
