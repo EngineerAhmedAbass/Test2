@@ -552,7 +552,7 @@ public class LgClient implements Remote {
     // -------------------------------------------------------- Power on
 
     /** تشغيل التليفزيون وهو مقفول (Wake-on-LAN) — لازم "التشغيل عن طريق Wi-Fi" يكون مفعّل في التليفزيون. */
-    public static void wake(String mac, String host) throws IOException {
+    public static String wake(String mac, String host) throws IOException {
         String[] parts = mac.split("[:-]");
         if (parts.length != 6) throw new IOException("عنوان MAC مش معروف");
         byte[] m = new byte[6];
@@ -560,21 +560,42 @@ public class LgClient implements Remote {
         byte[] pkt = new byte[102];
         for (int i = 0; i < 6; i++) pkt[i] = (byte) 0xFF;
         for (int i = 6; i < pkt.length; i++) pkt[i] = m[(i - 6) % 6];
-        DatagramSocket s = new DatagramSocket();
+
+        // بنبعت من كارت الواي فاي نفسه (لو الموبايل فاتح داتا، البرودكاست ممكن يروح على الداتا)
+        InetAddress local = localAddressFor(host);
+        DatagramSocket s = local != null ? new DatagramSocket(new java.net.InetSocketAddress(local, 0)) : new DatagramSocket();
         try {
             s.setBroadcast(true);
-            String[] targets = {"255.255.255.255", subnetBroadcast(host), host};
-            for (int round = 0; round < 3; round++) {
-                for (String t : targets) {
-                    if (t == null) continue;
+            String[] targets = {subnetBroadcast(host), "255.255.255.255", host};
+            int[] ports = {9, 7};
+            for (String t : targets) {
+                if (t == null) continue;
+                for (int port : ports) {
                     try {
-                        s.send(new DatagramPacket(pkt, pkt.length, InetAddress.getByName(t), 9));
+                        s.send(new DatagramPacket(pkt, pkt.length, InetAddress.getByName(t), port));
                     } catch (IOException ignored) { }
                 }
             }
         } finally {
             s.close();
         }
+        return local == null ? "default" : local.getHostAddress();
+    }
+
+    /** عنوان الموبايل على نفس شبكة التليفزيون (أول 3 أرقام زي بعض). */
+    static InetAddress localAddressFor(String host) {
+        String[] h = host.split("\\.");
+        if (h.length != 4) return null;
+        String prefix = h[0] + "." + h[1] + "." + h[2] + ".";
+        try {
+            for (java.net.NetworkInterface ni : java.util.Collections.list(java.net.NetworkInterface.getNetworkInterfaces())) {
+                if (!ni.isUp() || ni.isLoopback()) continue;
+                for (InetAddress a : java.util.Collections.list(ni.getInetAddresses())) {
+                    if (a instanceof java.net.Inet4Address && a.getHostAddress().startsWith(prefix)) return a;
+                }
+            }
+        } catch (Exception ignored) { }
+        return null;
     }
 
     private static String subnetBroadcast(String host) {

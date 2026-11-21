@@ -513,8 +513,8 @@ public class MainActivity extends Activity implements TvClient.Listener, LgClien
                 for (int round = 0; round < 4; round++) {
                     for (String mac : macs.split(",")) {
                         try {
-                            LgClient.wake(mac.trim(), h);
-                            if (round == 0) onLgLog("wake sent to " + mac.trim());
+                            String via = LgClient.wake(mac.trim(), h);
+                            if (round == 0) onLgLog("wake sent to " + mac.trim() + " from " + via);
                             ok++;
                         } catch (IOException e) {
                             if (round == 0) onLgLog("wake failed " + mac + ": " + e);
