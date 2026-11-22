@@ -158,6 +158,7 @@ const TOPIC="shella-alwan/v1/room/";
 const COLOR_NAME={a:"أحمر",b:"أصفر",c:"أخضر",d:"أزرق"};
 const COLOR_VAR={a:"var(--coral)",b:"var(--saffron)",c:"var(--jade)",d:"var(--cobalt)"};
 const MAX_PLAYERS=10, HAND=7, CODE_LEN=5;
+const BOT_NAMES=["زيزو","بيبو","توتة","ميمي","شوشو","فوفو","لولو","كوكو","سوسو"];
 const CODE_RE=new RegExp("^[A-Z]{"+CODE_LEN+"}$");
 const $=id=>document.getElementById(id);
 const esc=s=>String(s==null?"":s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
@@ -263,6 +264,19 @@ const ops={
   sayOne(s,pid){
     if(!s||s.vulnerable!==pid)return null;
     s.vulnerable=null;s.msg=nameOf(s,pid)+" قال أونو!";return s;
+  },
+  addBot(s,pid){
+    if(!s||s.status==="playing"||!s.players.some(p=>p.id===pid&&!p.bot))return null;
+    if(s.players.length+(s.waiting||[]).length>=MAX_PLAYERS)return null;
+    const used=new Set(s.players.map(p=>p.name));
+    const name=BOT_NAMES.find(n=>!used.has(n))||("بوت "+(s.players.length+1));
+    s.players.push({id:"bot_"+Math.random().toString(36).slice(2,9),name,bot:true});
+    s.msg=nameOf(s,pid)+" ضاف "+name+" 🤖";return s;
+  },
+  removeBot(s,pid,botId){
+    if(!s||s.status==="playing"||!s.players.some(p=>p.id===pid&&!p.bot))return null;
+    const i=s.players.findIndex(p=>p.id===botId&&p.bot);if(i<0)return null;
+    const nm=s.players[i].name;s.players.splice(i,1);s.msg=nm+" خرج";return s;
   },
   // The turn timer ran out: the turn passes to the next player. "tid" pins it to that exact turn.
   timeout(s,pid,tid){
@@ -425,7 +439,8 @@ function waitingHTML(){
     </div>
     <div class="panel">
       <h2>اللاعيبة (${n}/${MAX_PLAYERS})</h2>
-      <ul class="players-list">${room.players.map(p=>`<li><span>${esc(p.name)}${p.id===myId?" (إنت)":""}</span>${p.id===room.host?'<span class="badge">صاحب الأوضة</span>':""}</li>`).join("")}</ul>
+      <ul class="players-list">${room.players.map(p=>`<li><span>${p.bot?"🤖 ":""}${esc(p.name)}${p.id===myId?" (إنت)":""}</span>${p.bot?(inRoom?`<button class="btn small" data-act="rmbot" data-id="${esc(p.id)}" aria-label="شيل ${esc(p.name)}">شيل</button>`:'<span class="badge">بوت</span>'):p.id===room.host?'<span class="badge">صاحب الأوضة</span>':""}</li>`).join("")}</ul>
+      ${inRoom?`<button class="btn" data-act="addbot" ${n>=MAX_PLAYERS?"disabled":""}>🤖 ضيف بوت</button>`:""}
       ${inRoom?`<button class="btn primary" data-act="start" ${n<2?"disabled":""}>${n<2?"مستنيين لاعيبة كمان…":"يلا نبدأ ("+n+" لاعيبة)"}</button>`
         :`<div class="field"><label for="in-name">اسمك</label><input type="text" id="in-name" maxlength="14" value="${esc(myName)}"></div><button class="btn primary" data-act="joinroom">ادخل الأوضة</button>`}
     </div>
@@ -437,7 +452,7 @@ function gameHTML(){
   const hand=meIn?(s.hands[myId]||[]).slice():[];
   const sorted=hand.slice().sort((x,y)=>sortKey(x)<sortKey(y)?-1:1);
   const vul=s.vulnerable;
-  const seats=players.map((p,i)=>{const c=(s.hands[p.id]||[]).length;return `<div class="seat ${i===s.turn&&s.status==="playing"?"turn":""} ${p.id===myId?"me":""}">${vul===p.id?'<span class="flag">١!</span>':""}<span class="nm">${p.id===myId?"إنت":esc(p.name)}</span><span class="ct">${c} ${c===1?"كارت":"كروت"}${s.wins&&s.wins[p.id]?" · ★"+s.wins[p.id]:""}</span></div>`}).join("");
+  const seats=players.map((p,i)=>{const c=(s.hands[p.id]||[]).length;return `<div class="seat ${i===s.turn&&s.status==="playing"?"turn":""} ${p.id===myId?"me":""}">${vul===p.id?'<span class="flag">١!</span>':""}<span class="nm">${p.id===myId?"إنت":(p.bot?"🤖 ":"")+esc(p.name)}</span><span class="ct">${c} ${c===1?"كارت":"كروت"}${s.wins&&s.wins[p.id]?" · ★"+s.wins[p.id]:""}</span></div>`}).join("");
   const t=top(s);
   let acts="";
   if(meIn&&s.status==="playing"){
@@ -472,6 +487,7 @@ function overHTML(){
     <div class="big">${w===myId?"إنت كسبت!":esc(w?nameOf(room,w):"حد")+" كسب"}</div>
     <p class="muted">${esc(room.msg)}</p>
     ${meIn?`<button class="btn primary" data-act="start" ${n<2?"disabled":""}>${n<2?"محتاجين لاعب كمان":"جولة جديدة"}</button>`:""}
+    ${meIn?`<div class="row" style="width:100%"><button class="btn small" data-act="addbot" ${n>=MAX_PLAYERS?"disabled":""}>🤖 ضيف بوت</button>${room.players.some(p=>p.bot)?`<button class="btn small" data-act="rmbot" data-id="${esc(room.players.filter(p=>p.bot).slice(-1)[0].id)}">شيل بوت</button>`:""}</div>`:""}
     <button class="btn small" data-act="leave">خروج من الأوضة</button>
   </div></div>`;
 }
@@ -509,6 +525,58 @@ function maybeAutoDraw(){
   const rev=room.rev;
   autoTimer=setTimeout(()=>{autoTimer=null;if(room&&room.rev===rev&&needsAutoDraw()){autoRev=rev;mutate(s=>ops.draw(s,myId))}},1400);
 }
+/* ---------- bots ----------
+   A bot has no phone of its own. The first human in the seat list plays for it after a short pause;
+   if that phone is gone, any other human takes over after a few seconds. */
+const isBot=(s,id)=>!!(s.players.find(p=>p.id===id)||{}).bot;
+function botColor(hand){
+  const n={a:0,b:0,c:0,d:0};for(const c of hand)if(!isWild(c))n[colorOf(c)]++;
+  return Object.keys(n).sort((x,y)=>n[y]-n[x])[0];
+}
+function botMove(s,bot){
+  const hand=s.hands[bot]||[];
+  if(s.drew){
+    const c=s.drawn;
+    return canPlay(c,s)?ops.play(s,bot,c,isWild(c)?botColor(hand.filter(x=>x!==c)):null,Math.random()<.85):ops.pass(s,bot);
+  }
+  const ok=hand.filter(c=>canPlay(c,s));
+  if(!ok.length)return ops.draw(s,bot);
+  const next=s.players[nextIdx(s,1)];const nextCount=(s.hands[next.id]||[]).length;
+  const score=c=>{
+    const v=valOf(c);
+    if(v==="W4")return nextCount<=2?9:1;           // keep the strong wild for when it matters
+    if(v==="W")return 2;
+    if(v==="D"||v==="S")return nextCount<=2?8:5;     // hit the player who is close to winning
+    if(v==="R")return 5;
+    return 6+(colorOf(c)===s.color?1:0)-Number(v)/20; // otherwise dump numbers, high ones first
+  };
+  const pick=ok.slice().sort((x,y)=>score(y)-score(x))[0];
+  return ops.play(s,bot,pick,isWild(pick)?botColor(hand.filter(x=>x!==pick)):null,Math.random()<.85);
+}
+let botRev=-1,botRevAt=0,botDone=-1,catchDone=-1;
+function botTick(){
+  if(!room||room.status!=="playing"||!online)return;
+  const humans=room.players.filter(p=>!p.bot);
+  if(!humans.some(p=>p.id===myId))return;
+  if(room.rev!==botRev){botRev=room.rev;botRevAt=Date.now()}
+  if(botDone===room.rev)return;
+  const waited=Date.now()-botRevAt;
+  const primary=humans[0].id===myId;
+  const due=primary?1500:8000;
+  const cur=room.players[room.turn];
+  // A bot notices when a human forgot to say أونو.
+  if(room.vulnerable&&!isBot(room,room.vulnerable)&&catchDone!==room.rev){
+    const catcher=room.players.find(p=>p.bot);
+    if(catcher&&waited>=(primary?1100:7000)){
+      catchDone=room.rev;
+      if(Math.random()<.6){botDone=room.rev;mutate(s=>ops.catchOne(s,catcher.id));return}
+    }
+  }
+  if(!cur||!cur.bot||waited<due)return;
+  botDone=room.rev;
+  mutate(s=>botMove(s,cur.id));
+}
+
 // Turn timer: each phone counts 40 seconds from the moment it saw the turn start (no shared clock needed).
 // The player whose turn it is passes on time-out; if their phone is gone, anyone else does it a few seconds later.
 const TURN_SECS=40,GRACE_SECS=6;
@@ -534,7 +602,8 @@ function tickTimer(){
   if((cur===myId&&left<=0)||(cur!==myId&&left<=-GRACE_SECS)){
     const tid=room.tid||0;
     if(cur===myId&&pendingWild){pendingWild=null}
-    if(mutate(s=>ops.timeout(s,myId,tid)))timeoutFor=seenTurn;
+    const key=seenTurn;  // mutate() moves seenTurn on to the next turn, so remember this one first
+    if(mutate(s=>ops.timeout(s,myId,tid)))timeoutFor=key;
   }
 }
 let lastKey="",lastHTML="";
@@ -571,7 +640,7 @@ document.addEventListener("click",e=>{
   const cd=e.target.closest("[data-card]");
   if(cd){onCard(cd.dataset.card,cd);return}
   const b=e.target.closest("[data-act]");
-  if(b&&!b.disabled){if((b.dataset.act==="cancelwild"||b.dataset.act==="later")&&e.target!==b&&!e.target.matches("button"))return;act(b.dataset.act)}
+  if(b&&!b.disabled){if((b.dataset.act==="cancelwild"||b.dataset.act==="later")&&e.target!==b&&!e.target.matches("button"))return;act(b.dataset.act,b.dataset.id)}
 });
 function onCard(c,el){
   if(!room||room.status!=="playing")return;
@@ -583,16 +652,18 @@ function onCard(c,el){
   if(isWild(c)){pendingWild=c;render();return}
   const said=saidOne;saidOne=false;mutate(s=>ops.play(s,myId,c,null,said));
 }
-function act(a){
+function act(a,id){
   if(a==="join"){if(!readName())return;const code=($("in-code").value||"").trim().toUpperCase();if(!CODE_RE.test(code)){toast("الكود "+CODE_LEN+" حروف إنجليزي");return}joinIntent=true;enterRoom(code);return}
   if(a==="joinroom"){if(!readName())return;joinIntent=true;mutate(s=>ops.join(s,myId,myName));return}
   if(a==="leave"){
     if(room){const s=JSON.parse(JSON.stringify(room));const out=ops.leave(s,myId);
-      if(out&&online){if(!out.players.length&&!(out.waiting||[]).length)publish(null);else{out.rev=(room.rev||0)+1;out.by=myId;out.updatedAt=Date.now();publish(out)}}}
+      if(out&&online){if(!out.players.some(p=>!p.bot)&&!(out.waiting||[]).length)publish(null);else{out.rev=(room.rev||0)+1;out.by=myId;out.updatedAt=Date.now();publish(out)}}}
     exitRoom();return}
   if(a==="copy"){const t=room?room.code:"";try{navigator.clipboard.writeText(t).then(()=>toast("الكود اتنسخ"),()=>toast("الكود: "+t))}catch(e){toast("الكود: "+t)}return}
   if(a==="share"){const t="تعالى نلعب ترفيه العيلة 🎴 كود الأوضة: "+(room?room.code:"");if(native&&native.share)native.share(t);else toast(t);return}
   if(a==="start"){mutate(s=>ops.start(s,myId));return}
+  if(a==="addbot"){mutate(s=>ops.addBot(s,myId));return}
+  if(a==="rmbot"){mutate(s=>ops.removeBot(s,myId,id));return}
   if(a==="draw"){mutate(s=>ops.draw(s,myId));return}
   if(a==="pass"){mutate(s=>ops.pass(s,myId));return}
   if(a==="one"){saidOne=!saidOne;render();return}
@@ -603,7 +674,7 @@ function act(a){
   if(a==="update"){const u=update&&update.url;update=null;render();if(u&&native&&native.openUrl)native.openUrl(u);return}
   if(a==="later"){update=null;render();return}
 }
-setInterval(tickTimer,500);
+setInterval(()=>{tickTimer();botTick()},500);
 // Android back button: close the color picker first.
 window.shellaBack=function(){if(update){update=null;render();return true}if(pendingWild){pendingWild=null;render();return true}return false};
 
