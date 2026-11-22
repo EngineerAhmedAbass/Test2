@@ -476,15 +476,40 @@ public class MainActivity extends Activity implements TvClient.Listener, LgClien
 
     // ------------------------------------------------------- Connection loop
 
+    // الـ loop اللي شغال دلوقتي (عشان مايبقاش فيه اتنين بيحاولوا يوصلوا لنفس التليفزيون)
+    private volatile boolean loopAlive;
+    private volatile int loopGen;
+    private volatile String loopHost;
+
     private void startConnect(final String h, final String name, final String wantKind) {
+        if (loopAlive && h.equals(loopHost) && (wantKind.isEmpty() || wantKind.equals(kind))) {
+            hostName = name;
+            kick(); // نفس التليفزيون والمحاولة شغالة: نخليها تحاول دلوقتي بدل ما نبدأ واحدة تانية
+            return;
+        }
         final int gen = ++connectGen;
         kick(); // الـ loop القديم يخلص على طول
         host = h;
         hostName = name;
         Remote old = remote;
         if (old != null && old.isConnected()) old.disconnect();
+        loopAlive = true;
+        loopGen = gen;
+        loopHost = h;
         worker.execute(new Runnable() {
             public void run() {
+                try {
+                    connectLoop(gen, h, name, wantKind);
+                } finally {
+                    if (loopGen == gen) loopAlive = false;
+                }
+            }
+        });
+    }
+
+    private void connectLoop(final int gen, final String h, final String name, final String wantKind) {
+        {
+            {
                 // لو مش عارفين نوع التليفزيون (IP مكتوب بالإيد) بنشوف البورتات المفتوحة
                 String k = wantKind;
                 if (k.isEmpty()) k = savedKind(h);
@@ -539,13 +564,13 @@ public class MainActivity extends Activity implements TvClient.Listener, LgClien
                     }
                     if (System.currentTimeMillis() < wakeUntil) {
                         fails = 0;
-                        pause(1500);
+                        pause(1000); // بعد أمر التشغيل: بنحاول كل ثانية لحد ما واي فاي التليفزيون يرجع
                     } else {
                         pause(Math.min(8000, 700L * fails));
                     }
                 }
             }
-        });
+        }
     }
 
     private final Object loopLock = new Object();
@@ -602,7 +627,7 @@ public class MainActivity extends Activity implements TvClient.Listener, LgClien
             emit(obj("type", "needMac"));
             return;
         }
-        wakeUntil = System.currentTimeMillis() + 60000;
+        wakeUntil = System.currentTimeMillis() + 120000; // واي فاي التليفزيون ممكن ياخد دقيقة ونص عشان يرجع
         kick();
         emit(obj("type", "status", "state", "connecting", "host", h, "name", hostName));
         worker.execute(new Runnable() {
