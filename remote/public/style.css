@@ -476,3 +476,27 @@ h3 { font-size: 14px; margin: 16px 0 10px; color: var(--muted); font-weight: 600
 /* ---------- الريسيفر ---------- */
 .dev .meta em.rcv { color: #fff; background: #0b7a75; }
 .kind-rcv [data-sheet="inputSheet"], .kind-rcv .add-app, .kind-rcv #appsSheet .sys-row { display: none; }
+
+/* ---------- تابات الأجهزة ---------- */
+.devtabs { flex: 1; min-width: 0; display: none; gap: 6px; overflow-x: auto; scrollbar-width: none; padding: 2px 0; }
+.devtabs::-webkit-scrollbar { display: none; }
+#remote.has-tabs .devtabs { display: flex; }
+#remote.has-tabs #tvNameBtn { display: none; }
+.dtab {
+  flex: none; display: flex; align-items: center; gap: 7px; height: 52px; padding: 0 12px; border-radius: 16px;
+  background: var(--panel); border: 1px solid var(--line); color: var(--muted); white-space: nowrap; font-size: 12.5px; font-weight: 700;
+  box-shadow: var(--raise); backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur);
+}
+.dtab .k { font-size: 10px; font-weight: 800; padding: 2px 5px; border-radius: 5px; color: #fff; background: #2f6fd6; }
+.dtab .k.lg { background: #a50034; } .dtab .k.rcv { background: #0b7a75; }
+.dtab .sn { font-size: 11.5px; max-width: 70px; overflow: hidden; text-overflow: ellipsis; }
+.dtab .d { width: 7px; height: 7px; border-radius: 50%; background: var(--ok); flex: none; }
+.dtab .d.off { background: var(--danger); } .dtab .d.wait { background: var(--warn); }
+.dtab .nm { display: flex; flex-direction: column; line-height: 1.25; text-align: start; min-width: 0; }
+.dtab .nm .t { max-width: 140px; overflow: hidden; text-overflow: ellipsis; }
+.dtab .nm small { font-size: 11px; font-weight: 500; opacity: .85; }
+.dtab.on { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
+.dtab.add { color: var(--accent); border-style: dashed; font-size: 20px; padding: 0 14px; }
+.dtab:active { transform: scale(.96); }
+.tabmark { margin-inline-start: auto; font-size: 12px; font-weight: 700; padding: 6px 10px; border-radius: 10px; background: var(--bg); color: var(--accent); white-space: nowrap; }
+.tabmark.in { background: rgba(47, 210, 127, .15); color: var(--ok); }

@@ -10,10 +10,59 @@ const SHORT = 3, START_LONG = 1, END_LONG = 2;
 if (!window.TV) {
   const fire = (o, ms = 300) => setTimeout(() => window.onTv(o), ms);
   let devices = [];
+  let tabs = [];
+  let activeHost = '';
   let paired = false;
+  let lgOk = false;
+  const guess = (h) => h.endsWith('.31') ? 'lg' : h.endsWith('.50') ? 'rcv' : 'atv';
+  const LG_APPS = [
+    { id: 'youtube.leanback.v4', title: 'YouTube', icon: '' }, { id: 'netflix', title: 'Netflix', icon: '' },
+    { id: 'shahid', title: 'Shahid', icon: '' }, { id: 'com.webos.app.livetv', title: 'Live TV', icon: '' },
+    { id: 'com.webos.app.hdmi1', title: 'HDMI 1', icon: '' }, { id: 'amazon', title: 'Prime Video', icon: '' }];
+  const LG_INPUTS = [
+    { id: 'HDMI_1', label: 'HDMI 1', appId: 'com.webos.app.hdmi1', connected: true },
+    { id: 'HDMI_2', label: 'PlayStation', appId: 'com.webos.app.hdmi2', connected: true },
+    { id: 'HDMI_3', label: 'HDMI 3', appId: 'com.webos.app.hdmi3', connected: false }];
+  const emitTabs = () => fire({ type: 'tabs', list: tabs.map(t => Object.assign({}, t, { active: t.host === activeHost })) }, 0);
+  const ensure = (host, name, kind) => {
+    let t = tabs.find(x => x.host === host);
+    if (t) return t;
+    if (tabs.length >= 4) { fire({ type: 'error', msg: 'التابات مليانة (4 أجهزة)' }, 0); return null; }
+    t = { host, name, kind: kind || (devices.find(d => d.host === host) || {}).kind || guess(host), state: 'connecting', volume: -1 };
+    tabs.push(t);
+    devices = [{ host, name, kind: t.kind }].concat(devices.filter(d => d.host !== host));
+    return t;
+  };
+  const replay = (t) => {
+    const h = t.host;
+    fire({ type: 'kind', kind: t.kind, host: h }, 0);
+    fire({ type: 'status', state: t.state, host: h, name: t.name, vendor: t.vendor || '', model: t.model || '', kind: t.kind }, 0);
+    if (t.volume >= 0) fire({ type: 'volume', level: String(t.volume), max: '100', muted: '', host: h }, 0);
+    fire({ type: 'app', pkg: t.app || '', host: h }, 0);
+    fire({ type: 'apps', list: t.kind === 'lg' && t.state === 'connected' ? LG_APPS : [], host: h }, 0);
+    fire({ type: 'inputs', list: t.kind === 'lg' && t.state === 'connected' ? LG_INPUTS : [], host: h }, 0);
+    if (t.state === 'pair') fire({ type: 'needPair', host: h, name: t.name }, 0);
+  };
+  const run = (t) => {
+    if (t.state === 'connected') return;
+    t.state = 'connecting'; emitTabs();
+    let delay = 600;
+    if (t.kind === 'lg' && !lgOk) { lgOk = true; delay = 2600; fire({ type: 'lgPrompt', host: t.host, name: t.name }, 500); fire({ type: 'paired', host: t.host }, 2500); }
+    setTimeout(() => {
+      if (t.kind === 'atv' && !paired) { t.state = 'pair'; emitTabs(); if (t.host === activeHost) fire({ type: 'needPair', host: t.host, name: t.name }, 0); return; }
+      t.state = 'connected';
+      t.vendor = t.kind === 'lg' ? 'LG' : t.kind === 'rcv' ? 'Receiver' : 'Xiaomi';
+      t.model = t.kind === 'lg' ? 'OLED55C1' : t.kind === 'rcv' ? t.name : 'MIBOX4';
+      t.volume = t.kind === 'rcv' ? -1 : t.kind === 'lg' ? 12 : 9;
+      t.app = t.kind === 'lg' ? 'com.webos.app.hdmi2' : t.kind === 'atv' ? 'com.google.android.youtube.tv' : '';
+      emitTabs();
+      if (t.host === activeHost) replay(t);
+    }, delay);
+  };
   window.TV = {
     saved: () => JSON.stringify(devices),
     lastHost: () => '',
+    tabs: () => JSON.stringify(tabs.map(t => ({ host: t.host, name: t.name, kind: t.kind }))),
     isReady: () => true,
     discover() {
       fire({ type: 'found', host: '192.168.1.23', name: 'Mi Box S' }, 700);
@@ -23,42 +72,21 @@ if (!window.TV) {
       fire({ type: 'scanDone' }, 2500);
     },
     connect(host, name, kind) {
-      kind = kind || (devices.find(d => d.host === host) || {}).kind || (host.endsWith('.31') ? 'lg' : host.endsWith('.50') ? 'rcv' : 'atv');
-      devices = [{ host, name, kind }].concat(devices.filter(d => d.host !== host));
-      fire({ type: 'status', state: 'connecting', host, name }, 50);
-      fire({ type: 'kind', kind }, 80);
-      if (kind === 'rcv') {
-        fire({ type: 'status', state: 'connected', host, name, vendor: 'Receiver', model: name, kind }, 500);
-        return;
-      }
-      if (kind === 'lg') {
-        if (!this._lgOk) { this._lgOk = true; fire({ type: 'lgPrompt' }, 500); fire({ type: 'paired' }, 2500); }
-        const d = this._lgOk === true ? 2600 : 600; this._lgOk = 1;
-        fire({ type: 'status', state: 'connected', host, name, vendor: 'LG', model: 'OLED55C1', kind }, d);
-        fire({ type: 'volume', level: '12', max: '100', muted: '' }, d + 100);
-        fire({ type: 'apps', list: [
-          { id: 'youtube.leanback.v4', title: 'YouTube', icon: '' }, { id: 'netflix', title: 'Netflix', icon: '' },
-          { id: 'shahid', title: 'Shahid', icon: '' }, { id: 'com.webos.app.livetv', title: 'Live TV', icon: '' },
-          { id: 'com.webos.app.hdmi1', title: 'HDMI 1', icon: '' }, { id: 'com.webos.app.browser', title: 'Web Browser', icon: '' },
-          { id: 'amazon', title: 'Prime Video', icon: '' }, { id: 'com.palm.app.settings', title: 'Settings', icon: '' }] }, d + 150);
-        fire({ type: 'app', pkg: 'com.webos.app.hdmi2' }, d + 200);
-        fire({ type: 'inputs', list: [
-          { id: 'HDMI_1', label: 'HDMI 1', appId: 'com.webos.app.hdmi1', connected: true },
-          { id: 'HDMI_2', label: 'PlayStation', appId: 'com.webos.app.hdmi2', connected: true },
-          { id: 'HDMI_3', label: 'HDMI 3', appId: 'com.webos.app.hdmi3', connected: false },
-          { id: 'HDMI_4', label: 'HDMI 4', appId: 'com.webos.app.hdmi4', connected: false }] }, d + 220);
-        return;
-      }
-      if (!paired) return fire({ type: 'needPair', host, name }, 600);
-      fire({ type: 'status', state: 'connected', host, name, vendor: 'Xiaomi', model: 'MIBOX4' }, 600);
-      fire({ type: 'volume', level: '9', max: '15', muted: '' }, 800);
-      fire({ type: 'app', pkg: 'com.google.android.youtube.tv' }, 900);
+      const t = ensure(host, name, kind); if (!t) return;
+      activeHost = host; emitTabs(); replay(t); run(t);
     },
-    disconnect() {}, forget() {},
-    pairStart(h, n) { state.host = h; state.name = n; fire({ type: 'pairCode' }, 500); },
+    addTab(host, name, kind) { const t = ensure(host, name, kind); if (!t) return; emitTabs(); run(t); },
+    activate(host) { const t = tabs.find(x => x.host === host); if (!t) return; activeHost = host; emitTabs(); replay(t); },
+    removeDevice(host) {
+      tabs = tabs.filter(x => x.host !== host);
+      if (activeHost === host) { activeHost = tabs.length ? tabs[0].host : ''; if (activeHost) replay(tabs[0]); }
+      emitTabs();
+    },
+    disconnect() { if (activeHost) this.removeDevice(activeHost); }, forget() {},
+    pairStart(h, n) { fire({ type: 'pairCode' }, 500); },
     pairFinish(code) {
       if (code !== 'A1B2C3') return fire({ type: 'pairError', msg: 'الكود غلط، اتأكد منه', retry: '1' });
-      paired = true; fire({ type: 'paired' }); this.connect(state.host, state.name);
+      paired = true; fire({ type: 'paired' }); const t = tabs.find(x => x.host === activeHost); if (t) { t.state = 'offline'; run(t); }
     },
     pairCancel() {},
     key(c) { console.log('key', c); }, keyDir(c, d) { console.log('key', c, d); },
@@ -75,25 +103,25 @@ if (!window.TV) {
   };
 }
 
-const state = { host: '', name: '', kind: '', connected: false, sheet: null, ready: false, tvApps: [], tvInputs: [] };
+const state = { host: '', name: '', kind: '', connected: false, sheet: null, ready: false, tvApps: [], tvInputs: [], tabs: [] };
+
+// الرسايل دي تخص جهاز معيّن؛ بنطبقها بس لو تابه هو المفتوح
+const PER_DEVICE = ['status', 'kind', 'volume', 'app', 'power', 'apps', 'inputs', 'needPair', 'lgRejected'];
 
 /* ----------------------------------------------------------- رسايل Java */
 window.onTv = (e) => {
+  if (e.host && state.host && e.host !== state.host && PER_DEVICE.indexOf(e.type) >= 0) return;
   switch (e.type) {
-    case 'ready': {
-      if (state.ready) break;
-      state.ready = true;
-      const last = TV.lastHost();
-      const saved = savedDevices();
-      if (last && !state.host) {
-        const d = saved.find(x => x.host === last) || { host: last, name: last };
-        connect(d.host, d.name, d.kind);
-      }
+    case 'ready':
+      state.ready = true; // أجهزة Android TV بتستنى المفتاح ده لوحدها
       break;
-    }
+    case 'tabs': onTabs(e.list || []); break;
     case 'found': addFound(e.host, niceName(e.name), e.kind); break;
     case 'kind': setKind(e.kind); break;
-    case 'lgPrompt': openLgPrompt(); break;
+    case 'lgPrompt':
+      if (e.host && e.host !== state.host) { toast('وافق على الاتصال من ' + niceName(e.name)); break; }
+      openLgPrompt();
+      break;
     case 'lgRejected':
       if (state.sheet !== 'pairSheet') openLgPrompt();
       $('#pairMsg').textContent = '';
@@ -124,10 +152,13 @@ window.onTv = (e) => {
       else $('#pairMsg').textContent = 'اضغط "كود جديد" عشان تجرب تاني.';
       break;
     case 'paired':
-      closeSheet();
+      if (e.host && e.host !== state.host) { toast('تم الاقتران ✔'); break; }
+      if (state.sheet === 'pairSheet') closeSheet(true);
       toast('تم الاقتران ✔');
       break;
     case 'volume': {
+      const vt = state.tabs.find(x => x.host === state.host);
+      if (vt && vt.volume !== +e.level) { vt.volume = +e.level; renderTabs(); }
       const max = +e.max || 0, lvl = +e.level || 0;
       if (!max) break;
       $('#volWrap').hidden = false;
@@ -135,7 +166,7 @@ window.onTv = (e) => {
       $('#volText').textContent = e.muted ? 'مكتوم 🔇' : 'الصوت ' + lvl;
       break;
     }
-    case 'app': state.curApp = e.pkg; $('#appName').textContent = appLabel(e.pkg); break;
+    case 'app': state.curApp = e.pkg; $('#appName').textContent = e.pkg ? appLabel(e.pkg) : ''; break;
     case 'power':
       $('.power').classList.toggle('is-off', !e.on);
       break;
@@ -187,6 +218,120 @@ function setStatus(e) {
   }
 }
 
+/* ------------------------------------------------------- تابات الأجهزة */
+const KIND_LABEL = { lg: 'LG', rcv: 'ريسيفر', atv: 'TV' };
+function tabStatus(t) {
+  if (t.state === 'connected') return 'متوصل' + (t.volume >= 0 ? ' • الصوت ' + t.volume : '');
+  if (t.state === 'connecting') return 'بيوصل…';
+  if (t.state === 'pair') return 'محتاج اقتران';
+  if (t.state === 'rejected') return 'اترفض';
+  return 'مش متوصل';
+}
+function onTabs(list) {
+  state.tabs = list;
+  const a = list.find(t => t.active);
+  if (a && a.host !== state.host) {
+    // Java غيّر الجهاز المفتوح (مثلًا اتشال تاب)
+    state.host = a.host; state.name = a.name; setKind(a.kind || '');
+    $('#appName').textContent = ''; $('#volWrap').hidden = true;
+  }
+  if (!list.length && state.host) {
+    state.host = ''; state.connected = false;
+    if ($('#remote').classList.contains('active')) show('devices');
+  }
+  renderTabs();
+  markTabbed();
+}
+function renderTabs() {
+  const nav = $('#devTabs');
+  nav.innerHTML = '';
+  $('#remote').classList.toggle('has-tabs', state.tabs.length > 0);
+  const kinds = {};
+  state.tabs.forEach(t => { kinds[t.kind] = (kinds[t.kind] || 0) + 1; });
+  state.tabs.forEach(t => {
+    const b = document.createElement('button');
+    const dot = t.state === 'connected' ? '' : t.state === 'connecting' ? ' wait' : ' off';
+    const nm = niceName(t.name) || t.host;
+    if (t.host === state.host) {
+      b.className = 'dtab on';
+      b.innerHTML = '<span class="d' + dot + '"></span><span class="nm"><span class="t" dir="auto"></span><small></small></span>';
+      $('.t', b).textContent = nm;
+      $('small', b).textContent = tabStatus(t);
+    } else {
+      b.className = 'dtab';
+      b.innerHTML = '<span class="k ' + (t.kind || 'atv') + '"></span><span class="d' + dot + '"></span>';
+      $('.k', b).textContent = KIND_LABEL[t.kind] || 'TV';
+      if (kinds[t.kind] > 1) { const n = document.createElement('span'); n.className = 'sn'; n.textContent = nm.slice(0, 8); b.insertBefore(n, b.lastChild); }
+    }
+    b.title = nm;
+    bindTab(b, t);
+    nav.appendChild(b);
+  });
+  if (state.tabs.length < 4) {
+    const add = document.createElement('button');
+    add.className = 'dtab add';
+    add.setAttribute('aria-label', 'ضيف جهاز');
+    add.textContent = '＋';
+    add.onclick = () => { buzz(); show('devices'); if (!$('#foundList').children.length) scan(); };
+    nav.appendChild(add);
+  }
+  const cur = $('.dtab.on', nav);
+  if (cur && cur.scrollIntoView) cur.scrollIntoView({ inline: 'nearest', block: 'nearest' });
+}
+function bindTab(b, t) {
+  let timer = 0, long = false;
+  b.addEventListener('pointerdown', () => {
+    long = false;
+    timer = setTimeout(() => { long = true; removeTab(t); }, 650);
+  });
+  ['pointerup', 'pointerleave', 'pointercancel'].forEach(ev => b.addEventListener(ev, () => clearTimeout(timer)));
+  b.addEventListener('contextmenu', ev => ev.preventDefault());
+  b.onclick = () => { if (!long) activateTab(t); };
+}
+function activateTab(t) {
+  buzz();
+  if (t.host === state.host) {
+    if (t.state === 'pair') openPair();
+    else if (t.state !== 'connected') TV.connect(t.host, t.name, t.kind || '');
+    return;
+  }
+  state.host = t.host; state.name = t.name; state.connected = t.state === 'connected';
+  setKind(t.kind || '');
+  $('#appName').textContent = ''; $('#volWrap').hidden = true;
+  state.tvApps = []; state.tvInputs = [];
+  renderTabs();
+  TV.activate(t.host);
+}
+function removeTab(t) {
+  buzz();
+  TV.removeDevice(t.host);
+  toast('اتشال ' + (niceName(t.name) || t.host) + ' من التابات');
+}
+/* علامة «في التابات» أو زرار «＋ ضيف» جنب كل جهاز في شاشة الأجهزة */
+function markTabbed() {
+  $$('#devices .dev[data-host]').forEach(b => {
+    const h = b.dataset.host;
+    let tag = $('.tabmark', b);
+    if (!tag) {
+      tag = document.createElement('span');
+      tag.className = 'tabmark';
+      tag.setAttribute('role', 'button');
+      b.insertBefore(tag, $('.forget', b));
+      tag.onclick = (ev) => {
+        ev.stopPropagation();
+        if (state.tabs.some(t => t.host === h)) return;
+        if (state.tabs.length >= 4) return toast('التابات مليانة — شيل جهاز بضغطة طويلة على تابه');
+        buzz();
+        TV.addTab(h, b.dataset.name, b.dataset.kind || '');
+        toast('اتضاف للتابات ✔');
+      };
+    }
+    const inTabs = state.tabs.some(t => t.host === h);
+    tag.classList.toggle('in', inTabs);
+    tag.textContent = inTabs ? '✓ في التابات' : '＋ ضيف';
+  });
+}
+
 /* ------------------------------------------------------- شاشة الأجهزة */
 function savedDevices() {
   try { return JSON.parse(TV.saved()) || []; } catch (_) { return []; }
@@ -205,6 +350,9 @@ function devItem(host, name, saved, kind) {
     tag.textContent = kind === 'lg' ? 'LG' : kind === 'rcv' ? 'ريسيفر' : 'Android TV';
     $('.meta', b).appendChild(tag);
   }
+  b.dataset.host = host;
+  b.dataset.name = name || host;
+  b.dataset.kind = kind || '';
   b.onclick = () => connect(host, name || host, kind || '');
   if (saved) {
     const x = document.createElement('span');
@@ -225,6 +373,7 @@ function renderSaved() {
   const saved = savedDevices();
   saved.forEach(d => list.appendChild(devItem(d.host, d.name, true, d.kind)));
   $('#savedCard').hidden = !saved.length;
+  markTabbed();
 }
 
 const foundHosts = new Map();
@@ -242,6 +391,7 @@ function addFound(host, name, kind) {
   const li = devItem(host, name, false, kind);
   li.dataset.host = host;
   if (old) list.replaceChild(li, old); else list.appendChild(li);
+  markTabbed();
 }
 
 function scan() {
@@ -296,13 +446,12 @@ function show(id) {
 $('#tvNameBtn').onclick = () => { if (!state.connected) TV.connect(state.host, state.name, state.kind); else openSheet('settingsSheet'); };
 $('#settingsBtn').onclick = () => openSheet('settingsSheet');
 $('#switchTv').onclick = () => {
+  // الأجهزة بتفضل متوصلة في التابات؛ هنا بس بتضيف أو تختار جهاز تاني
   closeSheet();
-  TV.disconnect();
-  state.host = ''; state.connected = false;
   show('devices');
   if (!$('#foundList').children.length) scan();
 };
-$('#repairBtn').onclick = () => { closeSheet(); TV.disconnect(); openPair(); };
+$('#repairBtn').onclick = () => { closeSheet(); openPair(); };
 
 /* ------------------------------------------------------------ الاقتران */
 let code = '';
@@ -369,7 +518,18 @@ document.addEventListener('keydown', (ev) => {
   if (/^[0-9A-F]$/.test(k)) typeCode(k);
   else if (ev.key === 'Backspace') { code = code.slice(0, -1); drawCode(); }
 });
-$('#pairCancel').onclick = () => { TV.pairCancel(); closeSheet(); show('devices'); TV.disconnect(); state.host = ''; };
+$('#pairCancel').onclick = () => {
+  TV.pairCancel();
+  closeSheet();
+  // جهاز لسه ماتقرنش: نشيله من التابات
+  const h = state.host;
+  const t = state.tabs.find(x => x.host === h);
+  if (t && t.state !== 'connected') {
+    const others = state.tabs.filter(x => x.host !== h);
+    TV.removeDevice(h);
+    if (!others.length) { state.host = ''; show('devices'); }
+  }
+};
 $('#pairRetry').onclick = () => {
   if (state.kind === 'lg') { closeSheet(true); TV.connect(state.host, state.name, 'lg'); return; }
   TV.pairCancel(); openPair();
@@ -783,12 +943,19 @@ $('#checkUpdBtn').onclick = () => { toast('بنشوف لو فيه تحديث…'
 renderSaved();
 if (!savedDevices().length) scan();
 // Java ممكن يكون خلص تجهيز قبل ما الصفحة تحمل
-// LG مش محتاج مفتاح الأمان بتاع Android TV، فبنوصل على طول من غير ما نستنى
-(function connectLgNow() {
-  let last = '';
+// رجّع التابات اللي كانت مفتوحة، وافتح آخر جهاز كنت بتستخدمه
+(function restoreTabs() {
+  let tabs = [], last = '';
+  try { tabs = JSON.parse(TV.tabs()) || []; } catch (_) {}
   try { last = TV.lastHost(); } catch (_) {}
-  const d = last && savedDevices().find(x => x.host === last);
-  if (d && (d.kind === 'lg' || d.kind === 'rcv')) connect(d.host, d.name, d.kind);
+  if (!tabs.length && last) {
+    const d = savedDevices().find(x => x.host === last);
+    if (d) tabs = [d];
+  }
+  if (!tabs.length) return;
+  const act = tabs.find(t => t.host === last) || tabs[0];
+  tabs.forEach(t => { if (t.host !== act.host) TV.addTab(t.host, t.name, t.kind || ''); });
+  connect(act.host, act.name, act.kind || '');
 })();
 try { if (TV.isReady()) window.onTv({ type: 'ready' }); } catch (_) {}
 // كل ما التطبيق يتفتح بيشوف لو فيه نسخة أحدث

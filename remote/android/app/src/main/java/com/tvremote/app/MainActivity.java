@@ -51,7 +51,7 @@ import java.util.concurrent.TimeUnit;
  * ريموت للتليفزيون: الواجهة HTML (من remote/public) جوه WebView،
  * والاتصال بالتليفزيون من هنا (TvClient) عن طريق الواي فاي.
  */
-public class MainActivity extends Activity implements TvClient.Listener, LgClient.Events, GmsClient.Events {
+public class MainActivity extends Activity {
 
     private static final String SERVICE = "_androidtvremote2._tcp.";
     // آخر نسخة بتترفع هنا من GitHub Actions (remote-android.yml)
@@ -76,12 +76,21 @@ public class MainActivity extends Activity implements TvClient.Listener, LgClien
     static volatile int nVolume = -1;
     static volatile boolean nMuted;
 
-    private TvClient tv;                 // Android TV / Google TV (شاومي)
-    private volatile Remote remote;      // التليفزيون اللي متوصلين بيه دلوقتي (TvClient أو LgClient)
+    // مفتاح الأمان بتاع Android TV (واحد لكل الأجهزة)
+    private volatile ClientIdentity ident;
+    private String phoneName = "";
+
+    // كل الأجهزة اللي في التابات (لحد 4)، والجهاز اللي تابه مفتوح
+    static final int MAX_TABS = 4;
+    private final java.util.LinkedHashMap<String, Dev> devs = new java.util.LinkedHashMap<>();
+    private volatile Dev active;
+    private volatile Dev pairing;
+
+    // نسخة من بيانات الجهاز المفتوح (باقي الكود بيستخدمها)
+    private volatile Remote remote;
     private volatile String kind = "";   // "atv" أو "lg" أو "rcv" (ريسيفر دش)
     private volatile String host;
     private volatile String hostName = "";
-    private volatile int connectGen;
     private volatile boolean resumed;
     private volatile long wakeUntil;   // بعد أمر التشغيل بنحاول نوصل بسرعة لحد ما التليفزيون يقوم
 
@@ -115,9 +124,9 @@ public class MainActivity extends Activity implements TvClient.Listener, LgClien
         worker.execute(new Runnable() {
             public void run() {
                 try {
-                    ClientIdentity id = ClientIdentity.load();
-                    String name = (Build.MANUFACTURER + " " + Build.MODEL).trim();
-                    tv = new TvClient(id.keyManagers, id.cert, name, MainActivity.this);
+                    phoneName = (Build.MANUFACTURER + " " + Build.MODEL).trim();
+                    ident = ClientIdentity.load();
+                    kick(); // أي جهاز Android TV كان مستني المفتاح
                     emit(obj("type", "ready"));
                 } catch (Exception e) {
                     emit(obj("type", "error", "msg", "مشكلة في تجهيز مفتاح الأمان: " + e));
@@ -179,7 +188,7 @@ public class MainActivity extends Activity implements TvClient.Listener, LgClien
 
         @JavascriptInterface
         public boolean isReady() {
-            return tv != null;
+            return ident != null;
         }
 
         @JavascriptInterface
@@ -189,16 +198,50 @@ public class MainActivity extends Activity implements TvClient.Listener, LgClien
 
         @JavascriptInterface
         public void connect(String h, String name, String k) {
-            startConnect(h.trim(), name == null || name.isEmpty() ? h.trim() : name, k == null ? "" : k);
+            startConnect(h.trim(), name == null || name.isEmpty() ? h.trim() : name, k == null ? "" : k, true);
+        }
+
+        /** يضيف جهاز للتابات ويوصل بيه في الخلفية من غير ما يفتح تابه. */
+        @JavascriptInterface
+        public void addTab(String h, String name, String k) {
+            startConnect(h.trim(), name == null || name.isEmpty() ? h.trim() : name, k == null ? "" : k, false);
+        }
+
+        /** يفتح تاب جهاز موجود. */
+        @JavascriptInterface
+        public void activate(String h) {
+            Dev d;
+            synchronized (devs) { d = devs.get(h); }
+            if (d != null) setActive(d);
+        }
+
+        /** يشيل جهاز من التابات ويقفل الاتصال بيه. */
+        @JavascriptInterface
+        public void removeDevice(String h) {
+            Dev d;
+            synchronized (devs) { d = devs.remove(h); }
+            if (d == null) return;
+            d.stop();
+            saveTabs();
+            if (active == d) {
+                Dev next;
+                synchronized (devs) { next = devs.isEmpty() ? null : devs.values().iterator().next(); }
+                if (next != null) setActive(next);
+                else clearActive();
+            }
+            emitTabs();
         }
 
         @JavascriptInterface
+        public String tabs() {
+            return prefs.getString("tabs", "[]");
+        }
+
+        /** القديمة: تقفل الجهاز المفتوح وتشيله من التابات. */
+        @JavascriptInterface
         public void disconnect() {
-            connectGen++;
-            kick();
-            host = null;
-            final Remote c = remote;
-            if (c != null) worker.execute(new Runnable() { public void run() { c.disconnect(); } });
+            Dev d = active;
+            if (d != null) removeDevice(d.host);
         }
 
         @JavascriptInterface
@@ -216,16 +259,14 @@ public class MainActivity extends Activity implements TvClient.Listener, LgClien
 
         @JavascriptInterface
         public void pairStart(final String h, String name) {
-            final TvClient c = tv;
-            if (h == null || h.isEmpty() || c == null) return;
-            connectGen++; // وقف محاولات الاتصال لحد ما الاقتران يخلص
-            Remote old = remote;
-            if (old != null && old != c) old.disconnect();
-            remote = c;
-            kind = "atv";
-            host = h;
-            hostName = name == null || name.isEmpty() ? h : name;
-            if (c.isConnected()) c.disconnect();
+            if (h == null || h.isEmpty() || ident == null) return;
+            final Dev d = devFor(h, name == null || name.isEmpty() ? h : name);
+            if (d == null) return;
+            d.stop(); // وقف محاولات الاتصال لحد ما الاقتران يخلص
+            d.kind = "atv";
+            final TvClient c = d.newTvClient();
+            pairing = d;
+            setActive(d);
             worker.execute(new Runnable() {
                 public void run() {
                     try {
@@ -240,15 +281,15 @@ public class MainActivity extends Activity implements TvClient.Listener, LgClien
 
         @JavascriptInterface
         public void pairFinish(final String code) {
-            final TvClient c = tv;
+            final Dev d = pairing;
+            final TvClient c = d == null || !(d.client instanceof TvClient) ? null : (TvClient) d.client;
             if (c == null) return;
             worker.execute(new Runnable() {
                 public void run() {
                     try {
                         c.finishPairing(code);
                         emit(obj("type", "paired"));
-                        String h = host;
-                        if (h != null) startConnect(h, hostName, "atv");
+                        d.start("atv");
                     } catch (TvClient.WrongCodeException e) {
                         emit(obj("type", "pairError", "msg", e.getMessage(), "retry", "1"));
                     } catch (IOException e) {
@@ -260,7 +301,8 @@ public class MainActivity extends Activity implements TvClient.Listener, LgClien
 
         @JavascriptInterface
         public void pairCancel() {
-            final TvClient c = tv;
+            final Dev d = pairing;
+            final TvClient c = d == null || !(d.client instanceof TvClient) ? null : (TvClient) d.client;
             if (c != null) worker.execute(new Runnable() { public void run() { c.cancelPairing(); } });
         }
 
@@ -335,6 +377,7 @@ public class MainActivity extends Activity implements TvClient.Listener, LgClien
         public String diagnostics() {
             StringBuilder sb = new StringBuilder();
             sb.append("app ").append(versionName()).append(" • ").append(kind).append(" • ").append(host).append('\n');
+            for (Dev d : devList()) sb.append("tab: ").append(d.kind).append(' ').append(d.host).append(' ').append(d.state).append(d == active ? " (active)" : "").append('\n');
             if ("lg".equals(kind) && host != null) sb.append("saved MAC: ").append(prefs.getString("lgmac:" + host, "none")).append('\n');
             synchronized (diag) {
                 for (String l : diag) sb.append(l).append('\n');
@@ -395,8 +438,9 @@ public class MainActivity extends Activity implements TvClient.Listener, LgClien
             worker.execute(new Runnable() {
                 public void run() {
                     try {
-                        ClientIdentity id = ClientIdentity.load();
-                        tv = new TvClient(id.keyManagers, id.cert, (Build.MANUFACTURER + " " + Build.MODEL).trim(), MainActivity.this);
+                        ident = ClientIdentity.load();
+                        // أجهزة Android TV محتاجة اقتران من جديد بالمفتاح الجديد
+                        for (Dev d : devList()) if ("atv".equals(d.kind)) { d.stop(); d.client = null; d.start("atv"); }
                     } catch (Exception ignored) { }
                 }
             });
@@ -421,8 +465,11 @@ public class MainActivity extends Activity implements TvClient.Listener, LgClien
     /** زرار ✕ في الإشعار أو عدّت ساعة من غير استخدام: نقفل الاتصال لحد ما تفتح التطبيق. */
     void externalClose(String why) {
         onLgLog("notification closed (" + why + ")");
-        final Remote c = remote;
-        if (c != null && !resumed) worker.execute(new Runnable() { public void run() { c.disconnect(); } });
+        if (resumed) return;
+        for (Dev d : devList()) {
+            final Remote c = d.client;
+            if (c != null) worker.execute(new Runnable() { public void run() { c.disconnect(); } });
+        }
     }
 
     /** الإشعار محتاج إذن في أندرويد 13+. */
@@ -474,102 +521,354 @@ public class MainActivity extends Activity implements TvClient.Listener, LgClien
         });
     }
 
-    // ------------------------------------------------------- Connection loop
+    // ------------------------------------------------------- Devices (tabs)
 
-    // الـ loop اللي شغال دلوقتي (عشان مايبقاش فيه اتنين بيحاولوا يوصلوا لنفس التليفزيون)
-    private volatile boolean loopAlive;
-    private volatile int loopGen;
-    private volatile String loopHost;
-
-    private void startConnect(final String h, final String name, final String wantKind) {
-        if (loopAlive && h.equals(loopHost) && (wantKind.isEmpty() || wantKind.equals(kind))) {
-            hostName = name;
-            kick(); // نفس التليفزيون والمحاولة شغالة: نخليها تحاول دلوقتي بدل ما نبدأ واحدة تانية
-            return;
+    private java.util.List<Dev> devList() {
+        synchronized (devs) {
+            return new java.util.ArrayList<>(devs.values());
         }
-        final int gen = ++connectGen;
-        kick(); // الـ loop القديم يخلص على طول
-        host = h;
-        hostName = name;
-        Remote old = remote;
-        if (old != null && old.isConnected()) old.disconnect();
-        loopAlive = true;
-        loopGen = gen;
-        loopHost = h;
-        worker.execute(new Runnable() {
-            public void run() {
-                try {
-                    connectLoop(gen, h, name, wantKind);
-                } finally {
-                    if (loopGen == gen) loopAlive = false;
-                }
-            }
-        });
     }
 
-    private void connectLoop(final int gen, final String h, final String name, final String wantKind) {
-        {
-            {
-                // لو مش عارفين نوع التليفزيون (IP مكتوب بالإيد) بنشوف البورتات المفتوحة
-                String k = wantKind;
-                if (k.isEmpty()) k = savedKind(h);
-                if (k.isEmpty()) {
-                    emit(obj("type", "status", "state", "connecting", "host", h, "name", name));
-                    k = probe(h);
-                    onLgLog("probe " + h + ": " + (k.isEmpty() ? "no TV/receiver ports open (6466, 3000/3001, 20000)" : k));
-                }
-                if (gen != connectGen) return;
-                if (k.isEmpty()) {
-                    emit(obj("type", "status", "state", "offline", "host", h, "name", name, "msg", "مش لاقي تليفزيون على " + h));
-                    k = "atv";
-                }
-                final Remote c;
-                if ("lg".equals(k)) {
-                    c = new LgClient(prefs.getString("lgkey:" + h, null), MainActivity.this, MainActivity.this);
-                } else if ("rcv".equals(k)) {
-                    c = new GmsClient(MainActivity.this, MainActivity.this);
-                } else {
-                    c = tv;
-                    if (c == null) {
-                        emit(obj("type", "error", "msg", "استنى ثانية والبرنامج بيجهز…"));
-                        return;
-                    }
-                }
-                kind = k;
-                remote = c;
-                remember(h, name, k);
-                emit(obj("type", "kind", "kind", k));
-                nName = name;
-                int fails = 0;
-                while (gen == connectGen) {
-                    if (!resumed && !RemoteService.running) { pause(30000); continue; }
-                    emit(obj("type", "status", "state", "connecting", "host", h, "name", name));
-                    nState = "connecting";
-                    RemoteService.refresh(MainActivity.this);
-                    long t0 = System.currentTimeMillis();
+    /** الجهاز ده لو موجود، أو جهاز جديد في التابات (null لو التابات مليانة). */
+    private Dev devFor(String h, String name) {
+        synchronized (devs) {
+            Dev d = devs.get(h);
+            if (d != null) {
+                d.name = name;
+                return d;
+            }
+            if (devs.size() >= MAX_TABS) return null;
+            d = new Dev(h, name);
+            devs.put(h, d);
+        }
+        saveTabs();
+        return devs.get(h);
+    }
+
+    private void startConnect(final String h, final String name, final String wantKind, boolean activate) {
+        Dev d = devFor(h, name);
+        if (d == null) {
+            emit(obj("type", "error", "msg", "التابات مليانة (" + MAX_TABS + " أجهزة) — شيل جهاز بضغطة طويلة على تابه"));
+            emit(obj("type", "tabsFull"));
+            return;
+        }
+        if (activate) setActive(d);
+        d.start(wantKind);
+        emitTabs();
+    }
+
+    private void setActive(Dev d) {
+        active = d;
+        host = d.host;
+        hostName = d.name;
+        kind = d.kind;
+        remote = d.client;
+        nName = d.name;
+        nState = d.state;
+        nVolume = d.volume;
+        nMuted = d.muted;
+        prefs.edit().putString("last", d.host).apply();
+        d.replay(); // ابعت للواجهة كل حالة الجهاز ده
+        emitTabs();
+        RemoteService.refresh(this);
+    }
+
+    private void clearActive() {
+        active = null;
+        host = null;
+        hostName = "";
+        kind = "";
+        remote = null;
+        nState = "offline";
+        nVolume = -1;
+        RemoteService.refresh(this);
+    }
+
+    private void saveTabs() {
+        try {
+            JSONArray arr = new JSONArray();
+            for (Dev d : devList()) arr.put(new JSONObject().put("host", d.host).put("name", d.name).put("kind", d.kind));
+            prefs.edit().putString("tabs", arr.toString()).apply();
+        } catch (Exception ignored) { }
+    }
+
+    private void emitTabs() {
+        try {
+            JSONArray arr = new JSONArray();
+            Dev a = active;
+            for (Dev d : devList()) {
+                arr.put(new JSONObject().put("host", d.host).put("name", d.name).put("kind", d.kind)
+                        .put("state", d.state).put("volume", d.volume).put("active", d == a));
+            }
+            emit(new JSONObject().put("type", "tabs").put("list", arr));
+        } catch (Exception ignored) { }
+    }
+
+    /**
+     * جهاز واحد في التابات: اتصاله، والـ loop اللي بيعيد الاتصال، وآخر حالة (صوت، تطبيق، مصادر...).
+     * كل جهاز ليه اتصاله المستقل، فالتنقل بين التابات بيبقى فوري.
+     */
+    final class Dev implements TvClient.Listener, LgClient.Events, GmsClient.Events {
+        final String host;
+        volatile String name;
+        volatile String kind = "";
+        volatile Remote client;
+        volatile String state = "connecting";
+        volatile int volume = -1;
+        volatile int volMax;
+        volatile boolean muted;
+        volatile String app = "";
+        volatile Boolean power;
+        volatile JSONArray apps;
+        volatile JSONArray inputs;
+        volatile String vendor = "";
+        volatile String model = "";
+        private volatile boolean looping;
+        private volatile boolean stopped;
+        private volatile String wantKind = "";
+
+        Dev(String host, String name) {
+            this.host = host;
+            this.name = name;
+        }
+
+        boolean isActive() {
+            return active == this;
+        }
+
+        TvClient newTvClient() {
+            TvClient c = new TvClient(ident.keyManagers, ident.cert, phoneName, this);
+            client = c;
+            if (isActive()) remote = c;
+            return c;
+        }
+
+        void start(String want) {
+            if (want != null && !want.isEmpty()) wantKind = want;
+            stopped = false;
+            if (looping) {
+                kick(); // شغال: خليه يحاول دلوقتي
+                return;
+            }
+            looping = true;
+            worker.execute(new Runnable() {
+                public void run() {
                     try {
-                        c.runRemote(h);
-                    } catch (TvClient.NeedsPairingException e) {
-                        if (gen == connectGen) emit(obj("type", "needPair", "host", h, "name", name));
-                        return;
-                    } catch (LgClient.RejectedException e) {
-                        if (gen == connectGen) emit(obj("type", "lgRejected", "msg", e.getMessage()));
-                        return;
-                    } catch (IOException e) {
-                        if (gen != connectGen) return;
-                        if (System.currentTimeMillis() - t0 > 20000) fails = 0;
-                        if (!resumed && !RemoteService.running) fails = 0; // اتقفل عشان خرجنا من التطبيق، مش عطل
-                        else fails++;
-                        emit(obj("type", "status", "state", "offline", "host", h, "name", name, "msg", msg(e)));
+                        loop();
+                    } finally {
+                        looping = false;
                     }
-                    if (System.currentTimeMillis() < wakeUntil) {
-                        fails = 0;
-                        pause(1000); // بعد أمر التشغيل: بنحاول كل ثانية لحد ما واي فاي التليفزيون يرجع
-                    } else {
-                        pause(Math.min(8000, 700L * fails));
+                }
+            });
+        }
+
+        void stop() {
+            stopped = true;
+            kick();
+            final Remote c = client;
+            if (c != null) worker.execute(new Runnable() { public void run() { c.disconnect(); } });
+        }
+
+        private void setState(String st, String msg) {
+            state = st;
+            if (isActive()) {
+                nState = st;
+                if (!"connected".equals(st)) nVolume = -1;
+                RemoteService.refresh(MainActivity.this);
+            }
+            emit(obj("type", "status", "state", st, "host", host, "name", name, "vendor", vendor, "model", model, "kind", kind, "msg", msg));
+            emitTabs();
+        }
+
+        private void log(String line) {
+            String n = name.length() > 14 ? name.substring(0, 14) : name;
+            onLgLog("[" + n + "] " + line);
+        }
+
+        private void loop() {
+            // لو مش عارفين نوع التليفزيون (IP مكتوب بالإيد) بنشوف البورتات المفتوحة
+            String k = wantKind;
+            if (k.isEmpty()) k = kind;
+            if (k.isEmpty()) k = savedKind(host);
+            if (k.isEmpty()) {
+                setState("connecting", "");
+                k = probe(host);
+                log("probe " + host + ": " + (k.isEmpty() ? "no TV/receiver ports open (6466, 3000/3001, 20000)" : k));
+            }
+            if (stopped) return;
+            if (k.isEmpty()) {
+                setState("offline", "مش لاقي تليفزيون على " + host);
+                k = "atv";
+            }
+            Remote c = client;
+            boolean sameKind = k.equals(kind);
+            kind = k;
+            if (c == null || !sameKind) {
+                if ("lg".equals(k)) {
+                    c = new LgClient(prefs.getString("lgkey:" + host, null), this, this);
+                } else if ("rcv".equals(k)) {
+                    c = new GmsClient(this, this);
+                } else {
+                    while (ident == null && !stopped) pause(500); // مستنيين مفتاح الأمان
+                    if (stopped) return;
+                    c = new TvClient(ident.keyManagers, ident.cert, phoneName, this);
+                }
+                client = c;
+            }
+            remember(host, name, k);
+            saveTabs();
+            if (isActive()) {
+                kind = k;
+                MainActivity.this.kind = k;
+                remote = c;
+                nName = name;
+                emit(obj("type", "kind", "kind", k, "host", host));
+            }
+            int fails = 0;
+            while (!stopped) {
+                if (!resumed && !RemoteService.running) { pause(30000); continue; }
+                setState("connecting", "");
+                long t0 = System.currentTimeMillis();
+                try {
+                    c.runRemote(host);
+                } catch (TvClient.NeedsPairingException e) {
+                    if (!stopped) {
+                        setState("pair", "");
+                        emit(obj("type", "needPair", "host", host, "name", name));
                     }
+                    return;
+                } catch (LgClient.RejectedException e) {
+                    if (!stopped) {
+                        setState("rejected", e.getMessage());
+                        emit(obj("type", "lgRejected", "msg", e.getMessage(), "host", host));
+                    }
+                    return;
+                } catch (IOException e) {
+                    if (stopped) return;
+                    if (System.currentTimeMillis() - t0 > 20000) fails = 0;
+                    if (!resumed && !RemoteService.running) fails = 0; // اتقفل عشان خرجنا من التطبيق، مش عطل
+                    else fails++;
+                    setState("offline", msg(e));
+                }
+                if (System.currentTimeMillis() < wakeUntil) {
+                    fails = 0;
+                    pause(1000); // بعد أمر التشغيل: بنحاول كل ثانية لحد ما واي فاي التليفزيون يرجع
+                } else {
+                    pause(Math.min(8000, 700L * fails));
                 }
             }
+        }
+
+        /** لما تابه يتفتح: ابعت للواجهة كل حالته. */
+        void replay() {
+            emit(obj("type", "kind", "kind", kind, "host", host));
+            emit(obj("type", "status", "state", state, "host", host, "name", name, "vendor", vendor, "model", model, "kind", kind));
+            if (volume >= 0) emit(obj("type", "volume", "level", String.valueOf(volume), "max", String.valueOf(volMax), "muted", muted ? "1" : "", "host", host));
+            emit(obj("type", "app", "pkg", app, "host", host));
+            if (power != null) emit(obj("type", "power", "on", power ? "1" : "", "host", host));
+            try {
+                emit(new JSONObject().put("type", "apps").put("list", apps == null ? new JSONArray() : apps).put("host", host));
+                emit(new JSONObject().put("type", "inputs").put("list", inputs == null ? new JSONArray() : inputs).put("host", host));
+            } catch (Exception ignored) { }
+            if ("pair".equals(state)) emit(obj("type", "needPair", "host", host, "name", name));
+        }
+
+        // ---- TvClient.Listener
+        @Override
+        public void onConnected(String vendor, String model) {
+            this.vendor = vendor;
+            this.model = model;
+            setState("connected", "");
+            if (isActive()) {
+                nName = name;
+                askNotifPermission(false); // أول مرة بس
+            }
+        }
+
+        @Override
+        public void onDisconnected(String reason) {
+            volume = -1;
+            setState("offline", reason);
+        }
+
+        @Override
+        public void onPower(boolean on) {
+            power = on;
+            emit(obj("type", "power", "on", on ? "1" : "", "host", host));
+        }
+
+        @Override
+        public void onVolume(int level, int max, boolean m) {
+            boolean changed = level != volume || m != muted;
+            volume = level;
+            volMax = max;
+            muted = m;
+            emit(obj("type", "volume", "level", String.valueOf(level), "max", String.valueOf(max), "muted", m ? "1" : "", "host", host));
+            if (changed && isActive()) {
+                nVolume = level;
+                nMuted = m;
+                RemoteService.refresh(MainActivity.this);
+            }
+        }
+
+        @Override
+        public void onApp(String pkg) {
+            app = pkg;
+            emit(obj("type", "app", "pkg", pkg, "host", host));
+        }
+
+        // ---- LgClient.Events
+        @Override
+        public void onLgPrompt() {
+            emit(obj("type", "lgPrompt", "host", host, "name", name));
+        }
+
+        @Override
+        public void onLgKey(String clientKey) {
+            prefs.edit().putString("lgkey:" + host, clientKey).apply();
+            emit(obj("type", "paired", "host", host));
+        }
+
+        @Override
+        public void onLgMac(String mac) {
+            // لو المستخدم كاتب MAC بإيده بنضيفه للي التليفزيون اداهولنا
+            String old = prefs.getString("lgmac:" + host, "");
+            java.util.LinkedHashSet<String> all = new java.util.LinkedHashSet<>();
+            for (String m : (mac + "," + old).split(",")) if (!m.trim().isEmpty()) all.add(m.trim().toLowerCase(java.util.Locale.US));
+            StringBuilder sb = new StringBuilder();
+            for (String m : all) { if (sb.length() > 0) sb.append(','); sb.append(m); }
+            prefs.edit().putString("lgmac:" + host, sb.toString()).apply();
+        }
+
+        @Override
+        public void onLgLog(String line) {
+            log(line);
+        }
+
+        @Override
+        public void onRcvLog(String line) {
+            log(line);
+        }
+
+        @Override
+        public void onLgUnsigned() {
+            prefs.edit().putBoolean("lgUnsigned", true).apply();
+        }
+
+        @Override
+        public void onLgInputs(JSONArray list) {
+            inputs = list;
+            try {
+                emit(new JSONObject().put("type", "inputs").put("list", list).put("host", host));
+            } catch (Exception ignored) { }
+        }
+
+        @Override
+        public void onLgApps(JSONArray list) {
+            apps = list;
+            try {
+                emit(new JSONObject().put("type", "apps").put("list", list).put("host", host));
+            } catch (Exception ignored) { }
         }
     }
 
@@ -663,105 +962,16 @@ public class MainActivity extends Activity implements TvClient.Listener, LgClien
         } catch (Exception ignored) { }
     }
 
-    // ------------------------------------------------------ TvClient.Listener
-
-    @Override
-    public void onConnected(String vendor, String model) {
-        emit(obj("type", "status", "state", "connected", "host", host, "name", hostName, "vendor", vendor, "model", model, "kind", kind));
-        nName = hostName;
-        nState = "connected";
-        RemoteService.refresh(this);
-        askNotifPermission(false); // أول مرة بس
-    }
-
-    // ------------------------------------------------------- LgClient.Events
-
-    @Override
-    public void onLgPrompt() {
-        emit(obj("type", "lgPrompt"));
-    }
-
-    @Override
-    public void onLgKey(String clientKey) {
-        String h = host;
-        if (h != null) prefs.edit().putString("lgkey:" + h, clientKey).apply();
-        emit(obj("type", "paired"));
-    }
-
-    @Override
-    public void onLgMac(String mac) {
-        String h = host;
-        if (h == null) return;
-        // لو المستخدم كاتب MAC بإيده بنضيفه للي التليفزيون اداهولنا
-        String old = prefs.getString("lgmac:" + h, "");
-        java.util.LinkedHashSet<String> all = new java.util.LinkedHashSet<>();
-        for (String m : (mac + "," + old).split(",")) if (!m.trim().isEmpty()) all.add(m.trim().toLowerCase(java.util.Locale.US));
-        StringBuilder sb = new StringBuilder();
-        for (String m : all) { if (sb.length() > 0) sb.append(','); sb.append(m); }
-        prefs.edit().putString("lgmac:" + h, sb.toString()).apply();
-    }
+    // ------------------------------------------------------------ Diagnostics
 
     private final java.util.LinkedList<String> diag = new java.util.LinkedList<>();
 
-    @Override
-    public void onLgLog(String line) {
+    void onLgLog(String line) {
         String t = new java.text.SimpleDateFormat("HH:mm:ss", java.util.Locale.US).format(new java.util.Date());
         synchronized (diag) {
             diag.add(t + "  " + line);
-            while (diag.size() > 80) diag.removeFirst();
+            while (diag.size() > 120) diag.removeFirst();
         }
-    }
-
-    @Override
-    public void onRcvLog(String line) {
-        onLgLog(line);
-    }
-
-    @Override
-    public void onLgUnsigned() {
-        prefs.edit().putBoolean("lgUnsigned", true).apply();
-    }
-
-    @Override
-    public void onLgInputs(JSONArray inputs) {
-        try {
-            emit(new JSONObject().put("type", "inputs").put("list", inputs));
-        } catch (Exception ignored) { }
-    }
-
-    @Override
-    public void onLgApps(JSONArray apps) {
-        try {
-            emit(new JSONObject().put("type", "apps").put("list", apps));
-        } catch (Exception ignored) { }
-    }
-
-    @Override
-    public void onDisconnected(String reason) {
-        emit(obj("type", "status", "state", "offline", "host", host, "name", hostName, "msg", reason));
-        nState = "offline";
-        nVolume = -1;
-        RemoteService.refresh(this);
-    }
-
-    @Override
-    public void onPower(boolean on) {
-        emit(obj("type", "power", "on", on ? "1" : ""));
-    }
-
-    @Override
-    public void onVolume(int level, int max, boolean muted) {
-        emit(obj("type", "volume", "level", String.valueOf(level), "max", String.valueOf(max), "muted", muted ? "1" : ""));
-        if (level != nVolume || muted != nMuted) {
-            nVolume = level;
-            nMuted = muted;
-            RemoteService.refresh(this);
-        }
-    }
-
-    @Override
-    public void onApp(String pkg) {
-        emit(obj("type", "app", "pkg", pkg));
     }
 
     // -------------------------------------------------------------- Discovery
@@ -1206,21 +1416,21 @@ public class MainActivity extends Activity implements TvClient.Listener, LgClien
     private final Runnable idleDisconnect = new Runnable() {
         public void run() {
             if (resumed || RemoteService.running) return;
-            Remote c = remote;
-            if (c != null && c.isConnected()) worker.execute(new Runnable() { public void run() { c.disconnect(); } });
+            for (Dev d : devList()) {
+                final Remote c = d.client;
+                if (c != null && c.isConnected()) worker.execute(new Runnable() { public void run() { c.disconnect(); } });
+            }
         }
     };
 
     @Override
     protected void onDestroy() {
-        connectGen++;
+        for (Dev d : devList()) d.stop();
         kick();
         handler.removeCallbacks(idleDisconnect);
         RemoteService.stop(this);
         if (live == this) live = null;
         stopDiscovery();
-        Remote c = remote;
-        if (c != null) c.disconnect();
         sender.shutdownNow();
         worker.shutdownNow();
         super.onDestroy();
