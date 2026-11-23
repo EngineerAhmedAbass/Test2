@@ -500,3 +500,9 @@ h3 { font-size: 14px; margin: 16px 0 10px; color: var(--muted); font-weight: 600
 .dtab:active { transform: scale(.96); }
 .tabmark { margin-inline-start: auto; font-size: 12px; font-weight: 700; padding: 6px 10px; border-radius: 10px; background: var(--bg); color: var(--accent); white-space: nowrap; }
 .tabmark.in { background: rgba(47, 210, 127, .15); color: var(--ok); }
+
+/* ---------- ربط الجهاز بمدخل التليفزيون ---------- */
+.linkbox select {
+  width: 100%; font: inherit; color: var(--text); background: var(--bg); border: 1px solid var(--line);
+  border-radius: 12px; padding: 12px; appearance: auto;
+}

@@ -93,7 +93,9 @@ if (!window.TV) {
     text(t) { console.log('text', t); }, launch(l) { console.log('launch', l); },
     getMac: () => '', setMac: (m) => /^([0-9a-f]{2}[:-]){5}[0-9a-f]{2}$/i.test(m.trim()),
     diagnostics: () => 'app 1.0.x • lg • 192.168.1.31\n16:20:01  main: wss:3001 OK\n16:20:01  buttons socket OK', share() {},
-    switchInput(id) { console.log('input', id); }, rawKey(k) { console.log('raw', k); },
+    switchInput(id) { console.log('input', id); },
+    inputsOf(h) { const t = tabs.find(x => x.host === h); return JSON.stringify(t && t.kind === 'lg' && t.state === 'connected' ? LG_INPUTS : []); },
+    switchInputOn(h, id) { const t = tabs.find(x => x.host === h); if (!t || t.state !== 'connected') return false; console.log('switchOn', h, id); return true; }, rawKey(k) { console.log('raw', k); },
     pointer(dx, dy) { console.log('pointer', dx, dy); }, click() { console.log('click'); }, scroll() {}, kind: () => state.kind,
     getNotif: () => true, setNotif() {},
     vibrate() {}, setVibrate() {}, getVibrate: () => true, resetIdentity() {},
@@ -301,7 +303,76 @@ function activateTab(t) {
   state.tvApps = []; state.tvInputs = [];
   renderTabs();
   TV.activate(t.host);
+  const link = getLink(t.host);
+  if (link && (link.auto || t.state !== 'connected')) switchTvTo(link);
 }
+
+/* ---------------- ربط جهاز (شاومي/ريسيفر) بمدخل HDMI في تليفزيون LG ---------------- */
+function getLink(host) {
+  try { return JSON.parse(localStorage.getItem('link:' + host) || 'null'); } catch (_) { return null; }
+}
+function setLink(host, link) {
+  try {
+    if (link) localStorage.setItem('link:' + host, JSON.stringify(link));
+    else localStorage.removeItem('link:' + host);
+  } catch (_) {}
+}
+function switchTvTo(link) {
+  let ok = false;
+  try { ok = TV.switchInputOn(link.tv, link.input); } catch (_) {}
+  toast(ok ? 'بقلب التليفزيون على ' + link.label + '…' : 'الـ LG مش متوصل — افتح تابه الأول');
+  return ok;
+}
+// ⏻ على جهاز نايم مربوط بمدخل: نقلب التليفزيون عليه بدل ما نبعت للجهاز (اللي مش سامعنا)
+function wakeViaInput() {
+  if (state.kind === 'lg') return false;
+  const t = state.tabs.find(x => x.host === state.host);
+  const link = getLink(state.host);
+  if (!t || !link || t.state === 'connected') return false;
+  switchTvTo(link);
+  return true;
+}
+function renderLinkBox() {
+  const box = $('#linkBox');
+  const lgTabs = state.tabs.filter(t => t.kind === 'lg' && t.host !== state.host);
+  box.hidden = !state.host || state.kind === 'lg' || !lgTabs.length;
+  if (box.hidden) return;
+  const sel = $('#linkSel');
+  const link = getLink(state.host);
+  sel.innerHTML = '';
+  const none = document.createElement('option');
+  none.value = ''; none.textContent = 'مش متوصل بالتليفزيون';
+  sel.appendChild(none);
+  lgTabs.forEach(tv => {
+    let ins = [];
+    try { ins = JSON.parse(TV.inputsOf(tv.host)) || []; } catch (_) {}
+    if (!ins.length && link && link.tv === tv.host) ins = [{ id: link.input, label: link.label }];
+    ins.forEach(i => {
+      const o = document.createElement('option');
+      o.value = tv.host + '|' + i.id;
+      o.textContent = (lgTabs.length > 1 ? niceName(tv.name) + ' • ' : '') + (i.label || i.id) + (i.connected === false ? ' (مفيش جهاز)' : '');
+      o.dataset.label = i.label || i.id;
+      sel.appendChild(o);
+    });
+    if (!ins.length) {
+      const o = document.createElement('option');
+      o.disabled = true; o.textContent = niceName(tv.name) + ': وصّله الأول عشان تظهر المداخل';
+      sel.appendChild(o);
+    }
+  });
+  sel.value = link ? link.tv + '|' + link.input : '';
+  $('#linkAuto').checked = !link || link.auto !== false;
+}
+function saveLinkFromUi() {
+  const sel = $('#linkSel');
+  if (!sel.value) { setLink(state.host, null); return; }
+  const [tv, input] = sel.value.split('|');
+  const opt = sel.selectedOptions && sel.selectedOptions[0];
+  setLink(state.host, { tv, input, label: (opt && opt.dataset.label) || input, auto: $('#linkAuto').checked });
+  toast('اتحفظ ✔');
+}
+$('#linkSel').onchange = saveLinkFromUi;
+$('#linkAuto').onchange = saveLinkFromUi;
 function removeTab(t) {
   buzz();
   TV.removeDevice(t.host);
@@ -554,6 +625,7 @@ function bindKeys(root) {
       el.classList.add('pressed');
       buzz();
       longSent = false;
+      if (key === 26 && wakeViaInput()) return; // الجهاز نايم: نصحّيه من مدخل التليفزيون
       if (long) {
         t1 = setTimeout(() => { longSent = true; TV.keyDir(key, START_LONG); buzz(); }, 550);
       } else {
@@ -841,6 +913,7 @@ function openSheet(id) {
     let v = ''; try { v = TV.appVersion(); } catch (_) {}
     $('#verText').textContent = v ? 'نسخة التطبيق ' + v : '';
     renderThemes();
+    renderLinkBox();
     $('#wolBox').hidden = state.kind !== 'lg' || !state.host;
     try { $('#macInput').value = TV.getMac(); } catch (_) {}
     try { $('#diagText').textContent = TV.diagnostics(); } catch (_) { $('#diagText').textContent = ''; }

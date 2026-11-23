@@ -247,6 +247,40 @@ public class MainActivity extends Activity {
             emitTabs();
         }
 
+        /** مداخل تليفزيون LG معيّن (حتى لو مش هو التاب المفتوح). */
+        @JavascriptInterface
+        public String inputsOf(String h) {
+            Dev d;
+            synchronized (devs) { d = devs.get(h); }
+            JSONArray in = d == null ? null : d.inputs;
+            return in == null ? "[]" : in.toString();
+        }
+
+        /**
+         * يقلب تليفزيون LG (من أي تاب) على مدخل معيّن. الجهاز اللي على المدخل ده (زي Mi Box)
+         * بيصحى من HDMI-CEC، فبنخلي كل الأجهزة تحاول توصل كل ثانية لحد ما يصحى.
+         */
+        @JavascriptInterface
+        public boolean switchInputOn(String lgHost, final String inputId) {
+            Dev d;
+            synchronized (devs) { d = devs.get(lgHost); }
+            final Remote c = d == null ? null : d.client;
+            if (!(c instanceof LgClient) || !c.isConnected()) return false;
+            wakeUntil = System.currentTimeMillis() + 90000;
+            kick();
+            onLgLog("switch " + lgHost + " to " + inputId);
+            sender.execute(new Runnable() {
+                public void run() {
+                    try {
+                        ((LgClient) c).switchInput(inputId);
+                    } catch (IOException e) {
+                        emit(obj("type", "error", "msg", "معرفناش نقلب التليفزيون: " + msg(e)));
+                    }
+                }
+            });
+            return true;
+        }
+
         @JavascriptInterface
         public String tabs() {
             return prefs.getString("tabs", "[]");
