@@ -107,6 +107,21 @@ public class MainActivity extends Activity {
         super.onCreate(savedInstanceState);
         prefs = getSharedPreferences("remote", MODE_PRIVATE);
         live = this;
+        // لو التطبيق قفل فجأة: نحفظ السبب ونعرضه في سجل التشخيص المرة الجاية
+        final Thread.UncaughtExceptionHandler prev = Thread.getDefaultUncaughtExceptionHandler();
+        Thread.setDefaultUncaughtExceptionHandler(new Thread.UncaughtExceptionHandler() {
+            public void uncaughtException(Thread t, Throwable e) {
+                try {
+                    java.io.StringWriter sw = new java.io.StringWriter();
+                    e.printStackTrace(new java.io.PrintWriter(sw));
+                    String trace = sw.toString();
+                    if (trace.length() > 3000) trace = trace.substring(0, 3000);
+                    String when = new java.text.SimpleDateFormat("MM-dd HH:mm:ss", java.util.Locale.US).format(new java.util.Date());
+                    prefs.edit().putString("lastCrash", when + " " + versionName() + " [" + t.getName() + "]\n" + trace).commit();
+                } catch (Throwable ignored) { }
+                if (prev != null) prev.uncaughtException(t, e);
+            }
+        });
         LgClient.signedRejected = prefs.getBoolean("lgUnsigned", false);
 
         web = new WebView(this);
@@ -377,6 +392,8 @@ public class MainActivity extends Activity {
         public String diagnostics() {
             StringBuilder sb = new StringBuilder();
             sb.append("app ").append(versionName()).append(" • ").append(kind).append(" • ").append(host).append('\n');
+            String crash = prefs.getString("lastCrash", "");
+            if (!crash.isEmpty()) sb.append("LAST CRASH: ").append(crash).append('\n');
             for (Dev d : devList()) sb.append("tab: ").append(d.kind).append(' ').append(d.host).append(' ').append(d.state).append(d == active ? " (active)" : "").append('\n');
             if ("lg".equals(kind) && host != null) sb.append("saved MAC: ").append(prefs.getString("lgmac:" + host, "none")).append('\n');
             synchronized (diag) {
@@ -682,7 +699,8 @@ public class MainActivity extends Activity {
 
         private void log(String line) {
             String n = name.length() > 14 ? name.substring(0, 14) : name;
-            onLgLog("[" + n + "] " + line);
+            // لازم MainActivity.this: الـ onLgLog اللي جوه Dev بينادي log() تاني (كان بيعمل loop ويقفل التطبيق)
+            MainActivity.this.onLgLog("[" + n + "] " + line);
         }
 
         private void loop() {
