@@ -168,7 +168,7 @@ window.onTv = (e) => {
       $('#volText').textContent = e.muted ? 'مكتوم 🔇' : 'الصوت ' + lvl;
       break;
     }
-    case 'app': state.curApp = e.pkg; $('#appName').textContent = e.pkg ? appLabel(e.pkg) : ''; break;
+    case 'app': state.curApp = e.pkg; $('#appName').textContent = e.pkg ? appLabel(e.pkg) : '▸ ' + (niceName(state.name) || ''); break;
     case 'power':
       $('.power').classList.toggle('is-off', !e.on);
       break;
@@ -208,6 +208,7 @@ window.onTv = (e) => {
 };
 
 function setStatus(e) {
+  if (e.state === 'connected' && !state.connected) flickVfd();
   const dot = $('#dot');
   state.connected = e.state === 'connected';
   dot.className = 'dot' + (e.state === 'connected' ? ' on' : e.state === 'offline' ? ' off' : '');
@@ -302,6 +303,7 @@ function activateTab(t) {
   $('#appName').textContent = ''; $('#volWrap').hidden = true;
   state.tvApps = []; state.tvInputs = [];
   renderTabs();
+  flickVfd();
   TV.activate(t.host);
   const link = getLink(t.host);
   if (link && (link.auto || t.state !== 'connected')) switchTvTo(link);
@@ -654,6 +656,7 @@ let padMode = false;
 try { padMode = localStorage.getItem('padMode') === '1'; } catch (_) {}
 function applyMode() {
   $('#dpad').hidden = padMode;
+  $('#remote').classList.toggle('pad-mode', padMode);
   $('#touchpad').hidden = !padMode;
   $('#modeToggle use').setAttribute('href', padMode ? '#i-dpad' : '#i-pad');
 }
@@ -966,6 +969,7 @@ function toast(msg) {
 
 /* ------------------------------------------------------------ التصميمات */
 const THEMES = [
+  { id: 'amber', name: 'كهرمان', bg: 'radial-gradient(circle at 70% 0, #4a2c0c, #0c0906 70%)', panel: '#2a1e10', accent: '#ffb000', ring: '#ffb000', bar: '#0c0906' },
   { id: 'midnight', name: 'ليلي برتقالي', bg: '#0b0d12', panel: '#1c2230', accent: '#ff6a1f', bar: '#0b0d12' },
   { id: 'glass', name: 'زجاج', bg: 'linear-gradient(150deg,#6d3cff,#0b1530 60%,#00b3ff)', panel: 'rgba(255,255,255,.22)', accent: '#5ee7ff', bar: '#1d0f45' },
   { id: 'light', name: 'فاتح', bg: '#e6eaf1', panel: '#f4f6fa', accent: '#3d6bff', bar: '#e6eaf1', light: true },
@@ -974,6 +978,12 @@ const THEMES = [
 ];
 function currentTheme() {
   return document.documentElement.getAttribute('data-theme') || 'midnight';
+}
+// شاشة الـ VFD بترمش لما الجهاز يتوصل أو تبدّل تاب
+function flickVfd() {
+  const n = $('.nowbar');
+  if (!n) return;
+  n.classList.remove('flick'); void n.offsetWidth; n.classList.add('flick');
 }
 function applyTheme(id) {
   const t = THEMES.find(x => x.id === id) || THEMES[0];
