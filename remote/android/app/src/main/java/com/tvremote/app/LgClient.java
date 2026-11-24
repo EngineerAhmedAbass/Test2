@@ -203,9 +203,9 @@ public class LgClient implements Remote {
             while (!early.isEmpty()) handle(early.poll());
             while (true) handle(new JSONObject(ws.readText()));
         } catch (JSONException e) {
-            throw new IOException("رد غريب من التليفزيون", e);
+            throw new IOException(L.t("رد غريب من التليفزيون"), e);
         } catch (SocketTimeoutException e) {
-            throw new IOException("التليفزيون مش بيرد", e);
+            throw new IOException(L.t("التليفزيون مش بيرد"), e);
         } finally {
             boolean was = connected;
             connected = false;
@@ -214,7 +214,7 @@ public class LgClient implements Remote {
             Ws in = input;
             input = null;
             if (in != null) in.close();
-            if (was) listener.onDisconnected("انقطع الاتصال");
+            if (was) listener.onDisconnected(L.t("انقطع الاتصال"));
         }
     }
 
@@ -222,7 +222,7 @@ public class LgClient implements Remote {
         boolean signed = !signedRejected;
         for (int attempt = 0; attempt < 2; attempt++) {
             JSONObject res = call(ws, registration(signed, "register_" + attempt));
-            if (res == null) throw new IOException("مفيش رد على التسجيل");
+            if (res == null) throw new IOException(L.t("مفيش رد على التسجيل"));
             log("register (" + (signed ? "signed" : "unsigned") + "): " + res.optString("type") + " " + res.optString("error"));
             if ("error".equals(res.optString("type")) && attempt == 0) {
                 if (signed) {
@@ -243,12 +243,12 @@ public class LgClient implements Remote {
                         if ("registered".equals(type) || "error".equals(type)) break;
                     }
                 } catch (SocketTimeoutException e) {
-                    throw new RejectedException("محدش وافق على التليفزيون");
+                    throw new RejectedException(L.t("محدش وافق على التليفزيون"));
                 }
                 ws.setTimeout(10000);
             }
             if ("error".equals(res.optString("type"))) {
-                throw new RejectedException("التليفزيون رفض الاتصال");
+                throw new RejectedException(L.t("التليفزيون رفض الاتصال"));
             }
             if ("registered".equals(res.optString("type"))) {
                 JSONObject p = res.optJSONObject("payload");
@@ -260,7 +260,7 @@ public class LgClient implements Remote {
                 return;
             }
         }
-        throw new RejectedException("التليفزيون رفض الاتصال");
+        throw new RejectedException(L.t("التليفزيون رفض الاتصال"));
     }
 
     private void handle(JSONObject m) {
@@ -367,7 +367,7 @@ public class LgClient implements Remote {
 
     private void request(String uri, JSONObject payload) throws IOException {
         Ws ws = main;
-        if (ws == null || !connected) throw new IOException("مش متوصل");
+        if (ws == null || !connected) throw new IOException(L.t("مش متوصل"));
         send(ws, msg("request", null, uri, payload == null ? new JSONObject() : payload));
     }
 
@@ -407,7 +407,7 @@ public class LgClient implements Remote {
     /** طلب وهو متوصل: بيستنى الرد من الـ loop الأساسي. */
     private JSONObject requestWait(String uri, JSONObject payload, int timeoutMs) throws IOException {
         Ws ws = main;
-        if (ws == null || !connected) throw new IOException("مش متوصل");
+        if (ws == null || !connected) throw new IOException(L.t("مش متوصل"));
         JSONObject m = msg("request", null, uri, payload == null ? new JSONObject() : payload);
         String id = m.optString("id");
         JSONObject[] slot = new JSONObject[1];
@@ -485,7 +485,7 @@ public class LgClient implements Remote {
             openInput();
             in = input;
         }
-        if (in == null) throw new IOException("زراير الريموت مش متاحة في التليفزيون ده");
+        if (in == null) throw new IOException(L.t("زراير الريموت مش متاحة في التليفزيون ده"));
         try {
             in.sendText(text);
         } catch (IOException e) {
@@ -516,7 +516,7 @@ public class LgClient implements Remote {
     @Override
     public void sendKey(int keyCode, int direction) throws IOException {
         if (direction == TvClient.END_LONG) return; // webOS مافيهوش ضغطة طويلة
-        if (!connected) throw new IOException("مش متوصل");
+        if (!connected) throw new IOException(L.t("مش متوصل"));
         switch (keyCode) {
             case 26:
                 if (screenOn) request("ssap://system/turnOff", null);
@@ -628,7 +628,7 @@ public class LgClient implements Remote {
     /** تشغيل التليفزيون وهو مقفول (Wake-on-LAN) — لازم "التشغيل عن طريق Wi-Fi" يكون مفعّل في التليفزيون. */
     public static String wake(String mac, String host) throws IOException {
         String[] parts = mac.split("[:-]");
-        if (parts.length != 6) throw new IOException("عنوان MAC مش معروف");
+        if (parts.length != 6) throw new IOException(L.t("عنوان MAC مش معروف"));
         byte[] m = new byte[6];
         for (int i = 0; i < 6; i++) m[i] = (byte) Integer.parseInt(parts[i], 16);
         byte[] pkt = new byte[102];

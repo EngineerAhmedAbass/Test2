@@ -123,6 +123,7 @@ public class MainActivity extends Activity {
             }
         });
         LgClient.signedRejected = prefs.getBoolean("lgUnsigned", false);
+        loadLanguage();
 
         web = new WebView(this);
         web.setBackgroundColor(Color.rgb(11, 13, 18));
@@ -144,10 +145,33 @@ public class MainActivity extends Activity {
                     kick(); // أي جهاز Android TV كان مستني المفتاح
                     emit(obj("type", "ready"));
                 } catch (Exception e) {
-                    emit(obj("type", "error", "msg", "مشكلة في تجهيز مفتاح الأمان: " + e));
+                    emit(obj("type", "error", "msg", L.t("مشكلة في تجهيز مفتاح الأمان: ") + e));
                 }
             }
         });
+    }
+
+    /** اللغة: من الإعدادات، والترجمة من نفس ملف الواجهة (assets/i18n.js). */
+    private void loadLanguage() {
+        L.lang = prefs.getString("lang", "ar");
+        if (!L.EN.isEmpty()) return;
+        try {
+            InputStream in = getAssets().open("i18n.js");
+            ByteArrayOutputStream out = new ByteArrayOutputStream();
+            byte[] buf = new byte[8192];
+            int n;
+            while ((n = in.read(buf)) > 0) out.write(buf, 0, n);
+            in.close();
+            String js = out.toString("UTF-8");
+            JSONObject o = new JSONObject(js.substring(js.indexOf('{'), js.lastIndexOf('}') + 1));
+            java.util.Iterator<String> it = o.keys();
+            while (it.hasNext()) {
+                String k = it.next();
+                L.EN.put(k, o.getString(k));
+            }
+        } catch (Exception e) {
+            onLgLog("i18n load failed: " + e);
+        }
     }
 
     // ------------------------------------------------------------ JS → Java
@@ -274,11 +298,19 @@ public class MainActivity extends Activity {
                     try {
                         ((LgClient) c).switchInput(inputId);
                     } catch (IOException e) {
-                        emit(obj("type", "error", "msg", "معرفناش نقلب التليفزيون: " + msg(e)));
+                        emit(obj("type", "error", "msg", L.t("معرفناش نقلب التليفزيون: ") + msg(e)));
                     }
                 }
             });
             return true;
+        }
+
+        @JavascriptInterface
+        public void setLang(String l) {
+            String v = "en".equals(l) ? "en" : "ar";
+            prefs.edit().putString("lang", v).apply();
+            L.lang = v;
+            RemoteService.refresh(MainActivity.this);
         }
 
         @JavascriptInterface
@@ -322,7 +354,7 @@ public class MainActivity extends Activity {
                         c.startPairing(h);
                         emit(obj("type", "pairCode"));
                     } catch (IOException e) {
-                        emit(obj("type", "pairError", "msg", "معرفناش نبدأ الاقتران: " + msg(e)));
+                        emit(obj("type", "pairError", "msg", L.t("معرفناش نبدأ الاقتران: ") + msg(e)));
                     }
                 }
             });
@@ -342,7 +374,7 @@ public class MainActivity extends Activity {
                     } catch (TvClient.WrongCodeException e) {
                         emit(obj("type", "pairError", "msg", e.getMessage(), "retry", "1"));
                     } catch (IOException e) {
-                        emit(obj("type", "pairError", "msg", "الاقتران فشل: " + msg(e)));
+                        emit(obj("type", "pairError", "msg", L.t("الاقتران فشل: ") + msg(e)));
                     }
                 }
             });
@@ -441,7 +473,7 @@ public class MainActivity extends Activity {
             Intent i = new Intent(Intent.ACTION_SEND);
             i.setType("text/plain");
             i.putExtra(Intent.EXTRA_TEXT, text);
-            try { startActivity(Intent.createChooser(i, "ابعت السجل")); } catch (Exception ignored) { }
+            try { startActivity(Intent.createChooser(i, L.t("ابعت السجل"))); } catch (Exception ignored) { }
         }
 
         /** زرار ريسيفر بالكود بتاعه مباشرة (FAV، TV/Radio...). */
@@ -599,7 +631,7 @@ public class MainActivity extends Activity {
     private void startConnect(final String h, final String name, final String wantKind, boolean activate) {
         Dev d = devFor(h, name);
         if (d == null) {
-            emit(obj("type", "error", "msg", "التابات مليانة (" + MAX_TABS + " أجهزة) — شيل جهاز بضغطة طويلة على تابه"));
+            emit(obj("type", "error", "msg", L.t("التابات مليانة (") + MAX_TABS + L.t(" أجهزة) — شيل جهاز بضغطة طويلة على تابه")));
             emit(obj("type", "tabsFull"));
             return;
         }
@@ -749,7 +781,7 @@ public class MainActivity extends Activity {
             }
             if (stopped) return;
             if (k.isEmpty()) {
-                setState("offline", "مش لاقي تليفزيون على " + host);
+                setState("offline", L.t("مش لاقي تليفزيون على ") + host);
                 k = "atv";
             }
             Remote c = client;
@@ -995,7 +1027,7 @@ public class MainActivity extends Activity {
                             if (round == 0) onLgLog("wake failed " + mac + ": " + e);
                         }
                     }
-                    if (round == 0) emit(obj("type", "error", "msg", ok > 0 ? "بنشغّل التليفزيون… بياخد حوالي 20 ثانية" : "معرفناش نبعت أمر التشغيل"));
+                    if (round == 0) emit(obj("type", "error", "msg", ok > 0 ? L.t("بنشغّل التليفزيون… بياخد حوالي 20 ثانية") : L.t("معرفناش نبعت أمر التشغيل")));
                     sleep(1500);
                 }
             }
@@ -1089,7 +1121,7 @@ public class MainActivity extends Activity {
             public void run() {
                 GmsClient.listen(8000, new GmsClient.Found() {
                     public void onFound(String ip, GmsClient.Info info) {
-                        foundTv(ip, info.model.isEmpty() ? "ريسيفر" : info.model, "rcv");
+                        foundTv(ip, info.model.isEmpty() ? L.t("ريسيفر") : info.model, "rcv");
                     }
 
                     public void onNote(String line) {
@@ -1307,7 +1339,7 @@ public class MainActivity extends Activity {
                         emit(obj("type", "noUpdate", "manual", manual ? "1" : ""));
                     }
                 } catch (Exception e) {
-                    if (manual) emit(obj("type", "error", "msg", "معرفناش نشوف التحديثات — اتأكد من النت"));
+                    if (manual) emit(obj("type", "error", "msg", L.t("معرفناش نشوف التحديثات — اتأكد من النت")));
                 }
             }
         });
@@ -1348,7 +1380,7 @@ public class MainActivity extends Activity {
                     }
                     String name = "TV-Remote-" + updateCode + ".apk";
                     DownloadManager.Request r = new DownloadManager.Request(Uri.parse(apk))
-                            .setTitle("ريموت TV — تحديث")
+                            .setTitle(L.t("ريموت TV — تحديث"))
                             .setMimeType("application/vnd.android.package-archive")
                             .setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE)
                             .setDestinationInExternalFilesDir(MainActivity.this, Environment.DIRECTORY_DOWNLOADS, name);
@@ -1356,20 +1388,20 @@ public class MainActivity extends Activity {
                     while (true) {
                         sleep(400);
                         Cursor cur = dm.query(new DownloadManager.Query().setFilterById(id));
-                        if (cur == null || !cur.moveToFirst()) throw new IOException("التحميل اتلغى");
+                        if (cur == null || !cur.moveToFirst()) throw new IOException(L.t("التحميل اتلغى"));
                         int status = cur.getInt(cur.getColumnIndexOrThrow(DownloadManager.COLUMN_STATUS));
                         long done = cur.getLong(cur.getColumnIndexOrThrow(DownloadManager.COLUMN_BYTES_DOWNLOADED_SO_FAR));
                         long total = cur.getLong(cur.getColumnIndexOrThrow(DownloadManager.COLUMN_TOTAL_SIZE_BYTES));
                         cur.close();
                         if (status == DownloadManager.STATUS_SUCCESSFUL) break;
-                        if (status == DownloadManager.STATUS_FAILED) throw new IOException("التحميل فشل");
+                        if (status == DownloadManager.STATUS_FAILED) throw new IOException(L.t("التحميل فشل"));
                         if (total > 0) emit(obj("type", "updateProgress", "pct", String.valueOf(done * 99 / total)));
                     }
                     emit(obj("type", "updateProgress", "pct", "100"));
                     final Uri uri = dm.getUriForDownloadedFile(id);
                     runOnUiThread(new Runnable() { public void run() { install(uri); } });
                 } catch (Exception e) {
-                    emit(obj("type", "updateError", "msg", msg(e) + " — هنفتحلك صفحة التحميل"));
+                    emit(obj("type", "updateError", "msg", msg(e) + L.t(" — هنفتحلك صفحة التحميل")));
                     sleep(1500);
                     runOnUiThread(new Runnable() {
                         public void run() {
@@ -1388,7 +1420,7 @@ public class MainActivity extends Activity {
         if (Build.VERSION.SDK_INT >= 26 && !getPackageManager().canRequestPackageInstalls()) {
             // أول مرة: لازم تسمح للتطبيق إنه يسطّب تحديثاته
             pendingInstall = uri;
-            emit(obj("type", "error", "msg", "فعّل \"السماح من المصدر ده\" وارجع للتطبيق"));
+            emit(obj("type", "error", "msg", L.t("فعّل \"السماح من المصدر ده\" وارجع للتطبيق")));
             try {
                 startActivity(new Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES, Uri.parse("package:" + getPackageName())));
             } catch (Exception ignored) { }
@@ -1401,7 +1433,7 @@ public class MainActivity extends Activity {
             i.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_ACTIVITY_NEW_TASK);
             startActivity(i);
         } catch (Exception e) {
-            emit(obj("type", "updateError", "msg", "معرفناش نفتح التثبيت: " + msg(e)));
+            emit(obj("type", "updateError", "msg", L.t("معرفناش نفتح التثبيت: ") + msg(e)));
         }
     }
 

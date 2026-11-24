@@ -111,7 +111,7 @@ public class TvClient implements Remote {
             raw.connect(new InetSocketAddress(host, port), timeoutMs);
         } catch (IOException e) {
             try { raw.close(); } catch (IOException ignored) { }
-            throw new IOException("مش لاقي التليفزيون على " + host, e);
+            throw new IOException(L.t("مش لاقي التليفزيون على ") + host, e);
         }
         try {
             raw.setTcpNoDelay(true);
@@ -157,7 +157,7 @@ public class TvClient implements Remote {
                     s.setSoTimeout(0);
                     return;
                 } else {
-                    throw new IOException("رد غير متوقع من التليفزيون");
+                    throw new IOException(L.t("رد غير متوقع من التليفزيون"));
                 }
             }
         } catch (IOException e) {
@@ -169,22 +169,22 @@ public class TvClient implements Remote {
     /** بيبعت الكود اللي ظاهر على الشاشة. */
     public synchronized void finishPairing(String code) throws IOException {
         SSLSocket s = pairingSocket;
-        if (s == null) throw new IOException("ابدأ الاقتران الأول");
+        if (s == null) throw new IOException(L.t("ابدأ الاقتران الأول"));
         code = code.trim().toUpperCase(Locale.US);
-        if (!code.matches("[0-9A-F]{6}")) throw new WrongCodeException("الكود لازم يكون 6 حروف/أرقام");
+        if (!code.matches("[0-9A-F]{6}")) throw new WrongCodeException(L.t("الكود لازم يكون 6 حروف/أرقام"));
         Certificate[] peer = s.getSession().getPeerCertificates();
         byte[] secret = pairingSecret(
                 (RSAPublicKey) clientCert.getPublicKey(),
                 (RSAPublicKey) peer[0].getPublicKey(),
                 code);
         if ((secret[0] & 0xFF) != Integer.parseInt(code.substring(0, 2), 16)) {
-            throw new WrongCodeException("الكود غلط، اتأكد منه");
+            throw new WrongCodeException(L.t("الكود غلط، اتأكد منه"));
         }
         try {
             s.setSoTimeout(15000);
             Proto.send(s.getOutputStream(), outer().msg(40, new Proto.Writer().bytes(1, secret)));
             Proto.Msg m = readPairing(s.getInputStream());
-            if (!m.has(41)) throw new IOException("التليفزيون مأكدش الاقتران");
+            if (!m.has(41)) throw new IOException(L.t("التليفزيون مأكدش الاقتران"));
         } finally {
             cancelPairing();
         }
@@ -201,8 +201,8 @@ public class TvClient implements Remote {
         Proto.Msg m = Proto.Msg.parse(Proto.receive(in));
         long status = m.num(2);
         if (status != 200) {
-            if (status == 402) throw new WrongCodeException("الكود غلط، اتأكد منه");
-            throw new IOException("التليفزيون رفض الاقتران (" + status + ")");
+            if (status == 402) throw new WrongCodeException(L.t("الكود غلط، اتأكد منه"));
+            throw new IOException(L.t("التليفزيون رفض الاقتران (") + status + ")");
         }
         return m;
     }
@@ -249,13 +249,13 @@ public class TvClient implements Remote {
         try {
             s = open(host, REMOTE_PORT, 6000);
         } catch (HandshakeException e) {
-            throw new NeedsPairingException("محتاج اقتران", e);
+            throw new NeedsPairingException(L.t("محتاج اقتران"), e);
         }
         InputStream in = s.getInputStream();
         OutputStream out = s.getOutputStream();
         boolean configured = false;
         int active = FEATURES;
-        String reason = "انقطع الاتصال";
+        String reason = L.t("انقطع الاتصال");
         try {
             // التليفزيون بيبعت ping كل 5 ثواني؛ لو مفيش حاجة 16 ثانية يبقى الاتصال واقع
             s.setSoTimeout(16000);
@@ -267,7 +267,7 @@ public class TvClient implements Remote {
                     throw e;
                 } catch (IOException e) {
                     // في TLS 1.3 رفض الشهادة بيوصل بعد الـ handshake، أول ما نقرا
-                    if (!configured) throw new NeedsPairingException("محتاج اقتران", e);
+                    if (!configured) throw new NeedsPairingException(L.t("محتاج اقتران"), e);
                     throw e;
                 }
                 Proto.Msg m = Proto.Msg.parse(raw);
@@ -316,7 +316,7 @@ public class TvClient implements Remote {
                 }
             }
         } catch (SocketTimeoutException e) {
-            reason = "التليفزيون مش بيرد";
+            reason = L.t("التليفزيون مش بيرد");
             throw e;
         } finally {
             boolean wasConnected = remoteSocket == s;
@@ -345,7 +345,7 @@ public class TvClient implements Remote {
 
     private void sendRemote(Proto.Writer msg) throws IOException {
         OutputStream out = remoteOut;
-        if (out == null) throw new IOException("مش متوصل");
+        if (out == null) throw new IOException(L.t("مش متوصل"));
         Proto.send(out, msg);
     }
 

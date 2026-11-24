@@ -8,6 +8,9 @@
 <link rel="stylesheet" href="style.css">
 <link rel="stylesheet" href="amber.css">
 <script>try {
+  if (localStorage.getItem('lang') === 'en') { document.documentElement.lang = 'en'; document.documentElement.dir = 'ltr'; }
+} catch (e) {}
+try {
   if (!localStorage.getItem('themeV2')) { localStorage.setItem('theme', 'amber'); localStorage.setItem('themeV2', '1'); }
   var t = localStorage.getItem('theme') || 'amber';
   if (t !== 'midnight') document.documentElement.setAttribute('data-theme', t);
@@ -242,6 +245,11 @@
 <div class="sheet" id="settingsSheet" role="dialog" aria-modal="true">
   <div class="grab"></div>
   <h2>إعدادات</h2>
+  <h3>اللغة</h3>
+  <div class="seg" id="langSeg" dir="ltr">
+    <button data-lang="ar">العربية</button>
+    <button data-lang="en">English</button>
+  </div>
   <h3>التصميم</h3>
   <div class="themes" id="themeGrid"></div>
   <label class="check"><input type="checkbox" id="vibrateChk"> اهتزاز مع كل زرار</label>
@@ -292,6 +300,7 @@
 
 <div class="toast" id="toast"></div>
 
+<script src="i18n.js"></script>
 <script src="app.js"></script>
 </body>
 </html>

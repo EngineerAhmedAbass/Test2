@@ -6,6 +6,30 @@ const $$ = (s, el = document) => Array.from(el.querySelectorAll(s));
 
 const SHORT = 3, START_LONG = 1, END_LONG = 2;
 
+/* -------- اللغة: العربي هو الأصل، والإنجليزي من i18n.js -------- */
+const LANG = (() => { try { return localStorage.getItem('lang') === 'en' ? 'en' : 'ar'; } catch (_) { return 'ar'; } })();
+const EN_MAP = window.I18N_EN || {};
+function T(s) {
+  if (LANG !== 'en' || typeof s !== 'string') return s;
+  const m = s.match(/^(\s*)([\s\S]*?)(\s*)$/);
+  const v = EN_MAP[m[2].replace(/\s+/g, ' ')];
+  return v === undefined ? s : m[1] + v + m[3];
+}
+// النصوص الثابتة في الـ HTML
+function translateDom(root) {
+  if (LANG !== 'en') return;
+  const ar = /[؀-ۿ]/;
+  const w = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+  const nodes = [];
+  while (w.nextNode()) nodes.push(w.currentNode);
+  nodes.forEach(n => { if (ar.test(n.nodeValue) && n.parentNode.nodeName !== 'SCRIPT') n.nodeValue = T(n.nodeValue); });
+  root.querySelectorAll('[placeholder],[aria-label],[title]').forEach(el => {
+    ['placeholder', 'aria-label', 'title'].forEach(a => { const v = el.getAttribute(a); if (v && ar.test(v)) el.setAttribute(a, T(v)); });
+  });
+}
+translateDom(document.body);
+document.title = T(document.title);
+
 /* -------- لو الصفحة مفتوحة في متصفح عادي (للتجربة) بنعمل TV وهمي -------- */
 if (!window.TV) {
   const fire = (o, ms = 300) => setTimeout(() => window.onTv(o), ms);
@@ -27,7 +51,7 @@ if (!window.TV) {
   const ensure = (host, name, kind) => {
     let t = tabs.find(x => x.host === host);
     if (t) return t;
-    if (tabs.length >= 4) { fire({ type: 'error', msg: 'التابات مليانة (4 أجهزة)' }, 0); return null; }
+    if (tabs.length >= 4) { fire({ type: 'error', msg: T('التابات مليانة (4 أجهزة)') }, 0); return null; }
     t = { host, name, kind: kind || (devices.find(d => d.host === host) || {}).kind || guess(host), state: 'connecting', volume: -1 };
     tabs.push(t);
     devices = [{ host, name, kind: t.kind }].concat(devices.filter(d => d.host !== host));
@@ -85,7 +109,7 @@ if (!window.TV) {
     disconnect() { if (activeHost) this.removeDevice(activeHost); }, forget() {},
     pairStart(h, n) { fire({ type: 'pairCode' }, 500); },
     pairFinish(code) {
-      if (code !== 'A1B2C3') return fire({ type: 'pairError', msg: 'الكود غلط، اتأكد منه', retry: '1' });
+      if (code !== 'A1B2C3') return fire({ type: 'pairError', msg: T('الكود غلط، اتأكد منه'), retry: '1' });
       paired = true; fire({ type: 'paired' }); const t = tabs.find(x => x.host === activeHost); if (t) { t.state = 'offline'; run(t); }
     },
     pairCancel() {},
@@ -121,13 +145,13 @@ window.onTv = (e) => {
     case 'found': addFound(e.host, niceName(e.name), e.kind); break;
     case 'kind': setKind(e.kind); break;
     case 'lgPrompt':
-      if (e.host && e.host !== state.host) { toast('وافق على الاتصال من ' + niceName(e.name)); break; }
+      if (e.host && e.host !== state.host) { toast(T('وافق على الاتصال من ') + niceName(e.name)); break; }
       openLgPrompt();
       break;
     case 'lgRejected':
       if (state.sheet !== 'pairSheet') openLgPrompt();
       $('#pairMsg').textContent = '';
-      $('#pairErr').textContent = (e.msg || 'التليفزيون رفض') + ' — اضغط "جرّب تاني" ووافق على التليفزيون.';
+      $('#pairErr').textContent = (e.msg || T('التليفزيون رفض')) + T(' — اضغط "جرّب تاني" ووافق على التليفزيون.');
       break;
     case 'inputs':
       state.tvInputs = e.list || [];
@@ -140,23 +164,23 @@ window.onTv = (e) => {
     case 'scanDone':
       $('#scanSpin').hidden = true;
       $('#scanBtn').disabled = false;
-      if (!$('#foundList').children.length) $('#foundEmpty').textContent = 'ملقيناش تليفزيون. اتأكد إن الموبايل على نفس الواي فاي، أو اكتب الـ IP.';
+      if (!$('#foundList').children.length) $('#foundEmpty').textContent = T('ملقيناش تليفزيون. اتأكد إن الموبايل على نفس الواي فاي، أو اكتب الـ IP.');
       break;
     case 'status': setStatus(e); break;
     case 'needPair': openPair(); break;
     case 'pairCode':
-      $('#pairMsg').textContent = 'الكود ظاهر دلوقتي على شاشة التليفزيون (حروف وأرقام).';
+      $('#pairMsg').textContent = T('الكود ظاهر دلوقتي على شاشة التليفزيون (حروف وأرقام).');
       $('#pairErr').textContent = '';
       break;
     case 'pairError':
       $('#pairErr').textContent = e.msg;
       if (e.retry) { code = ''; drawCode(); }
-      else $('#pairMsg').textContent = 'اضغط "كود جديد" عشان تجرب تاني.';
+      else $('#pairMsg').textContent = T('اضغط "كود جديد" عشان تجرب تاني.');
       break;
     case 'paired':
-      if (e.host && e.host !== state.host) { toast('تم الاقتران ✔'); break; }
+      if (e.host && e.host !== state.host) { toast(T('تم الاقتران ✔')); break; }
       if (state.sheet === 'pairSheet') closeSheet(true);
-      toast('تم الاقتران ✔');
+      toast(T('تم الاقتران ✔'));
       break;
     case 'volume': {
       const vt = state.tabs.find(x => x.host === state.host);
@@ -165,7 +189,7 @@ window.onTv = (e) => {
       if (!max) break;
       $('#volWrap').hidden = false;
       $('#volFill').style.width = (lvl / max * 100) + '%';
-      $('#volText').textContent = e.muted ? 'مكتوم 🔇' : 'الصوت ' + lvl;
+      $('#volText').textContent = e.muted ? T('مكتوم 🔇') : T('الصوت ') + lvl;
       break;
     }
     case 'app': state.curApp = e.pkg; $('#appName').textContent = e.pkg ? appLabel(e.pkg) : '▸ ' + (niceName(state.name) || ''); break;
@@ -173,36 +197,36 @@ window.onTv = (e) => {
       $('.power').classList.toggle('is-off', !e.on);
       break;
     case 'notConnected':
-      toast(state.connected ? 'بيوصل…' : 'مش متوصل بالتليفزيون');
+      toast(state.connected ? T('بيوصل…') : T('مش متوصل بالتليفزيون'));
       break;
     case 'error': toast(e.msg); break;
     case 'needMac':
       openSheet('settingsSheet');
-      toast('اكتب عنوان MAC بتاع التليفزيون عشان نقدر نشغّله');
+      toast(T('اكتب عنوان MAC بتاع التليفزيون عشان نقدر نشغّله'));
       setTimeout(() => $('#macInput').focus(), 300);
       break;
     case 'resume': break;
     case 'update':
       state.update = e;
-      $('#updText').textContent = 'النسخة ' + e.latest + ' متاحة — عندك ' + e.current + '.';
+      $('#updText').textContent = T('النسخة ') + e.latest + T(' متاحة — عندك ') + e.current + '.';
       $('#updErr').textContent = '';
       $('#updProg').hidden = true;
       $('#updNow').disabled = false;
-      $('#updNow').textContent = 'حدّث دلوقتي';
+      $('#updNow').textContent = T('حدّث دلوقتي');
       if (state.sheet !== 'pairSheet') openSheet('updateSheet');
       break;
     case 'noUpdate':
-      if (e.manual) toast('عندك آخر نسخة ✔');
+      if (e.manual) toast(T('عندك آخر نسخة ✔'));
       break;
     case 'updateProgress':
       $('#updProg').hidden = false;
       $('#updBar').style.width = (+e.pct || 0) + '%';
-      $('#updNow').textContent = +e.pct >= 100 ? 'بيفتح التثبيت…' : 'بينزل… ' + (+e.pct || 0) + '%';
+      $('#updNow').textContent = +e.pct >= 100 ? T('بيفتح التثبيت…') : T('بينزل… ') + (+e.pct || 0) + '%';
       break;
     case 'updateError':
       $('#updErr').textContent = e.msg;
       $('#updNow').disabled = false;
-      $('#updNow').textContent = 'جرّب تاني';
+      $('#updNow').textContent = T('جرّب تاني');
       break;
   }
 };
@@ -214,21 +238,21 @@ function setStatus(e) {
   dot.className = 'dot' + (e.state === 'connected' ? ' on' : e.state === 'offline' ? ' off' : '');
   if (e.name) $('#tvName').textContent = e.name;
   $('#tvState').textContent =
-    e.state === 'connected' ? 'متوصل' + (e.model && e.model !== e.name ? ' • ' + e.model : '') :
-    e.state === 'connecting' ? 'بيوصل…' : 'مش متوصل' + (e.msg ? ' — بيحاول تاني' : '');
+    e.state === 'connected' ? T('متوصل') + (e.model && e.model !== e.name ? ' • ' + e.model : '') :
+    e.state === 'connecting' ? T('بيوصل…') : T('مش متوصل') + (e.msg ? T(' — بيحاول تاني') : '');
   if (e.state === 'connected') {
     $('#tvInfo').textContent = [e.vendor, e.model, e.host].filter(Boolean).join(' • ');
   }
 }
 
 /* ------------------------------------------------------- تابات الأجهزة */
-const KIND_LABEL = { lg: 'LG', rcv: 'ريسيفر', atv: 'TV' };
+const KIND_LABEL = { lg: 'LG', rcv: T('ريسيفر'), atv: 'TV' };
 function tabStatus(t) {
-  if (t.state === 'connected') return 'متوصل' + (t.volume >= 0 ? ' • الصوت ' + t.volume : '');
-  if (t.state === 'connecting') return 'بيوصل…';
-  if (t.state === 'pair') return 'محتاج اقتران';
-  if (t.state === 'rejected') return 'اترفض';
-  return 'مش متوصل';
+  if (t.state === 'connected') return T('متوصل') + (t.volume >= 0 ? T(' • الصوت ') + t.volume : '');
+  if (t.state === 'connecting') return T('بيوصل…');
+  if (t.state === 'pair') return T('محتاج اقتران');
+  if (t.state === 'rejected') return T('اترفض');
+  return T('مش متوصل');
 }
 function onTabs(list) {
   state.tabs = list;
@@ -273,7 +297,7 @@ function renderTabs() {
   if (state.tabs.length < 4) {
     const add = document.createElement('button');
     add.className = 'dtab add';
-    add.setAttribute('aria-label', 'ضيف جهاز');
+    add.setAttribute('aria-label', T('ضيف جهاز'));
     add.textContent = '＋';
     add.onclick = () => { buzz(); show('devices'); if (!$('#foundList').children.length) scan(); };
     nav.appendChild(add);
@@ -322,7 +346,7 @@ function setLink(host, link) {
 function switchTvTo(link) {
   let ok = false;
   try { ok = TV.switchInputOn(link.tv, link.input); } catch (_) {}
-  toast(ok ? 'بقلب التليفزيون على ' + link.label + '…' : 'الـ LG مش متوصل — افتح تابه الأول');
+  toast(ok ? T('بقلب التليفزيون على ') + link.label + '…' : T('الـ LG مش متوصل — افتح تابه الأول'));
   return ok;
 }
 // ⏻ على جهاز نايم مربوط بمدخل: نقلب التليفزيون عليه بدل ما نبعت للجهاز (اللي مش سامعنا)
@@ -343,7 +367,7 @@ function renderLinkBox() {
   const link = getLink(state.host);
   sel.innerHTML = '';
   const none = document.createElement('option');
-  none.value = ''; none.textContent = 'مش متوصل بالتليفزيون';
+  none.value = ''; none.textContent = T('مش متوصل بالتليفزيون');
   sel.appendChild(none);
   lgTabs.forEach(tv => {
     let ins = [];
@@ -352,13 +376,13 @@ function renderLinkBox() {
     ins.forEach(i => {
       const o = document.createElement('option');
       o.value = tv.host + '|' + i.id;
-      o.textContent = (lgTabs.length > 1 ? niceName(tv.name) + ' • ' : '') + (i.label || i.id) + (i.connected === false ? ' (مفيش جهاز)' : '');
+      o.textContent = (lgTabs.length > 1 ? niceName(tv.name) + ' • ' : '') + (i.label || i.id) + (i.connected === false ? T(' (مفيش جهاز)') : '');
       o.dataset.label = i.label || i.id;
       sel.appendChild(o);
     });
     if (!ins.length) {
       const o = document.createElement('option');
-      o.disabled = true; o.textContent = niceName(tv.name) + ': وصّله الأول عشان تظهر المداخل';
+      o.disabled = true; o.textContent = niceName(tv.name) + T(': وصّله الأول عشان تظهر المداخل');
       sel.appendChild(o);
     }
   });
@@ -371,14 +395,14 @@ function saveLinkFromUi() {
   const [tv, input] = sel.value.split('|');
   const opt = sel.selectedOptions && sel.selectedOptions[0];
   setLink(state.host, { tv, input, label: (opt && opt.dataset.label) || input, auto: $('#linkAuto').checked });
-  toast('اتحفظ ✔');
+  toast(T('اتحفظ ✔'));
 }
 $('#linkSel').onchange = saveLinkFromUi;
 $('#linkAuto').onchange = saveLinkFromUi;
 function removeTab(t) {
   buzz();
   TV.removeDevice(t.host);
-  toast('اتشال ' + (niceName(t.name) || t.host) + ' من التابات');
+  toast(T('اتشال ') + (niceName(t.name) || t.host) + T(' من التابات'));
 }
 /* علامة «في التابات» أو زرار «＋ ضيف» جنب كل جهاز في شاشة الأجهزة */
 function markTabbed() {
@@ -393,15 +417,15 @@ function markTabbed() {
       tag.onclick = (ev) => {
         ev.stopPropagation();
         if (state.tabs.some(t => t.host === h)) return;
-        if (state.tabs.length >= 4) return toast('التابات مليانة — شيل جهاز بضغطة طويلة على تابه');
+        if (state.tabs.length >= 4) return toast(T('التابات مليانة — شيل جهاز بضغطة طويلة على تابه'));
         buzz();
         TV.addTab(h, b.dataset.name, b.dataset.kind || '');
-        toast('اتضاف للتابات ✔');
+        toast(T('اتضاف للتابات ✔'));
       };
     }
     const inTabs = state.tabs.some(t => t.host === h);
     tag.classList.toggle('in', inTabs);
-    tag.textContent = inTabs ? '✓ في التابات' : '＋ ضيف';
+    tag.textContent = inTabs ? T('✓ في التابات') : T('＋ ضيف');
   });
 }
 
@@ -415,12 +439,12 @@ function devItem(host, name, saved, kind) {
   const b = document.createElement('button');
   b.className = 'dev';
   b.innerHTML = '<span class="ico"><svg><use href="#i-tv"/></svg></span><span class="meta"><b></b><small></small></span>';
-  $('b', b).textContent = name || (kind === 'lg' ? 'LG TV' : kind === 'rcv' ? 'ريسيفر' : 'Android TV');
+  $('b', b).textContent = name || (kind === 'lg' ? 'LG TV' : kind === 'rcv' ? T('ريسيفر') : 'Android TV');
   $('small', b).textContent = host;
   if (kind) {
     const tag = document.createElement('em');
     tag.className = 'kind ' + kind;
-    tag.textContent = kind === 'lg' ? 'LG' : kind === 'rcv' ? 'ريسيفر' : 'Android TV';
+    tag.textContent = kind === 'lg' ? 'LG' : kind === 'rcv' ? T('ريسيفر') : 'Android TV';
     $('.meta', b).appendChild(tag);
   }
   b.dataset.host = host;
@@ -431,7 +455,7 @@ function devItem(host, name, saved, kind) {
     const x = document.createElement('span');
     x.className = 'forget';
     x.setAttribute('role', 'button');
-    x.setAttribute('aria-label', 'امسح');
+    x.setAttribute('aria-label', T('امسح'));
     x.innerHTML = '<svg><use href="#i-x"/></svg>';
     x.onclick = (ev) => { ev.stopPropagation(); TV.forget(host); renderSaved(); };
     b.appendChild(x);
@@ -471,7 +495,7 @@ function scan() {
   foundHosts.clear();
   $('#foundList').innerHTML = '';
   $('#foundEmpty').hidden = false;
-  $('#foundEmpty').textContent = 'بندوّر…';
+  $('#foundEmpty').textContent = T('بندوّر…');
   $('#scanSpin').hidden = false;
   $('#scanBtn').disabled = true;
   TV.discover();
@@ -481,7 +505,7 @@ $('#scanBtn').onclick = scan;
 $('#ipForm').onsubmit = (ev) => {
   ev.preventDefault();
   const ip = $('#ipInput').value.trim();
-  if (!/^\d{1,3}(\.\d{1,3}){3}$/.test(ip)) return toast('اكتب IP صحيح زي 192.168.1.20');
+  if (!/^\d{1,3}(\.\d{1,3}){3}$/.test(ip)) return toast(T('اكتب IP صحيح زي 192.168.1.20'));
   $('#ipInput').blur();
   connect(ip, ip, '');
 };
@@ -504,9 +528,9 @@ function setKind(kind) {
   document.body.classList.toggle('kind-lg', kind === 'lg');
   document.body.classList.toggle('kind-rcv', kind === 'rcv');
   const appsTab = $('[data-sheet="appsSheet"] span');
-  if (appsTab) appsTab.textContent = kind === 'rcv' ? 'زراير' : 'تطبيقات';
-  $('#appsTitle').textContent = kind === 'rcv' ? 'زراير الريسيفر' : 'افتح تطبيق';
-  $('#padHint').textContent = kind === 'lg' ? 'حرّك صباعك = ماوس • دوسة = كليك • صباعين = سكرول' : 'اسحب للتنقل • دوسة = OK';
+  if (appsTab) appsTab.textContent = kind === 'rcv' ? T('زراير') : T('تطبيقات');
+  $('#appsTitle').textContent = kind === 'rcv' ? T('زراير الريسيفر') : T('افتح تطبيق');
+  $('#padHint').textContent = kind === 'lg' ? T('حرّك صباعك = ماوس • دوسة = كليك • صباعين = سكرول') : T('اسحب للتنقل • دوسة = OK');
   $('#repairBtn').hidden = kind === 'lg' || kind === 'rcv';
   if (kind !== 'lg') { state.tvApps = []; state.tvInputs = []; }
 }
@@ -530,13 +554,13 @@ $('#repairBtn').onclick = () => { closeSheet(); openPair(); };
 let code = '';
 function pairMode(lg) {
   $('#pairSheet').classList.toggle('lg-mode', lg);
-  $('#pairTitle').textContent = lg ? 'وافق على الاتصال من التليفزيون' : 'اكتب الكود اللي ظاهر على التليفزيون';
-  $('#pairRetry').textContent = lg ? 'جرّب تاني' : 'كود جديد';
+  $('#pairTitle').textContent = lg ? T('وافق على الاتصال من التليفزيون') : T('اكتب الكود اللي ظاهر على التليفزيون');
+  $('#pairRetry').textContent = lg ? T('جرّب تاني') : T('كود جديد');
 }
 function openLgPrompt() {
   pairMode(true);
   $('#pairErr').textContent = '';
-  $('#pairMsg').textContent = 'هتظهر رسالة على شاشة الـ LG — اختار «سماح / Accept» بريموت التليفزيون.';
+  $('#pairMsg').textContent = T('هتظهر رسالة على شاشة الـ LG — اختار «سماح / Accept» بريموت التليفزيون.');
   if (state.sheet !== 'pairSheet') openSheet('pairSheet');
 }
 function openPair() {
@@ -544,7 +568,7 @@ function openPair() {
   code = '';
   drawCode();
   $('#pairErr').textContent = '';
-  $('#pairMsg').textContent = 'بنطلب الكود من التليفزيون…';
+  $('#pairMsg').textContent = T('بنطلب الكود من التليفزيون…');
   openSheet('pairSheet');
   TV.pairStart(state.host, state.name);
 }
@@ -569,7 +593,7 @@ function drawCode() {
   const del = document.createElement('button');
   del.className = 'del';
   del.innerHTML = '<svg><use href="#i-del"/></svg>';
-  del.setAttribute('aria-label', 'مسح');
+  del.setAttribute('aria-label', T('مسح'));
   del.onclick = () => { code = code.slice(0, -1); drawCode(); };
   pad.appendChild(del);
 })();
@@ -580,7 +604,7 @@ function typeCode(ch) {
   drawCode();
   $('#pairErr').textContent = '';
   if (code.length === 6) {
-    $('#pairMsg').textContent = 'بنتأكد من الكود…';
+    $('#pairMsg').textContent = T('بنتأكد من الكود…');
     TV.pairFinish(code);
   }
 }
@@ -730,7 +754,7 @@ $('#kbdForm').onsubmit = (ev) => {
   if (!inp.value) return TV.key(66);
   TV.text(inp.value);
   inp.value = '';
-  toast('اتبعت ✔');
+  toast(T('اتبعت ✔'));
 };
 let lastLive = '';
 $('#kbdInput').addEventListener('input', (ev) => {
@@ -753,7 +777,7 @@ try { $('#liveType').checked = localStorage.getItem('live') === '1'; } catch (_)
 const BUILTIN_APPS = [
   { label: 'YouTube', link: 'https://www.youtube.com', color: '#ff0033', glyph: '▶' },
   { label: 'Netflix', link: 'https://www.netflix.com/title', color: '#e50914', glyph: 'N' },
-  { label: 'Shahid', link: 'market://launch?id=net.mbc.shahidTV', color: '#18c37e', glyph: 'ش' },
+  { label: 'Shahid', link: 'market://launch?id=net.mbc.shahidTV', color: '#18c37e', glyph: T('ش') },
   { label: 'STREAM IPTV', link: 'market://launch?id=com.stream.iptv', color: '#7b5cff', glyph: 'TV' },
   { label: 'Prime Video', link: 'https://app.primevideo.com', color: '#1399ff', glyph: 'P' },
   { label: 'Spotify', link: 'spotify://', color: '#1db954', glyph: '♫' },
@@ -762,11 +786,11 @@ const BUILTIN_APPS = [
 const PKG_NAMES = {
   'com.google.android.youtube.tv': 'YouTube', 'com.netflix.ninja': 'Netflix', 'net.mbc.shahidTV': 'Shahid',
   'com.stream.iptv': 'STREAM IPTV', 'com.amazon.amazonvideo.livingroom': 'Prime Video', 'com.spotify.tv.android': 'Spotify',
-  'com.google.android.tvlauncher': 'الشاشة الرئيسية', 'com.google.android.apps.tv.launcherx': 'الشاشة الرئيسية',
-  'com.android.vending': 'Google Play', 'com.android.tv.settings': 'الإعدادات', 'com.mitv.tvhome': 'الشاشة الرئيسية',
-  'com.google.android.katniss': 'بحث جوجل', 'com.webos.app.home': 'الشاشة الرئيسية', 'com.webos.app.livetv': 'Live TV',
-  'com.webos.app.hdmi1': 'HDMI 1', 'com.webos.app.hdmi2': 'HDMI 2', 'com.webos.app.hdmi3': 'HDMI 3', 'com.webos.app.browser': 'المتصفح',
-  'com.palm.app.settings': 'الإعدادات', 'youtube.leanback.v4': 'YouTube', 'netflix': 'Netflix', 'amazon': 'Prime Video', 'org.videolan.vlc': 'VLC', 'com.disney.disneyplus': 'Disney+',
+  'com.google.android.tvlauncher': T('الشاشة الرئيسية'), 'com.google.android.apps.tv.launcherx': T('الشاشة الرئيسية'),
+  'com.android.vending': 'Google Play', 'com.android.tv.settings': T('الإعدادات'), 'com.mitv.tvhome': T('الشاشة الرئيسية'),
+  'com.google.android.katniss': T('بحث جوجل'), 'com.webos.app.home': T('الشاشة الرئيسية'), 'com.webos.app.livetv': 'Live TV',
+  'com.webos.app.hdmi1': 'HDMI 1', 'com.webos.app.hdmi2': 'HDMI 2', 'com.webos.app.hdmi3': 'HDMI 3', 'com.webos.app.browser': T('المتصفح'),
+  'com.palm.app.settings': T('الإعدادات'), 'youtube.leanback.v4': 'YouTube', 'netflix': 'Netflix', 'amazon': 'Prime Video', 'org.videolan.vlc': 'VLC', 'com.disney.disneyplus': 'Disney+',
 };
 /* ------------------------------------------------------------- المصادر */
 function renderInputs() {
@@ -775,10 +799,10 @@ function renderInputs() {
   let list;
   if (state.kind === 'lg') {
     if (!state.tvInputs.length) {
-      grid.innerHTML = '<p class="muted small">بنجيب المصادر من التليفزيون…</p>';
+      grid.innerHTML = T('<p class="muted small">بنجيب المصادر من التليفزيون…</p>');
       return;
     }
-    list = state.tvInputs.map(i => ({ label: i.label || i.id, sub: i.connected ? 'متوصل بيه جهاز' : 'مفيش جهاز', on: i.connected,
+    list = state.tvInputs.map(i => ({ label: i.label || i.id, sub: i.connected ? T('متوصل بيه جهاز') : T('مفيش جهاز'), on: i.connected,
       active: state.curApp && state.curApp === i.appId, go: () => TV.switchInput(i.id) }));
   } else {
     // Android TV: مفاتيح HDMI المباشرة (تليفزيونات شاومي)؛ أجهزة زي Mi Box مالهاش مداخل
@@ -789,8 +813,8 @@ function renderInputs() {
     b.className = 'input' + (i.active ? ' active' : '') + (i.on ? '' : ' off');
     b.innerHTML = '<svg><use href="#i-input"/></svg><span><b></b><small></small></span>';
     $('b', b).textContent = i.label;
-    $('small', b).textContent = i.active ? 'شغال دلوقتي' : i.sub;
-    b.onclick = () => { buzz(); i.go(); closeSheet(); toast('بيغيّر لـ ' + i.label + '…'); };
+    $('small', b).textContent = i.active ? T('شغال دلوقتي') : i.sub;
+    b.onclick = () => { buzz(); i.go(); closeSheet(); toast(T('بيغيّر لـ ') + i.label + '…'); };
     grid.appendChild(b);
   });
 }
@@ -810,7 +834,7 @@ function saveCustom(list) {
 const APP_COLORS = ['#ff0033', '#e50914', '#18c37e', '#7b5cff', '#1399ff', '#f2994a', '#2fbf71', '#eb5757'];
 function renderTvApps(grid) {
   if (!state.tvApps.length) {
-    grid.innerHTML = '<p class="muted small">بنجيب التطبيقات من التليفزيون…</p>';
+    grid.innerHTML = T('<p class="muted small">بنجيب التطبيقات من التليفزيون…</p>');
     return;
   }
   state.tvApps.forEach((a, i) => {
@@ -831,20 +855,20 @@ function renderTvApps(grid) {
       ic.textContent = letter;
     }
     $('span', b).textContent = a.title || a.id;
-    b.onclick = () => { buzz(); TV.launch('lg:' + a.id); closeSheet(); toast('بيفتح ' + (a.title || a.id) + '…'); };
+    b.onclick = () => { buzz(); TV.launch('lg:' + a.id); closeSheet(); toast(T('بيفتح ') + (a.title || a.id) + '…'); };
     grid.appendChild(b);
   });
 }
 // زراير الريسيفر اللي مش موجودة في الريموت العادي (أكواد G-MScreen)
 const RCV_KEYS = [
-  { label: 'المفضلة', code: 33, glyph: '★' }, { label: 'TV / راديو', code: 22, glyph: '📻' },
-  { label: 'القناة اللي فاتت', code: 29, glyph: '↺' }, { label: 'دليل البرامج', code: 32, glyph: 'EPG' },
-  { label: 'معلومات', code: 57, glyph: 'i' }, { label: 'الصوت/اللغة', code: 54, glyph: '♪' },
-  { label: 'الترجمة', code: 31, glyph: 'CC' }, { label: 'القمر', code: 30, glyph: 'SAT' },
-  { label: 'بحث', code: 39, glyph: '🔍' }, { label: 'التسجيلات', code: 66, glyph: 'PVR' },
-  { label: 'تسجيل', code: 58, glyph: '●' }, { label: 'زووم', code: 56, glyph: '⤢' },
-  { label: 'صفحة +', code: 37, glyph: '⇞' }, { label: 'صفحة −', code: 38, glyph: '⇟' },
-  { label: 'النوم', code: 41, glyph: 'Zz' }, { label: 'YouTube', code: 74, glyph: '▶' },
+  { label: T('المفضلة'), code: 33, glyph: '★' }, { label: T('TV / راديو'), code: 22, glyph: '📻' },
+  { label: T('القناة اللي فاتت'), code: 29, glyph: '↺' }, { label: T('دليل البرامج'), code: 32, glyph: 'EPG' },
+  { label: T('معلومات'), code: 57, glyph: 'i' }, { label: T('الصوت/اللغة'), code: 54, glyph: '♪' },
+  { label: T('الترجمة'), code: 31, glyph: 'CC' }, { label: T('القمر'), code: 30, glyph: 'SAT' },
+  { label: T('بحث'), code: 39, glyph: '🔍' }, { label: T('التسجيلات'), code: 66, glyph: 'PVR' },
+  { label: T('تسجيل'), code: 58, glyph: '●' }, { label: T('زووم'), code: 56, glyph: '⤢' },
+  { label: T('صفحة +'), code: 37, glyph: '⇞' }, { label: T('صفحة −'), code: 38, glyph: '⇟' },
+  { label: T('النوم'), code: 41, glyph: 'Zz' }, { label: 'YouTube', code: 74, glyph: '▶' },
 ];
 function renderRcvKeys(grid) {
   RCV_KEYS.forEach((k, i) => {
@@ -872,7 +896,7 @@ function renderApps() {
     ic.textContent = a.glyph || a.label.trim().charAt(0).toUpperCase();
     ic.style.background = a.color || '#3a4256';
     $('span', b).textContent = a.label;
-    b.onclick = () => { buzz(); TV.launch(a.link); closeSheet(); toast('بيفتح ' + a.label + '…'); };
+    b.onclick = () => { buzz(); TV.launch(a.link); closeSheet(); toast(T('بيفتح ') + a.label + '…'); };
     if (a.custom) {
       const rm = document.createElement('span');
       rm.className = 'rm';
@@ -887,7 +911,7 @@ $('#addAppForm').onsubmit = (ev) => {
   ev.preventDefault();
   let link = $('#appLink').value.trim();
   const label = $('#appLabel').value.trim() || link;
-  if (!link) return toast('اكتب اسم الباكدج أو الرابط');
+  if (!link) return toast(T('اكتب اسم الباكدج أو الرابط'));
   const m = link.match(/[?&]id=([\w.]+)/); // رابط Google Play
   if (m) link = m[1];
   if (/^[a-zA-Z][\w]*(\.[\w]+)+$/.test(link)) link = 'market://launch?id=' + link;
@@ -914,7 +938,7 @@ function openSheet(id) {
     $('#tvActions').hidden = !state.host;
     $('#tvInfo').hidden = !state.host;
     let v = ''; try { v = TV.appVersion(); } catch (_) {}
-    $('#verText').textContent = v ? 'نسخة التطبيق ' + v : '';
+    $('#verText').textContent = v ? T('نسخة التطبيق ') + v : '';
     renderThemes();
     renderLinkBox();
     $('#wolBox').hidden = state.kind !== 'lg' || !state.host;
@@ -942,9 +966,19 @@ $('#macForm').onsubmit = (ev) => {
   const v = $('#macInput').value.trim();
   let ok = false;
   try { ok = TV.setMac(v); } catch (_) {}
-  toast(ok ? 'اتحفظ ✔ — دلوقتي زرار ⏻ يشغّل التليفزيون' : 'العنوان مش صحيح — لازم يكون زي a8:23:fe:12:34:56');
+  toast(ok ? T('اتحفظ ✔ — دلوقتي زرار ⏻ يشغّل التليفزيون') : T('العنوان مش صحيح — لازم يكون زي a8:23:fe:12:34:56'));
   if (ok) $('#macInput').blur();
 };
+$$('#langSeg button').forEach(b => {
+  b.classList.toggle('on', b.dataset.lang === LANG);
+  b.onclick = () => {
+    if (b.dataset.lang === LANG) return;
+    try { localStorage.setItem('lang', b.dataset.lang); } catch (_) {}
+    try { TV.setLang(b.dataset.lang); } catch (_) {}
+    location.reload();
+  };
+});
+try { TV.setLang(LANG); } catch (_) {}
 $('#diagShare').onclick = () => { try { TV.share(TV.diagnostics()); } catch (_) {} };
 $('#diagBox').ontoggle = () => { try { $('#diagText').textContent = TV.diagnostics(); } catch (_) {} };
 $('#notifChk').onchange = (e) => { try { TV.setNotif(e.target.checked); } catch (_) {} };
@@ -969,11 +1003,11 @@ function toast(msg) {
 
 /* ------------------------------------------------------------ التصميمات */
 const THEMES = [
-  { id: 'amber', name: 'كهرمان', bg: 'radial-gradient(circle at 70% 0, #4a2c0c, #0c0906 70%)', panel: '#2a1e10', accent: '#ffb000', ring: '#ffb000', bar: '#0c0906' },
-  { id: 'midnight', name: 'ليلي برتقالي', bg: '#0b0d12', panel: '#1c2230', accent: '#ff6a1f', bar: '#0b0d12' },
-  { id: 'glass', name: 'زجاج', bg: 'linear-gradient(150deg,#6d3cff,#0b1530 60%,#00b3ff)', panel: 'rgba(255,255,255,.22)', accent: '#5ee7ff', bar: '#1d0f45' },
-  { id: 'light', name: 'فاتح', bg: '#e6eaf1', panel: '#f4f6fa', accent: '#3d6bff', bar: '#e6eaf1', light: true },
-  { id: 'neon', name: 'نيون', bg: '#04050a', panel: '#0a0d16', accent: '#00f0ff', ring: '#ff2bd6', bar: '#04050a' },
+  { id: 'amber', name: T('كهرمان'), bg: 'radial-gradient(circle at 70% 0, #4a2c0c, #0c0906 70%)', panel: '#2a1e10', accent: '#ffb000', ring: '#ffb000', bar: '#0c0906' },
+  { id: 'midnight', name: T('ليلي برتقالي'), bg: '#0b0d12', panel: '#1c2230', accent: '#ff6a1f', bar: '#0b0d12' },
+  { id: 'glass', name: T('زجاج'), bg: 'linear-gradient(150deg,#6d3cff,#0b1530 60%,#00b3ff)', panel: 'rgba(255,255,255,.22)', accent: '#5ee7ff', bar: '#1d0f45' },
+  { id: 'light', name: T('فاتح'), bg: '#e6eaf1', panel: '#f4f6fa', accent: '#3d6bff', bar: '#e6eaf1', light: true },
+  { id: 'neon', name: T('نيون'), bg: '#04050a', panel: '#0a0d16', accent: '#00f0ff', ring: '#ff2bd6', bar: '#04050a' },
   { id: 'material', name: 'Material', bg: '#15131b', panel: '#2a2636', accent: '#cfb4ff', bar: '#15131b' },
 ];
 function currentTheme() {
@@ -1017,10 +1051,10 @@ $('#updLater').onclick = () => closeSheet();
 $('#updNow').onclick = () => {
   $('#updNow').disabled = true;
   $('#updErr').textContent = '';
-  $('#updNow').textContent = 'بيبدأ التحميل…';
+  $('#updNow').textContent = T('بيبدأ التحميل…');
   TV.startUpdate();
 };
-$('#checkUpdBtn').onclick = () => { toast('بنشوف لو فيه تحديث…'); TV.checkUpdate(true); };
+$('#checkUpdBtn').onclick = () => { toast(T('بنشوف لو فيه تحديث…')); TV.checkUpdate(true); };
 
 /* --------------------------------------------------------------- البداية */
 renderSaved();

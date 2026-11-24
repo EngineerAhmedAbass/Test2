@@ -88,8 +88,8 @@ public class RemoteService extends Service {
         super.onCreate();
         running = true;
         if (Build.VERSION.SDK_INT >= 26) {
-            NotificationChannel ch = new NotificationChannel(CHANNEL, "الريموت في الإشعارات", NotificationManager.IMPORTANCE_LOW);
-            ch.setDescription("تتحكم في التليفزيون من غير ما تفتح التطبيق");
+            NotificationChannel ch = new NotificationChannel(CHANNEL, L.t("الريموت في الإشعارات"), NotificationManager.IMPORTANCE_LOW);
+            ch.setDescription(L.t("تتحكم في التليفزيون من غير ما تفتح التطبيق"));
             ch.setShowBadge(false);
             ch.setSound(null, null);
             ch.enableVibration(false);
@@ -175,11 +175,11 @@ public class RemoteService extends Service {
     // ---------------------------------------------------- Notifications
 
     private void show() {
-        String name = MainActivity.nName == null || MainActivity.nName.isEmpty() ? "التليفزيون" : MainActivity.nName;
+        String name = MainActivity.nName == null || MainActivity.nName.isEmpty() ? L.t("التليفزيون") : MainActivity.nName;
         String state = MainActivity.nState;
-        String status = "connected".equals(state) ? "متوصل" : "connecting".equals(state) ? "بيوصل…" : "مش متوصل";
+        String status = "connected".equals(state) ? L.t("متوصل") : "connecting".equals(state) ? L.t("بيوصل…") : L.t("مش متوصل");
         String detail = MainActivity.nVolume >= 0
-                ? (MainActivity.nMuted ? "مكتوم" : "الصوت " + MainActivity.nVolume) : status;
+                ? (MainActivity.nMuted ? L.t("مكتوم") : L.t("الصوت ") + MainActivity.nVolume) : status;
 
         // 1) الريموت المصغّر
         RemoteViews small = new RemoteViews(getPackageName(), R.layout.notif_small);
@@ -245,32 +245,32 @@ public class RemoteService extends Service {
     private void showMedia(String name, String status, String detail) {
         session.setMetadata(new MediaMetadata.Builder()
                 .putString(MediaMetadata.METADATA_KEY_TITLE, name)
-                .putString(MediaMetadata.METADATA_KEY_ARTIST, "ريموت TV • " + detail)
+                .putString(MediaMetadata.METADATA_KEY_ARTIST, L.t("ريموت TV • ") + detail)
                 .build());
         // في أندرويد 13+ زراير مشغّل الميديا بتيجي من هنا
         session.setPlaybackState(new PlaybackState.Builder()
                 .setActions(PlaybackState.ACTION_PLAY | PlaybackState.ACTION_PAUSE | PlaybackState.ACTION_PLAY_PAUSE)
                 .setState(PlaybackState.STATE_PLAYING, PlaybackState.PLAYBACK_POSITION_UNKNOWN, 0)
-                .addCustomAction(new PlaybackState.CustomAction.Builder("vol_down", "صوت -", R.drawable.ic_n_vol_down).build())
-                .addCustomAction(new PlaybackState.CustomAction.Builder("vol_up", "صوت +", R.drawable.ic_n_vol_up).build())
-                .addCustomAction(new PlaybackState.CustomAction.Builder("mute", "كتم", R.drawable.ic_n_mute).build())
-                .addCustomAction(new PlaybackState.CustomAction.Builder("power", "تشغيل", R.drawable.ic_n_power).build())
+                .addCustomAction(new PlaybackState.CustomAction.Builder("vol_down", L.t("صوت -"), R.drawable.ic_n_vol_down).build())
+                .addCustomAction(new PlaybackState.CustomAction.Builder("vol_up", L.t("صوت +"), R.drawable.ic_n_vol_up).build())
+                .addCustomAction(new PlaybackState.CustomAction.Builder("mute", L.t("كتم"), R.drawable.ic_n_mute).build())
+                .addCustomAction(new PlaybackState.CustomAction.Builder("power", L.t("تشغيل"), R.drawable.ic_n_power).build())
                 .build());
 
         Notification.Builder b = Build.VERSION.SDK_INT >= 26 ? new Notification.Builder(this, CHANNEL) : new Notification.Builder(this);
         b.setSmallIcon(R.drawable.ic_n_tv)
                 .setContentTitle(name)
-                .setContentText("ريموت TV • " + detail)
+                .setContentText(L.t("ريموت TV • ") + detail)
                 .setOngoing(true)
                 .setOnlyAlertOnce(true)
                 .setShowWhen(false)
                 .setContentIntent(openIntent())
                 .setVisibility(Notification.VISIBILITY_PUBLIC)
-                .addAction(action(R.drawable.ic_n_vol_down, "صوت -", 25))
-                .addAction(action(R.drawable.ic_n_power, "تشغيل", 26))
-                .addAction(action(R.drawable.ic_n_play, "تشغيل/إيقاف", 85))
-                .addAction(action(R.drawable.ic_n_mute, "كتم", 164))
-                .addAction(action(R.drawable.ic_n_vol_up, "صوت +", 24))
+                .addAction(action(R.drawable.ic_n_vol_down, L.t("صوت -"), 25))
+                .addAction(action(R.drawable.ic_n_power, L.t("تشغيل"), 26))
+                .addAction(action(R.drawable.ic_n_play, L.t("تشغيل/إيقاف"), 85))
+                .addAction(action(R.drawable.ic_n_mute, L.t("كتم"), 164))
+                .addAction(action(R.drawable.ic_n_vol_up, L.t("صوت +"), 24))
                 .setStyle(new Notification.MediaStyle()
                         .setMediaSession(session.getSessionToken())
                         .setShowActionsInCompactView(0, 2, 4));

@@ -186,7 +186,7 @@ public class GmsClient implements Remote {
         } catch (IOException e) {
             s.close();
             log("connect " + host + ":" + PORT + " failed: " + e);
-            throw new IOException("مش لاقي الريسيفر على " + host, e);
+            throw new IOException(L.t("مش لاقي الريسيفر على ") + host, e);
         }
         boolean was = false;
         try {
@@ -200,16 +200,16 @@ public class GmsClient implements Remote {
             byte[] raw = new byte[INFO_LEN];
             readFully(in, raw);
             Info i = parseInfo(raw, INFO_LEN);
-            if (i == null) throw new IOException("ده مش ريسيفر G-MScreen");
+            if (i == null) throw new IOException(L.t("ده مش ريسيفر G-MScreen"));
             log("login OK: model=" + i.model + " platform=" + i.platform + " json=" + i.json + " full=" + i.full
                     + " (" + (System.currentTimeMillis() - t0) + " ms)");
-            if (i.full) throw new IOException("الريسيفر متوصل بأجهزة كتير — اقفل G-MScreen من الموبايلات التانية");
+            if (i.full) throw new IOException(L.t("الريسيفر متوصل بأجهزة كتير — اقفل G-MScreen من الموبايلات التانية"));
             info = i;
             socket = s;
             out = o;
             connected = true;
             was = true;
-            listener.onConnected("Receiver", i.model.isEmpty() ? "ريسيفر" : i.model);
+            listener.onConnected("Receiver", i.model.isEmpty() ? L.t("ريسيفر") : i.model);
 
             // keep-alive كل 20 ثانية؛ لو الكتابة فشلت الاتصال اتقطع
             final Socket ks = s;
@@ -249,7 +249,7 @@ public class GmsClient implements Remote {
                 out = null;
             }
             try { s.close(); } catch (IOException ignored) { }
-            if (was) listener.onDisconnected("انقطع الاتصال بالريسيفر");
+            if (was) listener.onDisconnected(L.t("انقطع الاتصال بالريسيفر"));
         }
     }
 
@@ -265,7 +265,7 @@ public class GmsClient implements Remote {
         int off = 0;
         while (off < b.length) {
             int n = in.read(b, off, b.length - off);
-            if (n < 0) throw new EOFException("الريسيفر قفل الاتصال");
+            if (n < 0) throw new EOFException(L.t("الريسيفر قفل الاتصال"));
             off += n;
         }
     }
@@ -274,14 +274,14 @@ public class GmsClient implements Remote {
         byte[] buf = new byte[4096];
         while (n > 0) {
             int r = in.read(buf, 0, (int) Math.min(buf.length, n));
-            if (r < 0) throw new EOFException("الريسيفر قفل الاتصال");
+            if (r < 0) throw new EOFException(L.t("الريسيفر قفل الاتصال"));
             n -= r;
         }
     }
 
     private void send(String payload) throws IOException {
         OutputStream o = out;
-        if (o == null || !connected) throw new IOException("مش متوصل بالريسيفر");
+        if (o == null || !connected) throw new IOException(L.t("مش متوصل بالريسيفر"));
         byte[] f = frame(payload);
         synchronized (o) {
             o.write(f);
@@ -341,7 +341,7 @@ public class GmsClient implements Remote {
         if (text == null) return;
         Info i = info;
         int p = i == null ? 0 : i.platform;
-        if (p == 32 || p == 71 || p == 72 || p == 74) throw new IOException("الكتابة مش مدعومة في الريسيفر ده");
+        if (p == 32 || p == 71 || p == 72 || p == 74) throw new IOException(L.t("الكتابة مش مدعومة في الريسيفر ده"));
         for (int n = 0; n < text.length(); ) {
             int cp = text.codePointAt(n);
             n += Character.charCount(cp);
