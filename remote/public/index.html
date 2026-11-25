@@ -6,15 +6,14 @@
 <meta name="theme-color" content="#0b0d12">
 <title>ريموت TV</title>
 <link rel="stylesheet" href="style.css">
-<link rel="stylesheet" href="amber.css">
 <script>try {
   if (localStorage.getItem('lang') === 'en') { document.documentElement.lang = 'en'; document.documentElement.dir = 'ltr'; }
 } catch (e) {}
 try {
-  if (!localStorage.getItem('themeV2')) { localStorage.setItem('theme', 'amber'); localStorage.setItem('themeV2', '1'); }
-  var t = localStorage.getItem('theme') || 'amber';
-  if (t !== 'midnight') document.documentElement.setAttribute('data-theme', t);
-} catch (e) { document.documentElement.setAttribute('data-theme', 'amber'); }</script>
+  // «كهرمان» اتشال: اللي كان عليه يرجع للتصميم اللي كان مختاره قبله (Material)
+  if (localStorage.getItem('theme') === 'amber') localStorage.setItem('theme', 'material');
+  var t = localStorage.getItem('theme'); if (t && t !== 'midnight') document.documentElement.setAttribute('data-theme', t);
+} catch (e) {}</script>
 </head>
 <body>
 

@@ -509,5 +509,5 @@ h3 { font-size: 14px; margin: 16px 0 10px; color: var(--muted); font-weight: 600
 
 /* ---------- اختيار اللغة ---------- */
 .seg { display: flex; gap: 6px; padding: 4px; border-radius: 14px; background: var(--bg); border: 1px solid var(--line); }
-.seg button { flex: 1; height: 42px; border-radius: 10px; font-weight: 700; color: var(--muted); font-family: "Reem Kufi", "Plex Arabic", sans-serif; }
+.seg button { flex: 1; height: 42px; border-radius: 10px; font-weight: 700; color: var(--muted); }
 .seg button.on { background: var(--accent); color: var(--on-accent); }
