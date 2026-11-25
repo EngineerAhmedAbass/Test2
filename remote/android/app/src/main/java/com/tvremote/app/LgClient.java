@@ -589,8 +589,11 @@ public class LgClient implements Remote {
     @Override
     public void launch(String link) throws IOException {
         try {
+            String yt = youtubeId(link);
             if (link.startsWith("lg:")) {
                 request("ssap://system.launcher/launch", new JSONObject().put("id", link.substring(3)));
+            } else if (yt != null) {
+                request("ssap://system.launcher/launch", new JSONObject().put("id", "youtube.leanback.v4").put("contentId", yt));
             } else if (link.startsWith("http")) {
                 request("ssap://system.launcher/open", new JSONObject().put("target", link));
             } else {
@@ -599,6 +602,13 @@ public class LgClient implements Remote {
         } catch (JSONException e) {
             throw new IOException(e);
         }
+    }
+
+    /** رقم الفيديو من لينك يوتيوب (youtu.be/ID، watch?v=ID، shorts/ID، live/ID). */
+    static String youtubeId(String url) {
+        java.util.regex.Matcher m = java.util.regex.Pattern.compile(
+                "(?:youtu\\.be/|youtube\\.com/(?:watch\\?(?:.*&)?v=|shorts/|live/|embed/))([A-Za-z0-9_-]{11})").matcher(url);
+        return m.find() ? m.group(1) : null;
     }
 
     /** تغيير المصدر (مثلًا HDMI_1). */

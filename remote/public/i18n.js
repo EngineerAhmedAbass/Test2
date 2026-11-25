@@ -230,5 +230,19 @@ window.I18N_EN = {
  "الكود لازم يكون 6 حروف/أرقام": "The code must be 6 letters/digits",
  "التليفزيون مأكدش الاقتران": "The TV didn't confirm pairing",
  "التليفزيون رفض الاقتران (": "The TV refused pairing (",
- "اللغة": "Language"
+ "اللغة": "Language",
+ "ابعت للتليفزيون": "Send to TV",
+ "اعرض شاشة الموبايل": "Mirror your phone",
+ "Smart View — شاشتك كلها على التليفزيون": "Smart View — your whole screen on the TV",
+ "مفيش تليفزيون في التابات يقدر يفتح اللينك ده. ضيف الـ LG أو الشاومي الأول.": "No TV in your tabs can open this link. Add the LG or Xiaomi first.",
+ "ابعت ▶": "Send ▶",
+ "لينك": "Link",
+ "الريسيفر مابيفتحش لينكات": "Receivers can't open links",
+ "هيفتح في يوتيوب": "Opens in YouTube",
+ "هيفتح في متصفح التليفزيون": "Opens in the TV browser",
+ "التليفزيون مش متوصل لسه": "The TV isn't connected yet",
+ "بيفتح على": "Opening on",
+ "اتبعت لـ": "Sent to",
+ "انزل بشريط الإشعارات ودوس Smart View": "Pull down the notification bar and tap Smart View",
+ "معرفناش نبعت اللينك:": "Couldn't send the link:"
 };

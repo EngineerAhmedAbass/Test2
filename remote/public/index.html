@@ -217,6 +217,10 @@ try {
 
 <div class="sheet" id="appsSheet" role="dialog" aria-modal="true">
   <div class="grab"></div>
+  <button class="mirror" id="mirrorBtn">
+    <span class="mi">📱<b>➜</b>📺</span>
+    <span class="mt"><b>اعرض شاشة الموبايل</b><small>Smart View — شاشتك كلها على التليفزيون</small></span>
+  </button>
   <h2 id="appsTitle">افتح تطبيق</h2>
   <div class="apps" id="appsGrid"></div>
   <details class="add-app">
@@ -294,6 +298,21 @@ try {
   <div class="sheet-actions">
     <button class="btn ghost" id="updLater">بعدين</button>
     <button class="btn primary" id="updNow">حدّث دلوقتي</button>
+  </div>
+</div>
+
+<div class="sheet" id="castSheet" role="dialog" aria-modal="true">
+  <div class="grab"></div>
+  <h2>ابعت للتليفزيون</h2>
+  <div class="cast-link">
+    <span class="yt" id="castIco">▶</span>
+    <span class="cl"><b id="castTitle" dir="auto"></b><small id="castUrl" dir="ltr"></small></span>
+  </div>
+  <div class="cast-devs" id="castDevs"></div>
+  <p class="muted small" id="castEmpty" hidden>مفيش تليفزيون في التابات يقدر يفتح اللينك ده. ضيف الـ LG أو الشاومي الأول.</p>
+  <div class="sheet-actions">
+    <button class="btn ghost" id="castCancel">إلغاء</button>
+    <button class="btn primary" id="castSend">ابعت ▶</button>
   </div>
 </div>
 

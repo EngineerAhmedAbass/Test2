@@ -511,3 +511,32 @@ h3 { font-size: 14px; margin: 16px 0 10px; color: var(--muted); font-weight: 600
 .seg { display: flex; gap: 6px; padding: 4px; border-radius: 14px; background: var(--bg); border: 1px solid var(--line); }
 .seg button { flex: 1; height: 42px; border-radius: 10px; font-weight: 700; color: var(--muted); }
 .seg button.on { background: var(--accent); color: var(--on-accent); }
+
+/* ---------- Smart View و «ابعت للتليفزيون» ---------- */
+.mirror { width: 100%; display: flex; align-items: center; gap: 14px; padding: 14px; margin-bottom: 16px; border-radius: 18px; text-align: start;
+  background: linear-gradient(135deg, var(--accent-soft-2), var(--panel-2)); border: 1px solid var(--accent); }
+.mirror:active { transform: scale(.98); }
+.mirror .mi { font-size: 22px; display: flex; align-items: center; gap: 4px; direction: ltr; }
+.mirror .mi b { font-size: 14px; color: var(--accent); }
+.mirror .mt { display: flex; flex-direction: column; gap: 2px; }
+.mirror .mt small { color: var(--muted); font-size: 12px; }
+.kind-rcv #mirrorBtn { display: none; }
+.cast-link { display: flex; gap: 12px; align-items: center; padding: 12px; border-radius: 16px; background: var(--bg); border: 1px solid var(--line); margin-bottom: 14px; }
+.cast-link .yt { width: 64px; height: 44px; border-radius: 10px; background: #ff0033; color: #fff; display: grid; place-items: center; font-size: 18px; flex: none; }
+.cast-link .yt.web { background: var(--panel-2); }
+.cast-link .cl { display: flex; flex-direction: column; min-width: 0; gap: 3px; }
+.cast-link .cl b { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cast-link .cl small { color: var(--muted); font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-align: end; }
+.cast-devs { display: flex; flex-direction: column; gap: 8px; }
+.cdev { width: 100%; display: flex; align-items: center; gap: 10px; padding: 12px; border-radius: 14px; background: var(--panel-2); border: 2px solid transparent; text-align: start; }
+.cdev.on { border-color: var(--accent); }
+.cdev.off { opacity: .45; }
+.cdev .k { font-size: 10.5px; font-weight: 800; padding: 3px 6px; border-radius: 6px; color: #fff; background: #2f6fd6; }
+.cdev .k.lg { background: #a50034; } .cdev .k.rcv { background: #0b7a75; }
+.cdev .cn { display: flex; flex-direction: column; flex: 1; min-width: 0; }
+.cdev .cn b { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cdev .cn small { color: var(--muted); font-size: 12px; }
+.cdev .d { width: 8px; height: 8px; border-radius: 50%; background: var(--ok); }
+.cdev .d.wait { background: var(--warn); }
+.cdev.off .d { display: none; }
+#castSend:disabled { opacity: .5; }

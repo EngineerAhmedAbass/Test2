@@ -118,6 +118,9 @@ if (!window.TV) {
     getMac: () => '', setMac: (m) => /^([0-9a-f]{2}[:-]){5}[0-9a-f]{2}$/i.test(m.trim()),
     diagnostics: () => 'app 1.0.x • lg • 192.168.1.31\n16:20:01  main: wss:3001 OK\n16:20:01  buttons socket OK', share() {},
     switchInput(id) { console.log('input', id); },
+    takeShare() { if (location.hash !== '#share' || this._shared) return ''; this._shared = true; return JSON.stringify({ url: 'https://youtu.be/dQw4w9WgXcQ?si=x', title: 'Mohamed Salah — Best Goals 2026' }); },
+    castTo(h, url) { const t = tabs.find(x => x.host === h); if (!t || t.state !== 'connected' || t.kind === 'rcv') return false; console.log('cast', h, url); fire({ type: 'casted', name: t.name }, 200); return true; },
+    openMirror() { console.log('mirror'); },
     inputsOf(h) { const t = tabs.find(x => x.host === h); return JSON.stringify(t && t.kind === 'lg' && t.state === 'connected' ? LG_INPUTS : []); },
     switchInputOn(h, id) { const t = tabs.find(x => x.host === h); if (!t || t.state !== 'connected') return false; console.log('switchOn', h, id); return true; }, rawKey(k) { console.log('raw', k); },
     pointer(dx, dy) { console.log('pointer', dx, dy); }, click() { console.log('click'); }, scroll() {}, kind: () => state.kind,
@@ -141,7 +144,9 @@ window.onTv = (e) => {
     case 'ready':
       state.ready = true; // أجهزة Android TV بتستنى المفتاح ده لوحدها
       break;
-    case 'tabs': onTabs(e.list || []); break;
+    case 'tabs': onTabs(e.list || []); if (state.sheet === 'castSheet') renderCast(); break;
+    case 'share': checkShare(); break;
+    case 'casted': toast(T('اتبعت لـ ') + niceName(e.name) + ' ✔'); break;
     case 'found': addFound(e.host, niceName(e.name), e.kind); break;
     case 'kind': setKind(e.kind); break;
     case 'lgPrompt':
@@ -330,6 +335,74 @@ function activateTab(t) {
   const link = getLink(t.host);
   if (link && (link.auto || t.state !== 'connected')) switchTvTo(link);
 }
+
+/* ---------------- ابعت للتليفزيون (مشاركة لينك من أي تطبيق) ---------------- */
+let cast = null; // { url, title, pick, auto }
+function isYoutube(u) { return /(youtu\.be\/|youtube\.com\/(watch|shorts|live|embed))/.test(u); }
+function canCast(t) { return t.kind === 'lg' || t.kind === 'atv'; }
+function checkShare() {
+  let d = null;
+  try { const s = TV.takeShare(); d = s ? JSON.parse(s) : null; } catch (_) {}
+  if (d && d.url) openCast(d);
+}
+function openCast(d) {
+  const yt = isYoutube(d.url);
+  cast = { url: d.url, title: d.title || '', pick: '', auto: false };
+  $('#castTitle').textContent = cast.title || (yt ? 'YouTube' : T('لينك'));
+  $('#castUrl').textContent = d.url.replace(/^https?:\/\//, '');
+  $('#castIco').textContent = yt ? '▶' : '🌐';
+  $('#castIco').classList.toggle('web', !yt);
+  const able = state.tabs.filter(canCast);
+  // تليفزيون واحد بس يقدر يفتحه: نبعت عليه أول ما يبقى متوصل
+  if (able.length === 1) { cast.pick = able[0].host; cast.auto = true; }
+  openSheet('castSheet');
+  renderCast();
+}
+function renderCast() {
+  if (!cast) return;
+  const box = $('#castDevs');
+  box.innerHTML = '';
+  const yt = isYoutube(cast.url);
+  if (!cast.pick) {
+    const a = state.tabs.find(t => t.host === state.host && canCast(t) && t.state === 'connected')
+      || state.tabs.find(t => canCast(t) && t.state === 'connected');
+    if (a) cast.pick = a.host;
+  }
+  state.tabs.forEach(t => {
+    const ok = canCast(t);
+    const live = t.state === 'connected';
+    const row = document.createElement('button');
+    row.className = 'cdev' + (t.host === cast.pick ? ' on' : '') + (ok ? '' : ' off');
+    row.innerHTML = '<span class="k"></span><span class="cn"><b></b><small></small></span><span class="d"></span>';
+    $('.k', row).classList.add(t.kind || 'atv');
+    $('.k', row).textContent = KIND_LABEL[t.kind] || 'TV';
+    $('b', row).textContent = niceName(t.name) || t.host;
+    $('small', row).textContent = !ok ? T('الريسيفر مابيفتحش لينكات')
+      : !live ? tabStatus(t) : yt ? T('هيفتح في يوتيوب') : T('هيفتح في متصفح التليفزيون');
+    $('.d', row).classList.toggle('wait', ok && !live);
+    if (!ok) row.disabled = true;
+    else row.onclick = () => { buzz(); cast.pick = t.host; cast.auto = false; renderCast(); };
+    box.appendChild(row);
+  });
+  $('#castEmpty').hidden = state.tabs.some(canCast);
+  const pick = state.tabs.find(t => t.host === cast.pick);
+  $('#castSend').disabled = !pick || pick.state !== 'connected';
+  if (cast.auto && pick && pick.state === 'connected') sendCast();
+}
+function sendCast() {
+  if (!cast) return;
+  const pick = state.tabs.find(t => t.host === cast.pick);
+  if (!pick) return;
+  let ok = false;
+  try { ok = TV.castTo(pick.host, cast.url); } catch (_) {}
+  if (!ok) { toast(T('التليفزيون مش متوصل لسه')); return; }
+  toast(T('بيفتح على ') + (niceName(pick.name) || pick.host) + '…');
+  cast = null;
+  closeSheet();
+}
+$('#castSend').onclick = () => { buzz(); sendCast(); };
+$('#castCancel').onclick = () => { cast = null; closeSheet(); };
+$('#mirrorBtn').onclick = () => { buzz(); closeSheet(); try { TV.openMirror(); } catch (_) {} };
 
 /* ---------------- ربط جهاز (شاومي/ريسيفر) بمدخل HDMI في تليفزيون LG ---------------- */
 function getLink(host) {
@@ -1065,5 +1138,7 @@ if (!savedDevices().length) scan();
   connect(act.host, act.name, act.kind || '');
 })();
 try { if (TV.isReady()) window.onTv({ type: 'ready' }); } catch (_) {}
+// لو التطبيق اتفتح من «مشاركة» لينك
+setTimeout(checkShare, 300);
 // كل ما التطبيق يتفتح بيشوف لو فيه نسخة أحدث
 setTimeout(() => { try { TV.checkUpdate(false); } catch (_) {} }, 1200);

@@ -136,6 +136,7 @@ public class MainActivity extends Activity {
         web.setWebViewClient(new WebViewClient());
         web.addJavascriptInterface(new Bridge(), "TV");
         web.loadUrl("file:///android_asset/index.html");
+        takeShareIntent(getIntent());
 
         worker.execute(new Runnable() {
             public void run() {
@@ -149,6 +150,58 @@ public class MainActivity extends Activity {
                 }
             }
         });
+    }
+
+    // ------------------------------------------------------------- Share / Cast
+
+    private volatile String pendingShare; // لينك جه من «مشاركة» ولسه الواجهة ماخدتهوش
+
+    @Override
+    protected void onNewIntent(Intent intent) {
+        super.onNewIntent(intent);
+        setIntent(intent);
+        if (takeShareIntent(intent)) emit(obj("type", "share"));
+    }
+
+    /** بيطلّع اللينك (والعنوان) من «مشاركة»؛ بيرجع true لو فيه حاجة. */
+    private boolean takeShareIntent(Intent intent) {
+        if (intent == null || !Intent.ACTION_SEND.equals(intent.getAction())) return false;
+        String text = intent.getStringExtra(Intent.EXTRA_TEXT);
+        if (text == null || text.trim().isEmpty()) return false;
+        String subject = intent.getStringExtra(Intent.EXTRA_SUBJECT);
+        java.util.regex.Matcher m = java.util.regex.Pattern.compile("https?://\\S+").matcher(text);
+        String url = m.find() ? m.group() : text.trim();
+        String title = subject != null && !subject.isEmpty() ? subject : text.replace(url, "").trim();
+        try {
+            pendingShare = new JSONObject().put("url", url).put("title", title).toString();
+        } catch (Exception e) {
+            return false;
+        }
+        onLgLog("share: " + url);
+        intent.setAction(Intent.ACTION_MAIN); // عشان مايتبعتش تاني لو الشاشة اتلفّت
+        return true;
+    }
+
+    /** يفتح Smart View بتاع سامسونج (أو إعدادات عرض الشاشة في أي موبايل تاني). */
+    private void openMirror() {
+        Intent[] tries = {
+                getPackageManager().getLaunchIntentForPackage("com.samsung.android.smartmirroring"),
+                new Intent("com.samsung.android.smartmirroring.CAPTURE"),
+                new Intent("android.settings.CAST_SETTINGS"),
+                new Intent(Settings.ACTION_WIRELESS_SETTINGS),
+        };
+        for (Intent i : tries) {
+            if (i == null) continue;
+            try {
+                i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                startActivity(i);
+                onLgLog("mirror: opened " + (i.getComponent() != null ? i.getComponent() : i.getAction()));
+                return;
+            } catch (Exception e) {
+                onLgLog("mirror: " + i.getAction() + " failed: " + e);
+            }
+        }
+        emit(obj("type", "error", "msg", L.t("انزل بشريط الإشعارات ودوس Smart View")));
     }
 
     /** اللغة: من الإعدادات، والترجمة من نفس ملف الواجهة (assets/i18n.js). */
@@ -303,6 +356,41 @@ public class MainActivity extends Activity {
                 }
             });
             return true;
+        }
+
+        /** اللينك اللي جه من «مشاركة» (مرة واحدة). */
+        @JavascriptInterface
+        public String takeShare() {
+            String s = pendingShare;
+            pendingShare = null;
+            return s == null ? "" : s;
+        }
+
+        /** يبعت لينك لجهاز معيّن في التابات (LG أو Android TV). */
+        @JavascriptInterface
+        public boolean castTo(String h, final String url) {
+            Dev d;
+            synchronized (devs) { d = devs.get(h); }
+            final Remote c = d == null ? null : d.client;
+            if (c == null || !c.isConnected() || c instanceof GmsClient) return false;
+            onLgLog("cast to " + h + ": " + url);
+            final String name = d.name;
+            sender.execute(new Runnable() {
+                public void run() {
+                    try {
+                        c.launch(url);
+                        emit(obj("type", "casted", "name", name));
+                    } catch (IOException e) {
+                        emit(obj("type", "error", "msg", L.t("معرفناش نبعت اللينك: ") + msg(e)));
+                    }
+                }
+            });
+            return true;
+        }
+
+        @JavascriptInterface
+        public void openMirror() {
+            runOnUiThread(new Runnable() { public void run() { MainActivity.this.openMirror(); } });
         }
 
         @JavascriptInterface

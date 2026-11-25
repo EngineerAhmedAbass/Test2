@@ -55,6 +55,8 @@ public class LgTest {
         tv.sendKey(67, TvClient.SHORT);
         tv.sendKey(66, TvClient.SHORT);
         tv.launch("lg:netflix");
+        tv.launch("https://youtu.be/dQw4w9WgXcQ?si=abc");
+        tv.launch("https://www.shahid.net/ar");
         tv.switchInput("HDMI_2");
         tv.move(12, -5);
         tv.click();
