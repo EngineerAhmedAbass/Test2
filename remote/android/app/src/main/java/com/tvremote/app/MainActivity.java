@@ -55,7 +55,7 @@ public class MainActivity extends Activity {
 
     private static final String SERVICE = "_androidtvremote2._tcp.";
     // آخر نسخة بتترفع هنا من GitHub Actions (remote-android.yml)
-    private static final String RELEASE = "https://github.com/EngineerAhmedAbass/Test2/releases/download/remote-latest/";
+    private static final String RELEASE = "https://github.com/EngineerAhmedAbass/tv-remote/releases/download/latest/";
 
     private volatile String updateApk;
     private volatile int updateCode;
