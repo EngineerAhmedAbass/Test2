@@ -1,0 +1,46 @@
+name: Bridge moved apps
+
+# One-time step: copy the newest builds of the apps that moved out of Test2 onto
+# their old release links, so apps already installed see an update (101+) and
+# switch to their new repositories on their own.
+on:
+  push:
+    branches: ['ccr-7a8c4711-9jm88c']
+    paths: ['.github/workflows/bridge-moved-apps.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  bridge:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Quran TV -> tv-latest
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -e
+          mkdir tv && cd tv
+          gh release download latest -R EngineerAhmedAbass/quran-tv -p Quran-TV.apk -p version.json
+          V=$(python3 -c "import json;print(json.load(open('version.json'))['versionCode'])")
+          test "$V" -gt 100
+          gh release delete tv-latest -R "$GITHUB_REPOSITORY" --yes --cleanup-tag || true
+          gh release create tv-latest Quran-TV.apk version.json -R "$GITHUB_REPOSITORY" \
+            --target "$GITHUB_SHA" --latest=false \
+            --title "سورة البقرة للتليفزيون (نسخة $V)" \
+            --notes "البرنامج اتنقل لـ https://github.com/EngineerAhmedAbass/quran-tv"
+
+      - name: Shella -> shella-latest
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -e
+          mkdir shella && cd shella
+          gh release download latest -R EngineerAhmedAbass/shella -p shella-alwan.apk
+          T=$(gh release view latest -R EngineerAhmedAbass/shella --json name -q .name)
+          gh release delete shella-latest -R "$GITHUB_REPOSITORY" --yes --cleanup-tag || true
+          gh release create shella-latest shella-alwan.apk -R "$GITHUB_REPOSITORY" \
+            --target "$GITHUB_SHA" --latest=false \
+            --title "$T" \
+            --notes "اللعبة اتنقلت لـ https://github.com/EngineerAhmedAbass/shella"
