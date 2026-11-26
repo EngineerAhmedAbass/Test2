@@ -26,6 +26,7 @@ public class LgTest {
             public void onLgMac(String mac) { System.out.println("mac " + mac); }
             public void onLgInputs(JSONArray in) { System.out.println("inputs " + in.length() + " " + in.optJSONObject(1).optString("label") + " connected=" + in.optJSONObject(1).optBoolean("connected")); }
             public void onLgLog(String line) { System.out.println("log: " + line); }
+            public void onLgChannel(String n, String name) { System.out.println("channel " + n + " " + name); }
             public void onLgUnsigned() { System.out.println("unsigned remembered"); }
             public void onLgApps(JSONArray apps) { System.out.println("apps " + apps.length() + " " + apps.optJSONObject(0).optString("title")); status.countDown(); }
         };
@@ -58,6 +59,7 @@ public class LgTest {
         tv.launch("https://youtu.be/dQw4w9WgXcQ?si=abc");
         tv.launch("https://www.shahid.net/ar");
         tv.switchInput("HDMI_2");
+        tv.setVolume(23);
         tv.move(12, -5);
         tv.click();
         tv.sendKey(26, TvClient.SHORT);

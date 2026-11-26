@@ -156,6 +156,16 @@ public class MainActivity extends Activity {
 
     private volatile String pendingShare; // لينك جه من «مشاركة» ولسه الواجهة ماخدتهوش
 
+    static final int REQ_VOICE = 42;
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        if (requestCode != REQ_VOICE || resultCode != RESULT_OK || data == null) return;
+        java.util.ArrayList<String> r = data.getStringArrayListExtra(android.speech.RecognizerIntent.EXTRA_RESULTS);
+        if (r != null && !r.isEmpty()) emit(obj("type", "voice", "text", r.get(0)));
+    }
+
     @Override
     protected void onNewIntent(Intent intent) {
         super.onNewIntent(intent);
@@ -356,6 +366,57 @@ public class MainActivity extends Activity {
                 }
             });
             return true;
+        }
+
+        /** الصوت لرقم: LG بيتظبط على طول، والباقي بندوس علّي/وطّي لحد الرقم. */
+        @JavascriptInterface
+        public void setVolume(final int level) {
+            final Dev d = active;
+            if (d == null) return;
+            final Remote c = d.client;
+            if (c == null || !c.isConnected()) {
+                emit(obj("type", "notConnected"));
+                return;
+            }
+            lastUse = System.currentTimeMillis();
+            sender.execute(new Runnable() {
+                public void run() {
+                    try {
+                        if (c instanceof LgClient) {
+                            ((LgClient) c).setVolume(level);
+                            return;
+                        }
+                        if (d.volume < 0) return; // مش عارفين الصوت الحالي
+                        int diff = level - d.volume;
+                        int code = diff > 0 ? 24 : 25;
+                        for (int i = 0; i < Math.min(Math.abs(diff), 40); i++) {
+                            c.sendKey(code, TvClient.SHORT);
+                            sleep(70);
+                        }
+                    } catch (IOException e) {
+                        emit(obj("type", "error", "msg", msg(e)));
+                    }
+                }
+            });
+        }
+
+        /** «صوت»: تقول الكلام والموبايل يحوّله لنص يتبعت للتليفزيون. */
+        @JavascriptInterface
+        public void voice() {
+            runOnUiThread(new Runnable() {
+                public void run() {
+                    try {
+                        Intent i = new Intent(android.speech.RecognizerIntent.ACTION_RECOGNIZE_SPEECH);
+                        i.putExtra(android.speech.RecognizerIntent.EXTRA_LANGUAGE_MODEL, android.speech.RecognizerIntent.LANGUAGE_MODEL_FREE_FORM);
+                        i.putExtra(android.speech.RecognizerIntent.EXTRA_LANGUAGE, "en".equals(L.lang) ? "en-US" : "ar-SA");
+                        i.putExtra(android.speech.RecognizerIntent.EXTRA_PROMPT, L.t("قول اللي عايز تكتبه على التليفزيون"));
+                        startActivityForResult(i, REQ_VOICE);
+                    } catch (Exception e) {
+                        onLgLog("voice: " + e);
+                        emit(obj("type", "error", "msg", L.t("الكتابة بالصوت مش متاحة")));
+                    }
+                }
+            });
         }
 
         /** اللينك اللي جه من «مشاركة» (مرة واحدة). */
@@ -792,6 +853,8 @@ public class MainActivity extends Activity {
         volatile Boolean power;
         volatile JSONArray apps;
         volatile JSONArray inputs;
+        volatile String chNum = "";
+        volatile String chName = "";
         volatile String vendor = "";
         volatile String model = "";
         private volatile boolean looping;
@@ -942,6 +1005,7 @@ public class MainActivity extends Activity {
                 emit(new JSONObject().put("type", "apps").put("list", apps == null ? new JSONArray() : apps).put("host", host));
                 emit(new JSONObject().put("type", "inputs").put("list", inputs == null ? new JSONArray() : inputs).put("host", host));
             } catch (Exception ignored) { }
+            if (!chNum.isEmpty()) emit(obj("type", "channel", "num", chNum, "name", chName, "host", host));
             if ("pair".equals(state)) emit(obj("type", "needPair", "host", host, "name", name));
         }
 
@@ -1025,6 +1089,13 @@ public class MainActivity extends Activity {
         @Override
         public void onLgUnsigned() {
             prefs.edit().putBoolean("lgUnsigned", true).apply();
+        }
+
+        @Override
+        public void onLgChannel(String number, String name) {
+            chNum = number;
+            chName = name;
+            emit(obj("type", "channel", "num", number, "name", name, "host", host));
         }
 
         @Override

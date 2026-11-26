@@ -66,6 +66,7 @@ if (!window.TV) {
     fire({ type: 'apps', list: t.kind === 'lg' && t.state === 'connected' ? LG_APPS : [], host: h }, 0);
     fire({ type: 'inputs', list: t.kind === 'lg' && t.state === 'connected' ? LG_INPUTS : [], host: h }, 0);
     if (t.state === 'pair') fire({ type: 'needPair', host: h, name: t.name }, 0);
+    if (t.kind === 'lg' && t.state === 'connected') fire({ type: 'channel', num: '124', name: 'MBC 1', host: h }, 0);
   };
   const run = (t) => {
     if (t.state === 'connected') return;
@@ -121,6 +122,8 @@ if (!window.TV) {
     takeShare() { if (location.hash !== '#share' || this._shared) return ''; this._shared = true; return JSON.stringify({ url: 'https://youtu.be/dQw4w9WgXcQ?si=x', title: 'Mohamed Salah — Best Goals 2026' }); },
     castTo(h, url) { const t = tabs.find(x => x.host === h); if (!t || t.state !== 'connected' || t.kind === 'rcv') return false; console.log('cast', h, url); fire({ type: 'casted', name: t.name }, 200); return true; },
     openMirror() { console.log('mirror'); },
+    setVolume(v) { console.log('setVolume', v); fire({ type: 'volume', level: String(v), max: '100', muted: '', host: activeHost }, 100); },
+    voice() { fire({ type: 'voice', text: 'محمد صلاح' }, 300); },
     inputsOf(h) { const t = tabs.find(x => x.host === h); return JSON.stringify(t && t.kind === 'lg' && t.state === 'connected' ? LG_INPUTS : []); },
     switchInputOn(h, id) { const t = tabs.find(x => x.host === h); if (!t || t.state !== 'connected') return false; console.log('switchOn', h, id); return true; }, rawKey(k) { console.log('raw', k); },
     pointer(dx, dy) { console.log('pointer', dx, dy); }, click() { console.log('click'); }, scroll() {}, kind: () => state.kind,
@@ -146,6 +149,16 @@ window.onTv = (e) => {
       break;
     case 'tabs': onTabs(e.list || []); if (state.sheet === 'castSheet') renderCast(); break;
     case 'share': checkShare(); break;
+    case 'channel':
+      $('#chBig').textContent = e.num ? digits(e.num) : '–';
+      $('#chLabel').textContent = e.name || T('القناة الحالية');
+      break;
+    case 'voice':
+      if (!e.text) break;
+      openSheet('kbdSheet');
+      $('#kbdInput').value = e.text;
+      toast(T('راجع الكلام ودوس «ابعت»'));
+      break;
     case 'casted': toast(T('اتبعت لـ ') + niceName(e.name) + ' ✔'); break;
     case 'found': addFound(e.host, niceName(e.name), e.kind); break;
     case 'kind': setKind(e.kind); break;
@@ -164,6 +177,7 @@ window.onTv = (e) => {
       break;
     case 'apps':
       state.tvApps = e.list || [];
+      renderShortcuts();
       if (state.sheet === 'appsSheet') renderApps();
       break;
     case 'scanDone':
@@ -188,6 +202,7 @@ window.onTv = (e) => {
       toast(T('تم الاقتران ✔'));
       break;
     case 'volume': {
+      updateVolCard(e);
       const vt = state.tabs.find(x => x.host === state.host);
       if (vt && vt.volume !== +e.level) { vt.volume = +e.level; renderTabs(); }
       const max = +e.max || 0, lvl = +e.level || 0;
@@ -237,6 +252,7 @@ window.onTv = (e) => {
 };
 
 function setStatus(e) {
+  setTimeout(updatePill, 0);
   const dot = $('#dot');
   state.connected = e.state === 'connected';
   dot.className = 'dot' + (e.state === 'connected' ? ' on' : e.state === 'offline' ? ' off' : '');
@@ -272,6 +288,8 @@ function onTabs(list) {
   }
   renderTabs();
   markTabbed();
+  updatePill();
+  renderShortcuts();
 }
 function renderTabs() {
   const nav = $('#devTabs');
@@ -303,7 +321,7 @@ function renderTabs() {
     add.className = 'dtab add';
     add.setAttribute('aria-label', T('ضيف جهاز'));
     add.textContent = '＋';
-    add.onclick = () => { buzz(); show('devices'); if (!$('#foundList').children.length) scan(); };
+    add.onclick = () => { buzz(); if (state.sheet) closeSheet(); show('devices'); if (!$('#foundList').children.length) scan(); };
     nav.appendChild(add);
   }
   const cur = $('.dtab.on', nav);
@@ -321,6 +339,7 @@ function bindTab(b, t) {
 }
 function activateTab(t) {
   buzz();
+  if (state.sheet === 'devSheet') closeSheet();
   if (t.host === state.host) {
     if (t.state === 'pair') openPair();
     else if (t.state !== 'connected') TV.connect(t.host, t.name, t.kind || '');
@@ -334,6 +353,89 @@ function activateTab(t) {
   TV.activate(t.host);
   const link = getLink(t.host);
   if (link && (link.auto || t.state !== 'connected')) switchTvTo(link);
+}
+
+/* ---------------- شاشة الريموت الجديدة: الكروت والاختصارات والشريط اللي تحت ---------------- */
+// أرقام عربي في الواجهة العربي (٢٣) وإنجليزي في الإنجليزي
+function digits(n) {
+  const s = String(n);
+  return LANG === 'ar' ? s.replace(/[0-9]/g, d => '٠١٢٣٤٥٦٧٨٩'[d]) : s;
+}
+let volDragging = false;
+function updateVolCard(e) {
+  const max = +e.max || 100, lvl = +e.level || 0;
+  const sl = $('#volSlider');
+  if (!volDragging) { sl.max = max; sl.value = lvl; }
+  paintSlider();
+  $('#volBig').textContent = digits(lvl);
+  $('#volLabel').textContent = e.muted ? T('مكتوم 🔇') : T('رفع / خفض');
+  $('.vcard').classList.toggle('muted', !!e.muted);
+}
+function paintSlider() {
+  const sl = $('#volSlider');
+  const pct = (+sl.max ? (+sl.value / +sl.max) : 0) * 100;
+  sl.style.setProperty('--p', pct + '%');
+}
+function resetCards() {
+  $('#volBig').textContent = '–'; $('#chBig').textContent = '–';
+  $('#chLabel').textContent = T('القناة الحالية'); $('#volLabel').textContent = T('رفع / خفض');
+  $('#volSlider').value = 0; paintSlider();
+}
+$('#volSlider').addEventListener('input', () => { volDragging = true; paintSlider(); $('#volBig').textContent = digits($('#volSlider').value); });
+$('#volSlider').addEventListener('change', () => {
+  volDragging = false; buzz();
+  try { TV.setVolume(+$('#volSlider').value); } catch (_) {}
+});
+function updatePill() {
+  const t = state.tabs.find(x => x.host === state.host);
+  const name = niceName(t ? t.name : state.name) || T('التليفزيون');
+  const st = t ? (t.state === 'connected' ? T('متصل الآن') : tabStatus(t)) : T('بيوصل…');
+  $('#devPillText').textContent = name + ' • ' + st;
+  const dot = $('#dot');
+  dot.className = 'dot' + (t && t.state === 'connected' ? ' on' : t && t.state === 'connecting' ? '' : ' off');
+}
+$('#devPill').onclick = () => { buzz(); openSheet('devSheet'); };
+$('#backDevBtn').onclick = () => { buzz(); show('devices'); };
+$('#bnRemote').onclick = () => { buzz(); if (state.host) show('remote'); else toast(T('اختار جهاز الأول')); };
+$('#bnDevices').onclick = () => { buzz(); show('devices'); };
+$('#bnVoice').onclick = () => { buzz(); try { TV.voice(); } catch (_) { toast(T('الكتابة بالصوت مش متاحة')); } };
+// اختصارات التطبيقات (٦): من التليفزيون نفسه في LG، والقايمة الثابتة في Android TV، وزراير الريسيفر
+const PREFERRED = ['youtube', 'netflix', 'shahid', 'osn', 'mbc', 'disney', 'amazon', 'prime', 'spotify', 'livetv'];
+function renderShortcuts() {
+  const grid = $('#scGrid');
+  if (!grid) return;
+  grid.innerHTML = '';
+  let items = [];
+  if (state.kind === 'rcv') {
+    $('#scTitle').textContent = T('اختصارات الريسيفر');
+    items = RCV_KEYS.slice(0, 6).map((k, i) => ({ label: k.label, glyph: k.glyph, color: APP_COLORS[i % APP_COLORS.length], go: () => TV.rawKey(k.code) }));
+  } else {
+    $('#scTitle').textContent = T('اختصارات التطبيقات');
+    if (state.kind === 'lg' && state.tvApps.length) {
+      const score = a => { const s = (a.id + ' ' + a.title).toLowerCase(); const i = PREFERRED.findIndex(p => s.includes(p)); return i < 0 ? 99 : i; };
+      items = state.tvApps.slice().sort((a, b) => score(a) - score(b)).slice(0, 6)
+        .map((a, i) => ({ label: a.title, icon: a.icon, glyph: (a.title || '?').charAt(0), color: APP_COLORS[i % APP_COLORS.length], go: () => TV.launch('lg:' + a.id) }));
+    } else {
+      items = BUILTIN_APPS.concat(customApps()).slice(0, 6)
+        .map((a, i) => ({ label: a.label, glyph: a.glyph || a.label.charAt(0), color: a.color || APP_COLORS[i % APP_COLORS.length], go: () => TV.launch(a.link) }));
+    }
+  }
+  items.forEach(a => {
+    const b = document.createElement('button');
+    b.className = 'sc';
+    b.innerHTML = '<i></i><span></span>';
+    const ic = $('i', b);
+    ic.style.background = a.color;
+    if (a.icon) {
+      const img = document.createElement('img');
+      img.alt = ''; img.src = a.icon;
+      img.onerror = () => { img.remove(); ic.textContent = a.glyph; };
+      ic.classList.add('has-img'); ic.appendChild(img);
+    } else ic.textContent = a.glyph;
+    $('span', b).textContent = a.label;
+    b.onclick = () => { buzz(); a.go(); toast(T('بيفتح ') + a.label + '…'); };
+    grid.appendChild(b);
+  });
 }
 
 /* ---------------- ابعت للتليفزيون (مشاركة لينك من أي تطبيق) ---------------- */
@@ -595,6 +697,7 @@ function connect(host, name, kind) {
 
 /* نوع التليفزيون بيغيّر شوية حاجات في الواجهة */
 function setKind(kind) {
+  if (state.kind !== kind) resetCards();
   state.kind = kind;
   document.body.classList.toggle('kind-lg', kind === 'lg');
   document.body.classList.toggle('kind-rcv', kind === 'rcv');
@@ -608,6 +711,8 @@ function setKind(kind) {
 
 function show(id) {
   $$('.view').forEach(v => v.classList.toggle('active', v.id === id));
+  $('#bnRemote').classList.toggle('on', id === 'remote');
+  $('#bnDevices').classList.toggle('on', id === 'devices');
   if (id === 'devices') renderSaved();
 }
 
@@ -1073,6 +1178,7 @@ function toast(msg) {
 
 /* ------------------------------------------------------------ التصميمات */
 const THEMES = [
+  { id: 'teal', name: T('فيروزي'), bg: 'linear-gradient(120deg,#060b0e 40%,#0f3f3b 50%,#060b0e 60%)', panel: '#1b262c', accent: '#2fe0cf', ring: '#2fe0cf', bar: '#060b0e' },
   { id: 'midnight', name: T('ليلي برتقالي'), bg: '#0b0d12', panel: '#1c2230', accent: '#ff6a1f', bar: '#0b0d12' },
   { id: 'glass', name: T('زجاج'), bg: 'linear-gradient(150deg,#6d3cff,#0b1530 60%,#00b3ff)', panel: 'rgba(255,255,255,.22)', accent: '#5ee7ff', bar: '#1d0f45' },
   { id: 'light', name: T('فاتح'), bg: '#e6eaf1', panel: '#f4f6fa', accent: '#3d6bff', bar: '#e6eaf1', light: true },
@@ -1138,6 +1244,7 @@ if (!savedDevices().length) scan();
   connect(act.host, act.name, act.kind || '');
 })();
 try { if (TV.isReady()) window.onTv({ type: 'ready' }); } catch (_) {}
+renderShortcuts();
 // لو التطبيق اتفتح من «مشاركة» لينك
 setTimeout(checkShare, 300);
 // كل ما التطبيق يتفتح بيشوف لو فيه نسخة أحدث

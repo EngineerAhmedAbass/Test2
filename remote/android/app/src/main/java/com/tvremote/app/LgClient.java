@@ -27,6 +27,8 @@ public class LgClient implements Remote {
         void onLgKey(String clientKey);
         void onLgMac(String mac);
         void onLgApps(JSONArray apps);
+        /** القناة الحالية (لما التليفزيون على Live TV). */
+        void onLgChannel(String number, String name);
         /** مصادر الدخل (HDMI...) اللي في التليفزيون. */
         void onLgInputs(JSONArray inputs);
         /** سطر في سجل التشخيص (بيظهر في الإعدادات). */
@@ -157,6 +159,7 @@ public class LgClient implements Remote {
             log("replies before register: hello=" + gotHello + " systemInfo=" + gotSys);
 
             send(ws, msg("subscribe", "sub_apps", "ssap://com.webos.applicationManager/listLaunchPoints", new JSONObject()));
+            send(ws, msg("subscribe", "sub_ch", "ssap://tv/getCurrentChannel", new JSONObject()));
             send(ws, msg("subscribe", "sub_inputs", "ssap://tv/getExternalInputList", new JSONObject()));
             send(ws, msg("subscribe", "sub_vol", "ssap://audio/getVolume", new JSONObject()));
             send(ws, msg("subscribe", "sub_app", "ssap://com.webos.applicationManager/getForegroundAppInfo", new JSONObject()));
@@ -291,6 +294,9 @@ public class LgClient implements Remote {
                 screenOn = "Active".equals(state);
                 listener.onPower(screenOn);
             }
+        } else if ("sub_ch".equals(id)) {
+            String num = p.optString("channelNumber", "");
+            if (!num.isEmpty()) events.onLgChannel(num, p.optString("channelName", ""));
         } else if ("sub_inputs".equals(id)) {
             JSONArray dev = p.optJSONArray("devices");
             if (dev != null) {
@@ -609,6 +615,15 @@ public class LgClient implements Remote {
         java.util.regex.Matcher m = java.util.regex.Pattern.compile(
                 "(?:youtu\\.be/|youtube\\.com/(?:watch\\?(?:.*&)?v=|shorts/|live/|embed/))([A-Za-z0-9_-]{11})").matcher(url);
         return m.find() ? m.group(1) : null;
+    }
+
+    /** الصوت لرقم معيّن (من الـ slider). */
+    public void setVolume(int level) throws IOException {
+        try {
+            request("ssap://audio/setVolume", new JSONObject().put("volume", Math.max(0, level)));
+        } catch (JSONException e) {
+            throw new IOException(e);
+        }
     }
 
     /** تغيير المصدر (مثلًا HDMI_1). */

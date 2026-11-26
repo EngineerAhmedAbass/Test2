@@ -104,6 +104,8 @@ async def main_socket(ws):
                 p = {"appId": "youtube.leanback.v4"}
             elif uri.endswith("getPowerState"):
                 p = {"state": "Active"}
+            elif uri.endswith("getCurrentChannel"):
+                p = {"channelNumber": "124", "channelName": "MBC 1"}
             elif uri.endswith("getExternalInputList"):
                 p = {"devices": [
                     {"id": "HDMI_1", "label": "HDMI 1", "appId": "com.webos.app.hdmi1", "connected": True},
